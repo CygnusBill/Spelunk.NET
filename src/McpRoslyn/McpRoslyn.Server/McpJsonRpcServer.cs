@@ -397,6 +397,26 @@ public class McpJsonRpcServer
             },
             new
             {
+                name = "dotnet/edit-code",
+                description = "Perform surgical code edits using Roslyn. Operations: add-method, add-property, make-async, add-parameter, wrap-try-catch",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        file = new { type = "string", description = "Path to the source file to edit" },
+                        operation = new { type = "string", description = "Operation type: add-method, add-property, make-async, add-parameter, wrap-try-catch" },
+                        className = new { type = "string", description = "Name of the class to modify" },
+                        methodName = new { type = "string", description = "Method name (for method operations)" },
+                        code = new { type = "string", description = "Code to add (for add operations)" },
+                        parameters = new { type = "object", description = "Operation-specific parameters" },
+                        preview = new { type = "boolean", description = "If true, show changes without applying" }
+                    },
+                    required = new[] { "file", "operation", "className" }
+                }
+            },
+            new
+            {
                 name = "dotnet/fix-pattern",
                 description = "Find code matching a pattern and transform it to a new pattern",
                 inputSchema = new
@@ -497,6 +517,10 @@ public class McpJsonRpcServer
                 
             case "dotnet/rename-symbol":
                 result = await RenameSymbolAsync(toolCallParams.Arguments);
+                break;
+                
+            case "dotnet/edit-code":
+                result = await EditCodeAsync(toolCallParams.Arguments);
                 break;
                 
             case "dotnet/fix-pattern":
@@ -1789,6 +1813,98 @@ public class McpJsonRpcServer
                     {
                         type = "text",
                         text = $"Error renaming symbol: {ex.Message}"
+                    }
+                }
+            };
+        }
+    }
+    
+    private async Task<object> EditCodeAsync(JsonElement? args)
+    {
+        var file = args?.GetProperty("file").GetString();
+        var operation = args?.GetProperty("operation").GetString();
+        var className = args?.GetProperty("className").GetString();
+        
+        if (string.IsNullOrEmpty(file) || string.IsNullOrEmpty(operation) || string.IsNullOrEmpty(className))
+        {
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = "Error: File, operation, and className are required"
+                    }
+                }
+            };
+        }
+        
+        var methodName = args?.TryGetProperty("methodName", out var mn) == true ? mn.GetString() : null;
+        var code = args?.TryGetProperty("code", out var c) == true ? c.GetString() : null;
+        var preview = args?.TryGetProperty("preview", out var p) == true && p.GetBoolean();
+        var parameters = args?.TryGetProperty("parameters", out var prm) == true ? (JsonElement?)prm : null;
+        
+        try
+        {
+            var result = await _workspaceManager.EditCodeAsync(file, operation, className, methodName, code, parameters, preview);
+            
+            if (!result.Success)
+            {
+                return new
+                {
+                    content = new[]
+                    {
+                        new
+                        {
+                            type = "text",
+                            text = $"Error: {result.Error}"
+                        }
+                    }
+                };
+            }
+            
+            // Format results
+            var report = $"Code edit: {operation} on {className}\n";
+            report += $"File: {file}\n";
+            report += $"Status: {(preview ? "Preview" : "Applied")}\n\n";
+            
+            if (!string.IsNullOrEmpty(result.Description))
+            {
+                report += $"Changes:\n{result.Description}\n\n";
+            }
+            
+            if (preview && !string.IsNullOrEmpty(result.ModifiedCode))
+            {
+                report += "Modified code:\n";
+                report += "```csharp\n";
+                report += result.ModifiedCode;
+                report += "\n```\n";
+            }
+            
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = report
+                    }
+                }
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to edit code in {File}", file);
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = $"Error editing code: {ex.Message}"
                     }
                 }
             };

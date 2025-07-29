@@ -2,11 +2,13 @@ using Microsoft.Build.Locator;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.MSBuild;
 using Microsoft.CodeAnalysis.FindSymbols;
+using Microsoft.CodeAnalysis.Formatting;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Rename;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace McpRoslyn.Server;
@@ -914,6 +916,255 @@ public class RoslynWorkspaceManager
         }
         
         return results;
+    }
+    
+    public async Task<CodeEditResult> EditCodeAsync(string filePath, string operation, string className, string? methodName, string? code, JsonElement? parameters, bool preview)
+    {
+        var result = new CodeEditResult { Success = true };
+        
+        try
+        {
+            // Find the workspace containing this file
+            Workspace? targetWorkspace = null;
+            foreach (var ws in _workspaces.Values)
+            {
+                var doc = ws.CurrentSolution.Projects
+                    .SelectMany(p => p.Documents)
+                    .FirstOrDefault(d => d.FilePath == filePath);
+                if (doc != null)
+                {
+                    targetWorkspace = ws;
+                    break;
+                }
+            }
+            
+            if (targetWorkspace == null)
+            {
+                result.Error = $"File '{filePath}' not found in any loaded workspace";
+                result.Success = false;
+                return result;
+            }
+            
+            var document = targetWorkspace.CurrentSolution.Projects
+                .SelectMany(p => p.Documents)
+                .First(d => d.FilePath == filePath);
+            
+            var root = await document.GetSyntaxRootAsync();
+            if (root == null)
+            {
+                result.Error = "Failed to parse file";
+                result.Success = false;
+                return result;
+            }
+            
+            // Perform the operation
+            SyntaxNode? modifiedRoot = null;
+            
+            switch (operation.ToLower())
+            {
+                case "add-method":
+                    (modifiedRoot, result) = await AddMethodToClass(root, className, code ?? "", document);
+                    break;
+                    
+                case "add-property":
+                    (modifiedRoot, result) = await AddPropertyToClass(root, className, code ?? "", document);
+                    break;
+                    
+                case "make-async":
+                    (modifiedRoot, result) = await MakeMethodAsync(root, className, methodName ?? "", document);
+                    break;
+                    
+                default:
+                    result.Error = $"Unknown operation: {operation}";
+                    result.Success = false;
+                    return result;
+            }
+            
+            if (!result.Success || modifiedRoot == null)
+            {
+                return result;
+            }
+            
+            // Format the code
+            modifiedRoot = Formatter.Format(modifiedRoot, targetWorkspace);
+            
+            if (preview)
+            {
+                result.ModifiedCode = modifiedRoot.ToFullString();
+            }
+            else
+            {
+                // Apply the changes
+                var newDocument = document.WithSyntaxRoot(modifiedRoot);
+                var newSolution = newDocument.Project.Solution;
+                
+                if (!targetWorkspace.TryApplyChanges(newSolution))
+                {
+                    result.Error = "Failed to apply changes to workspace";
+                    result.Success = false;
+                    return result;
+                }
+                
+                // Write to file
+                var modifiedText = modifiedRoot.ToFullString();
+                await File.WriteAllTextAsync(filePath, modifiedText);
+            }
+        }
+        catch (Exception ex)
+        {
+            result.Success = false;
+            result.Error = ex.Message;
+        }
+        
+        return result;
+    }
+    
+    private async Task<(SyntaxNode? modifiedRoot, CodeEditResult result)> AddMethodToClass(
+        SyntaxNode root, string className, string methodCode, Document document)
+    {
+        var result = new CodeEditResult { Success = true };
+        
+        // Find the class
+        var classDeclaration = root.DescendantNodes()
+            .OfType<ClassDeclarationSyntax>()
+            .FirstOrDefault(c => c.Identifier.Text == className);
+        
+        if (classDeclaration == null)
+        {
+            result.Error = $"Class '{className}' not found";
+            result.Success = false;
+            return (null, result);
+        }
+        
+        // Parse the method code
+        var parsedMethod = SyntaxFactory.ParseCompilationUnit(methodCode)
+            .DescendantNodes()
+            .OfType<MethodDeclarationSyntax>()
+            .FirstOrDefault();
+        
+        if (parsedMethod == null)
+        {
+            // Try parsing as a member declaration
+            var member = SyntaxFactory.ParseMemberDeclaration(methodCode);
+            if (member is MethodDeclarationSyntax method)
+            {
+                parsedMethod = method;
+            }
+            else
+            {
+                result.Error = "Invalid method syntax";
+                result.Success = false;
+                return (null, result);
+            }
+        }
+        
+        // Add the method to the class
+        var newClass = classDeclaration.AddMembers(parsedMethod);
+        var modifiedRoot = root.ReplaceNode(classDeclaration, newClass);
+        
+        result.Description = $"Added method '{parsedMethod.Identifier.Text}' to class '{className}'";
+        
+        return (modifiedRoot, result);
+    }
+    
+    private async Task<(SyntaxNode? modifiedRoot, CodeEditResult result)> AddPropertyToClass(
+        SyntaxNode root, string className, string propertyCode, Document document)
+    {
+        var result = new CodeEditResult { Success = true };
+        
+        // Find the class
+        var classDeclaration = root.DescendantNodes()
+            .OfType<ClassDeclarationSyntax>()
+            .FirstOrDefault(c => c.Identifier.Text == className);
+        
+        if (classDeclaration == null)
+        {
+            result.Error = $"Class '{className}' not found";
+            result.Success = false;
+            return (null, result);
+        }
+        
+        // Parse the property code
+        var parsedProperty = SyntaxFactory.ParseMemberDeclaration(propertyCode) as PropertyDeclarationSyntax;
+        
+        if (parsedProperty == null)
+        {
+            result.Error = "Invalid property syntax";
+            result.Success = false;
+            return (null, result);
+        }
+        
+        // Add the property to the class
+        var newClass = classDeclaration.AddMembers(parsedProperty);
+        var modifiedRoot = root.ReplaceNode(classDeclaration, newClass);
+        
+        result.Description = $"Added property '{parsedProperty.Identifier.Text}' to class '{className}'";
+        
+        return (modifiedRoot, result);
+    }
+    
+    private async Task<(SyntaxNode? modifiedRoot, CodeEditResult result)> MakeMethodAsync(
+        SyntaxNode root, string className, string methodName, Document document)
+    {
+        var result = new CodeEditResult { Success = true };
+        
+        // Find the class
+        var classDeclaration = root.DescendantNodes()
+            .OfType<ClassDeclarationSyntax>()
+            .FirstOrDefault(c => c.Identifier.Text == className);
+        
+        if (classDeclaration == null)
+        {
+            result.Error = $"Class '{className}' not found";
+            result.Success = false;
+            return (null, result);
+        }
+        
+        // Find the method
+        var methodDeclaration = classDeclaration.DescendantNodes()
+            .OfType<MethodDeclarationSyntax>()
+            .FirstOrDefault(m => m.Identifier.Text == methodName);
+        
+        if (methodDeclaration == null)
+        {
+            result.Error = $"Method '{methodName}' not found in class '{className}'";
+            result.Success = false;
+            return (null, result);
+        }
+        
+        // Check if already async
+        if (methodDeclaration.Modifiers.Any(m => m.IsKind(SyntaxKind.AsyncKeyword)))
+        {
+            result.Error = $"Method '{methodName}' is already async";
+            result.Success = false;
+            return (null, result);
+        }
+        
+        // Add async modifier
+        var newMethod = methodDeclaration.AddModifiers(SyntaxFactory.Token(SyntaxKind.AsyncKeyword));
+        
+        // Change return type if needed
+        var returnType = methodDeclaration.ReturnType;
+        if (returnType is PredefinedTypeSyntax predefined && predefined.Keyword.IsKind(SyntaxKind.VoidKeyword))
+        {
+            // void -> Task
+            newMethod = newMethod.WithReturnType(SyntaxFactory.ParseTypeName("Task"));
+        }
+        else if (returnType is not GenericNameSyntax generic || generic.Identifier.Text != "Task")
+        {
+            // T -> Task<T>
+            newMethod = newMethod.WithReturnType(
+                SyntaxFactory.GenericName("Task")
+                    .WithTypeArgumentList(
+                        SyntaxFactory.TypeArgumentList(
+                            SyntaxFactory.SingletonSeparatedList<TypeSyntax>(returnType))));
+        }
+        
+        var modifiedRoot = root.ReplaceNode(methodDeclaration, newMethod);
+        
+        result.Description = $"Made method '{methodName}' async in class '{className}'";
+        
+        return (modifiedRoot, result);
     }
     
     private async Task<ISymbol?> FindSymbolAsync(Compilation compilation, string symbolName, string symbolType, string? containerName)
@@ -1835,6 +2086,14 @@ public class PatternFixResult
     public bool Success { get; set; }
     public string? Error { get; set; }
     public List<PatternFix> Fixes { get; set; } = new();
+}
+
+public class CodeEditResult
+{
+    public bool Success { get; set; }
+    public string? Error { get; set; }
+    public string? Description { get; set; }
+    public string? ModifiedCode { get; set; }
 }
 
 public class PatternFix
