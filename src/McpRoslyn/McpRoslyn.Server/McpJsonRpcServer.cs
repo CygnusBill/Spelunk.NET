@@ -490,6 +490,61 @@ public class McpJsonRpcServer
                     },
                     required = new[] { "newStatement" }
                 }
+            },
+            new
+            {
+                name = "dotnet/insert-statement",
+                description = "Insert a new statement before or after an existing statement. The reference statement is identified by its location from find-statements. Preserves indentation and formatting context.",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        position = new { type = "string", description = "Where to insert: 'before' or 'after' the reference statement", @enum = new[] { "before", "after" } },
+                        location = new 
+                        { 
+                            type = "object", 
+                            description = "Location of the reference statement",
+                            properties = new
+                            {
+                                file = new { type = "string", description = "File path" },
+                                line = new { type = "number", description = "Line number (1-based)" },
+                                column = new { type = "number", description = "Column number (1-based)" }
+                            },
+                            required = new[] { "file", "line", "column" }
+                        },
+                        statement = new { type = "string", description = "The new statement to insert (including semicolon)" },
+                        workspacePath = new { type = "string", description = "Optional workspace path" }
+                    },
+                    required = new[] { "position", "location", "statement" }
+                }
+            },
+            new
+            {
+                name = "dotnet/remove-statement",
+                description = "Remove a statement from the code. The statement is identified by its location from find-statements. Can preserve comments attached to the statement.",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        location = new 
+                        { 
+                            type = "object", 
+                            description = "Location of the statement to remove",
+                            properties = new
+                            {
+                                file = new { type = "string", description = "File path" },
+                                line = new { type = "number", description = "Line number (1-based)" },
+                                column = new { type = "number", description = "Column number (1-based)" }
+                            },
+                            required = new[] { "file", "line", "column" }
+                        },
+                        preserveComments = new { type = "boolean", description = "Preserve comments attached to the statement", @default = true },
+                        workspacePath = new { type = "string", description = "Optional workspace path" }
+                    },
+                    required = new[] { "location" }
+                }
             }
         };
         
@@ -591,6 +646,14 @@ public class McpJsonRpcServer
                 
             case "dotnet/replace-statement":
                 result = await ReplaceStatementAsync(toolCallParams.Arguments);
+                break;
+                
+            case "dotnet/insert-statement":
+                result = await InsertStatementAsync(toolCallParams.Arguments);
+                break;
+                
+            case "dotnet/remove-statement":
+                result = await RemoveStatementAsync(toolCallParams.Arguments);
                 break;
                 
             default:
@@ -2301,6 +2364,224 @@ public class McpJsonRpcServer
                     {
                         type = "text",
                         text = $"Error replacing statement: {ex.Message}"
+                    }
+                }
+            };
+        }
+    }
+    
+    private async Task<object> InsertStatementAsync(JsonElement? args)
+    {
+        var statement = args?.GetProperty("statement").GetString();
+        var position = args?.GetProperty("position").GetString();
+        
+        if (string.IsNullOrEmpty(statement))
+        {
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = "Error: Statement is required"
+                    }
+                }
+            };
+        }
+        
+        if (string.IsNullOrEmpty(position) || (position != "before" && position != "after"))
+        {
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = "Error: Position must be 'before' or 'after'"
+                    }
+                }
+            };
+        }
+        
+        // Get location
+        string? filePath = null;
+        int line = 0;
+        int column = 0;
+        
+        if (args?.TryGetProperty("location", out var loc) == true)
+        {
+            filePath = loc.GetProperty("file").GetString();
+            line = loc.GetProperty("line").GetInt32();
+            column = loc.GetProperty("column").GetInt32();
+        }
+        
+        if (string.IsNullOrEmpty(filePath) || line == 0 || column == 0)
+        {
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = "Error: Location (file, line, column) is required"
+                    }
+                }
+            };
+        }
+        
+        var workspacePath = args?.TryGetProperty("workspacePath", out var ws) == true ? ws.GetString() : null;
+        
+        try
+        {
+            var result = await _workspaceManager.InsertStatementAsync(
+                position, filePath, line, column, statement, workspacePath);
+            
+            if (!result.Success)
+            {
+                return new
+                {
+                    content = new[]
+                    {
+                        new
+                        {
+                            type = "text",
+                            text = $"Error: {result.Error}"
+                        }
+                    }
+                };
+            }
+            
+            // Format the response
+            var response = new System.Text.StringBuilder();
+            response.AppendLine($"Statement inserted successfully in {result.ModifiedFile}");
+            response.AppendLine();
+            response.AppendLine($"Inserted: {result.InsertedStatement}");
+            response.AppendLine($"Position: {position} {result.InsertedAt}");
+            response.AppendLine();
+            response.AppendLine("Preview:");
+            response.AppendLine(result.Preview);
+            
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = response.ToString()
+                    }
+                }
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to insert statement");
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = $"Error inserting statement: {ex.Message}"
+                    }
+                }
+            };
+        }
+    }
+    
+    private async Task<object> RemoveStatementAsync(JsonElement? args)
+    {
+        // Get location
+        string? filePath = null;
+        int line = 0;
+        int column = 0;
+        
+        if (args?.TryGetProperty("location", out var loc) == true)
+        {
+            filePath = loc.GetProperty("file").GetString();
+            line = loc.GetProperty("line").GetInt32();
+            column = loc.GetProperty("column").GetInt32();
+        }
+        
+        if (string.IsNullOrEmpty(filePath) || line == 0 || column == 0)
+        {
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = "Error: Location (file, line, column) is required"
+                    }
+                }
+            };
+        }
+        
+        var preserveComments = args?.TryGetProperty("preserveComments", out var pc) == true ? pc.GetBoolean() : true;
+        var workspacePath = args?.TryGetProperty("workspacePath", out var ws) == true ? ws.GetString() : null;
+        
+        try
+        {
+            var result = await _workspaceManager.RemoveStatementAsync(
+                filePath, line, column, preserveComments, workspacePath);
+            
+            if (!result.Success)
+            {
+                return new
+                {
+                    content = new[]
+                    {
+                        new
+                        {
+                            type = "text",
+                            text = $"Error: {result.Error}"
+                        }
+                    }
+                };
+            }
+            
+            // Format the response
+            var response = new System.Text.StringBuilder();
+            response.AppendLine($"Statement removed successfully from {result.ModifiedFile}");
+            response.AppendLine();
+            response.AppendLine($"Removed: {result.RemovedStatement}");
+            response.AppendLine($"From: {result.RemovedFrom}");
+            if (result.WasOnlyStatementInBlock)
+            {
+                response.AppendLine("Note: This was the only statement in its block");
+            }
+            response.AppendLine();
+            response.AppendLine("Preview:");
+            response.AppendLine(result.Preview);
+            
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = response.ToString()
+                    }
+                }
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to remove statement");
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = $"Error removing statement: {ex.Message}"
                     }
                 }
             };

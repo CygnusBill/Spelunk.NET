@@ -2271,6 +2271,386 @@ public class RoslynWorkspaceManager
         
         return result;
     }
+    
+    public async Task<InsertStatementResult> InsertStatementAsync(
+        string position,
+        string filePath,
+        int line,
+        int column,
+        string statement,
+        string? workspacePath = null)
+    {
+        var result = new InsertStatementResult { Success = true };
+        
+        try
+        {
+            // Find the document
+            var workspacesToSearch = GetWorkspacesToSearch(workspacePath);
+            Document? targetDocument = null;
+            
+            foreach (var ws in workspacesToSearch)
+            {
+                var solution = ws.CurrentSolution;
+                targetDocument = solution.Projects
+                    .SelectMany(p => p.Documents)
+                    .FirstOrDefault(d => d.FilePath == filePath);
+                    
+                if (targetDocument != null) break;
+            }
+            
+            if (targetDocument == null)
+            {
+                result.Success = false;
+                result.Error = $"File not found in workspace: {filePath}";
+                return result;
+            }
+            
+            // Get syntax tree
+            var root = await targetDocument.GetSyntaxRootAsync();
+            if (root == null)
+            {
+                result.Success = false;
+                result.Error = "Failed to get syntax root";
+                return result;
+            }
+            
+            var sourceText = await targetDocument.GetTextAsync();
+            
+            // Find the reference statement at the specified location
+            var pos = sourceText.Lines.GetPosition(new LinePosition(line - 1, column - 1));
+            var token = root.FindToken(pos);
+            
+            // Find the containing statement
+            var referenceStatement = token.Parent?.AncestorsAndSelf()
+                .OfType<StatementSyntax>()
+                .FirstOrDefault();
+                
+            if (referenceStatement == null)
+            {
+                result.Success = false;
+                result.Error = $"No statement found at {filePath}:{line}:{column}";
+                return result;
+            }
+            
+            // Parse the new statement
+            var newStatementSyntax = SyntaxFactory.ParseStatement(statement);
+            if (newStatementSyntax.ContainsDiagnostics)
+            {
+                result.Success = false;
+                result.Error = "New statement contains syntax errors";
+                return result;
+            }
+            
+            // Get the parent that contains the reference statement
+            var parent = referenceStatement.Parent;
+            if (parent == null)
+            {
+                result.Success = false;
+                result.Error = "Cannot determine where to insert the statement";
+                return result;
+            }
+            
+            // Determine indentation from the reference statement
+            var leadingTrivia = referenceStatement.GetLeadingTrivia();
+            var indentationTrivia = leadingTrivia
+                .Where(t => t.IsKind(SyntaxKind.WhitespaceTrivia))
+                .LastOrDefault();
+                
+            // Add proper indentation and newline to the new statement
+            if (indentationTrivia != default)
+            {
+                newStatementSyntax = newStatementSyntax
+                    .WithLeadingTrivia(indentationTrivia)
+                    .WithTrailingTrivia(SyntaxFactory.EndOfLine("\n"));
+            }
+            else
+            {
+                newStatementSyntax = newStatementSyntax
+                    .WithTrailingTrivia(SyntaxFactory.EndOfLine("\n"));
+            }
+            
+            SyntaxNode newRoot;
+            
+            if (parent is BlockSyntax block)
+            {
+                // Insert within a block
+                var statements = block.Statements;
+                var index = statements.IndexOf(referenceStatement);
+                
+                if (index == -1)
+                {
+                    result.Success = false;
+                    result.Error = "Failed to find statement in parent block";
+                    return result;
+                }
+                
+                List<StatementSyntax> newStatements;
+                if (position.ToLower() == "before")
+                {
+                    newStatements = statements.Take(index)
+                        .Concat(new[] { newStatementSyntax })
+                        .Concat(statements.Skip(index))
+                        .ToList();
+                }
+                else // after
+                {
+                    newStatements = statements.Take(index + 1)
+                        .Concat(new[] { newStatementSyntax })
+                        .Concat(statements.Skip(index + 1))
+                        .ToList();
+                }
+                
+                var newBlock = block.WithStatements(SyntaxFactory.List(newStatements));
+                newRoot = root.ReplaceNode(block, newBlock);
+            }
+            else
+            {
+                // Handle other cases (like single statement methods)
+                // For now, we'll wrap in a block
+                var blockStatements = position.ToLower() == "before"
+                    ? new[] { newStatementSyntax, referenceStatement }
+                    : new[] { referenceStatement, newStatementSyntax };
+                    
+                var newBlock = SyntaxFactory.Block(blockStatements)
+                    .WithLeadingTrivia(referenceStatement.GetLeadingTrivia())
+                    .WithTrailingTrivia(referenceStatement.GetTrailingTrivia());
+                    
+                newRoot = root.ReplaceNode(referenceStatement, newBlock);
+            }
+            
+            // Update the document
+            var newDocument = targetDocument.WithSyntaxRoot(newRoot);
+            
+            // Apply the changes
+            var workspace = targetDocument.Project.Solution.Workspace;
+            var success = workspace.TryApplyChanges(newDocument.Project.Solution);
+            
+            if (!success)
+            {
+                result.Success = false;
+                result.Error = "Failed to apply changes to workspace";
+                return result;
+            }
+            
+            result.ModifiedFile = filePath;
+            result.InsertedStatement = newStatementSyntax.ToString();
+            
+            // Calculate where it was inserted
+            var newText = newRoot.GetText();
+            var insertedNode = newRoot.DescendantNodes()
+                .OfType<StatementSyntax>()
+                .FirstOrDefault(s => s.ToString().Trim() == statement.Trim());
+                
+            if (insertedNode != null)
+            {
+                var insertedLineSpan = newText.Lines.GetLinePositionSpan(insertedNode.Span);
+                result.InsertedAt = new Location
+                {
+                    File = filePath,
+                    Line = insertedLineSpan.Start.Line + 1,
+                    Column = insertedLineSpan.Start.Character + 1
+                };
+            }
+            
+            // Generate preview
+            var referenceLineSpan = sourceText.Lines.GetLinePositionSpan(referenceStatement.Span);
+            var startLine = Math.Max(0, referenceLineSpan.Start.Line - 2);
+            var endLine = Math.Min(newText.Lines.Count - 1, referenceLineSpan.End.Line + 3);
+            
+            var preview = new System.Text.StringBuilder();
+            preview.AppendLine($"Inserted {position} line {line}:");
+            for (int i = startLine; i <= endLine && i < newText.Lines.Count; i++)
+            {
+                var lineText = newText.Lines[i].ToString();
+                var marker = (insertedNode != null && i >= result.InsertedAt.Line - 1 && 
+                             i < result.InsertedAt.Line - 1 + newStatementSyntax.ToString().Split('\n').Length) 
+                    ? " <<<" : "";
+                preview.AppendLine($"  {i + 1}: {lineText}{marker}");
+            }
+            
+            result.Preview = preview.ToString();
+        }
+        catch (Exception ex)
+        {
+            result.Success = false;
+            result.Error = ex.Message;
+        }
+        
+        return result;
+    }
+    
+    public async Task<RemoveStatementResult> RemoveStatementAsync(
+        string filePath,
+        int line,
+        int column,
+        bool preserveComments = true,
+        string? workspacePath = null)
+    {
+        var result = new RemoveStatementResult { Success = true };
+        var location = new Location { File = filePath, Line = line, Column = column };
+        
+        try
+        {
+            // Find the document
+            var workspacesToSearch = GetWorkspacesToSearch(workspacePath);
+            Document? targetDocument = null;
+            
+            foreach (var ws in workspacesToSearch)
+            {
+                var solution = ws.CurrentSolution;
+                targetDocument = solution.Projects
+                    .SelectMany(p => p.Documents)
+                    .FirstOrDefault(d => d.FilePath == filePath);
+                    
+                if (targetDocument != null) break;
+            }
+            
+            if (targetDocument == null)
+            {
+                result.Success = false;
+                result.Error = $"File not found in workspace: {filePath}";
+                return result;
+            }
+            
+            // Get syntax tree
+            var syntaxTree = await targetDocument.GetSyntaxTreeAsync();
+            if (syntaxTree == null)
+            {
+                result.Success = false;
+                result.Error = $"Could not parse file: {filePath}";
+                return result;
+            }
+            
+            var root = await syntaxTree.GetRootAsync();
+            var sourceText = await targetDocument.GetTextAsync();
+            
+            // Find the statement at the location
+            var position = sourceText.Lines.GetPosition(new LinePosition(line - 1, column - 1));
+            var token = root.FindToken(position);
+            var statement = token.Parent?.AncestorsAndSelf().OfType<StatementSyntax>().FirstOrDefault();
+            
+            if (statement == null)
+            {
+                result.Success = false;
+                result.Error = $"No statement found at {filePath}:{line}:{column}";
+                return result;
+            }
+            
+            // Store the statement details before removal
+            var removedStatement = statement.ToString();
+            var statementLineSpan = statement.GetLocation().GetLineSpan();
+            var statementLocation = new Location 
+            { 
+                File = statementLineSpan.Path, 
+                Line = statementLineSpan.StartLinePosition.Line + 1, 
+                Column = statementLineSpan.StartLinePosition.Character + 1 
+            };
+            
+            // Check if this is the only statement in a block
+            var parentBlock = statement.Parent as BlockSyntax;
+            var isOnlyStatement = parentBlock != null && parentBlock.Statements.Count == 1;
+            
+            // Get the trivia to preserve
+            var leadingTrivia = preserveComments ? statement.GetLeadingTrivia() : SyntaxFactory.TriviaList();
+            var trailingTrivia = statement.GetTrailingTrivia();
+            
+            // Create new root with statement removed
+            SyntaxNode newRoot;
+            if (isOnlyStatement && parentBlock != null)
+            {
+                // If it's the only statement in a block, we might want to preserve the block structure
+                // by adding an empty line or comment
+                var emptyStatement = SyntaxFactory.EmptyStatement()
+                    .WithLeadingTrivia(leadingTrivia)
+                    .WithTrailingTrivia(trailingTrivia);
+                    
+                newRoot = root.ReplaceNode(statement, emptyStatement);
+            }
+            else
+            {
+                // Remove the statement entirely
+                newRoot = root.RemoveNode(statement, SyntaxRemoveOptions.KeepNoTrivia);
+                
+                // If we preserved comments, we might need to attach them to the next statement
+                if (preserveComments && leadingTrivia.Any(t => t.IsKind(SyntaxKind.SingleLineCommentTrivia) || 
+                                                                 t.IsKind(SyntaxKind.MultiLineCommentTrivia)))
+                {
+                    // Find the next statement and attach the comments
+                    var nodeAfterRemoval = newRoot.FindToken(position).Parent?.AncestorsAndSelf()
+                        .OfType<StatementSyntax>().FirstOrDefault();
+                        
+                    if (nodeAfterRemoval != null)
+                    {
+                        var newNodeWithComments = nodeAfterRemoval.WithLeadingTrivia(
+                            leadingTrivia.AddRange(nodeAfterRemoval.GetLeadingTrivia()));
+                        newRoot = newRoot.ReplaceNode(nodeAfterRemoval, newNodeWithComments);
+                    }
+                }
+            }
+            
+            // Update the document
+            var newDocument = targetDocument.WithSyntaxRoot(newRoot);
+            var workspace = targetDocument.Project.Solution.Workspace;
+            var success = workspace.TryApplyChanges(newDocument.Project.Solution);
+            
+            if (!success)
+            {
+                result.Success = false;
+                result.Error = "Failed to apply changes to workspace";
+                return result;
+            }
+            
+            // Generate preview
+            var preview = GenerateRemovalPreview(root, newRoot, statement, syntaxTree);
+            
+            result.ModifiedFile = filePath;
+            result.RemovedStatement = removedStatement.Trim();
+            result.RemovedFrom = statementLocation;
+            result.Preview = preview;
+            result.WasOnlyStatementInBlock = isOnlyStatement;
+        }
+        catch (Exception ex)
+        {
+            result.Success = false;
+            result.Error = $"Exception during statement removal: {ex.Message}";
+        }
+        
+        return result;
+    }
+    
+    private string GenerateRemovalPreview(SyntaxNode oldRoot, SyntaxNode newRoot, StatementSyntax removedStatement, SyntaxTree syntaxTree)
+    {
+        var sb = new System.Text.StringBuilder();
+        var removedLineSpan = removedStatement.GetLocation().GetLineSpan();
+        var removedLocation = new Location 
+        { 
+            File = removedLineSpan.Path, 
+            Line = removedLineSpan.StartLinePosition.Line + 1, 
+            Column = removedLineSpan.StartLinePosition.Character + 1 
+        };
+        
+        sb.AppendLine($"Removed from line {removedLocation.Line}:");
+        
+        // Get surrounding context
+        var startLine = Math.Max(1, removedLocation.Line - 3);
+        var endLine = removedLocation.Line + 3;
+        
+        var lines = newRoot.ToString().Split('\n');
+        for (int i = startLine - 1; i < Math.Min(lines.Length, endLine); i++)
+        {
+            var lineNum = i + 1;
+            if (lineNum == removedLocation.Line)
+            {
+                sb.AppendLine($"  {lineNum}: --- removed: {removedStatement.ToString().Trim()} ---");
+            }
+            else
+            {
+                sb.AppendLine($"  {lineNum}: {lines[i]}");
+            }
+        }
+        
+        return sb.ToString();
+    }
 }
 
 public class ClassSearchResult
@@ -2516,4 +2896,25 @@ public class ReplaceStatementResult
     public string? OriginalStatement { get; set; }
     public string? NewStatement { get; set; }
     public string? Preview { get; set; }
+}
+
+public class InsertStatementResult
+{
+    public bool Success { get; set; }
+    public string? Error { get; set; }
+    public string? ModifiedFile { get; set; }
+    public string? InsertedStatement { get; set; }
+    public Location? InsertedAt { get; set; }
+    public string? Preview { get; set; }
+}
+
+public class RemoveStatementResult
+{
+    public bool Success { get; set; }
+    public string? Error { get; set; }
+    public string? ModifiedFile { get; set; }
+    public string? RemovedStatement { get; set; }
+    public Location? RemovedFrom { get; set; }
+    public string? Preview { get; set; }
+    public bool WasOnlyStatementInBlock { get; set; }
 }
