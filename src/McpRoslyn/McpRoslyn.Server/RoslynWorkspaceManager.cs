@@ -1944,6 +1944,176 @@ public class RoslynWorkspaceManager
         
         return replacePattern;
     }
+    
+    public async Task<FindStatementsResult> FindStatementsAsync(
+        string pattern, 
+        Dictionary<string, string>? scope,
+        string patternType = "text",
+        bool includeNestedStatements = false,
+        bool groupRelated = false,
+        string? workspacePath = null)
+    {
+        var result = new FindStatementsResult { Success = true };
+        var workspacesToSearch = GetWorkspacesToSearch(workspacePath);
+        var statementIdCounter = new StatementIdCounter();
+        
+        try
+        {
+            foreach (var workspace in workspacesToSearch)
+            {
+                var solution = workspace.CurrentSolution;
+                
+                foreach (var project in solution.Projects)
+                {
+                    // Apply scope filters
+                    if (scope?.ContainsKey("file") == true)
+                    {
+                        var document = project.Documents.FirstOrDefault(d => d.FilePath == scope["file"]);
+                        if (document != null)
+                        {
+                            await ProcessDocumentForStatements(document, pattern, patternType, 
+                                includeNestedStatements, scope, result, statementIdCounter);
+                        }
+                    }
+                    else
+                    {
+                        foreach (var document in project.Documents)
+                        {
+                            await ProcessDocumentForStatements(document, pattern, patternType, 
+                                includeNestedStatements, scope, result, statementIdCounter);
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            result.Success = false;
+            result.Error = ex.Message;
+        }
+        
+        return result;
+    }
+    
+    private class StatementIdCounter
+    {
+        public int Value { get; set; } = 0;
+    }
+    
+    private async Task ProcessDocumentForStatements(
+        Document document,
+        string pattern,
+        string patternType,
+        bool includeNestedStatements,
+        Dictionary<string, string>? scope,
+        FindStatementsResult result,
+        StatementIdCounter statementIdCounter)
+    {
+        var root = await document.GetSyntaxRootAsync();
+        if (root == null) return;
+        
+        var semanticModel = await document.GetSemanticModelAsync();
+        if (semanticModel == null) return;
+        
+        var sourceText = await document.GetTextAsync();
+        
+        // Get all statements using Roslyn's built-in traversal
+        var statements = root.DescendantNodes()
+            .Where(n => n is StatementSyntax)
+            .Cast<StatementSyntax>();
+        
+        // Filter by scope if specified
+        if (scope?.ContainsKey("className") == true || scope?.ContainsKey("methodName") == true)
+        {
+            statements = statements.Where(stmt => IsInScope(stmt, scope));
+        }
+        
+        // Filter nested statements if requested
+        if (!includeNestedStatements)
+        {
+            statements = statements.Where(stmt => !IsNestedStatement(stmt));
+        }
+        
+        foreach (var statement in statements)
+        {
+            var statementText = statement.ToString();
+            
+            // Apply pattern matching
+            bool matches = patternType switch
+            {
+                "regex" => System.Text.RegularExpressions.Regex.IsMatch(statementText, pattern),
+                _ => statementText.Contains(pattern, StringComparison.OrdinalIgnoreCase)
+            };
+            
+            if (matches)
+            {
+                var lineSpan = sourceText.Lines.GetLinePositionSpan(statement.Span);
+                var containingMethod = statement.Ancestors().OfType<MethodDeclarationSyntax>().FirstOrDefault();
+                var containingClass = statement.Ancestors().OfType<TypeDeclarationSyntax>().FirstOrDefault();
+                
+                var statementInfo = new StatementInfo
+                {
+                    StatementId = $"stmt-{++statementIdCounter.Value}",
+                    Type = statement.GetType().Name,
+                    Text = statementText,
+                    Location = new Location
+                    {
+                        File = document.FilePath ?? "",
+                        Line = lineSpan.Start.Line + 1,
+                        Column = lineSpan.Start.Character + 1
+                    },
+                    ContainingMethod = containingMethod?.Identifier.Text ?? "",
+                    ContainingClass = containingClass?.Identifier.Text ?? "",
+                    SyntaxTag = $"syntax-{statementIdCounter.Value}"
+                };
+                
+                // Add semantic tags for symbols in the statement
+                var symbols = statement.DescendantNodes()
+                    .Select(node => semanticModel.GetSymbolInfo(node).Symbol)
+                    .Where(symbol => symbol != null)
+                    .Select(symbol => $"symbol-{symbol!.Name}")
+                    .Distinct();
+                
+                statementInfo.SemanticTags.AddRange(symbols);
+                
+                result.Statements.Add(statementInfo);
+            }
+        }
+    }
+    
+    private bool IsInScope(StatementSyntax statement, Dictionary<string, string> scope)
+    {
+        if (scope.ContainsKey("methodName"))
+        {
+            var method = statement.Ancestors().OfType<MethodDeclarationSyntax>().FirstOrDefault();
+            if (method?.Identifier.Text != scope["methodName"])
+                return false;
+        }
+        
+        if (scope.ContainsKey("className"))
+        {
+            var type = statement.Ancestors().OfType<TypeDeclarationSyntax>().FirstOrDefault();
+            if (type?.Identifier.Text != scope["className"])
+                return false;
+        }
+        
+        return true;
+    }
+    
+    private bool IsNestedStatement(StatementSyntax statement)
+    {
+        // Check if this statement is inside another statement (like inside if/while/for body)
+        var parent = statement.Parent;
+        while (parent != null)
+        {
+            if (parent is BlockSyntax block && block.Parent is StatementSyntax)
+                return true;
+            if (parent is StatementSyntax && !(parent is BlockSyntax))
+                return true;
+            parent = parent.Parent;
+        }
+        return false;
+    }
 }
 
 public class ClassSearchResult
@@ -2104,4 +2274,79 @@ public class PatternFix
     public string OriginalCode { get; set; } = "";
     public string FixedCode { get; set; } = "";
     public string? Description { get; set; }
+}
+
+// Statement-level operation classes
+public class StatementInfo
+{
+    public string StatementId { get; set; } = "";
+    public string Type { get; set; } = "";
+    public string Text { get; set; } = "";
+    public Location Location { get; set; } = new();
+    public string ContainingMethod { get; set; } = "";
+    public string ContainingClass { get; set; } = "";
+    public string? SyntaxTag { get; set; }
+    public List<string> SemanticTags { get; set; } = new();
+    public string? GroupId { get; set; }
+}
+
+public class Location
+{
+    public string File { get; set; } = "";
+    public int Line { get; set; }
+    public int Column { get; set; }
+}
+
+public class FindStatementsResult
+{
+    public bool Success { get; set; }
+    public string? Error { get; set; }
+    public List<StatementInfo> Statements { get; set; } = new();
+    public StatementGroup? StatementGroup { get; set; }
+}
+
+public class StatementGroup
+{
+    public string GroupId { get; set; } = "";
+    public string Reason { get; set; } = "";
+    public List<GroupedStatement> Statements { get; set; } = new();
+    public CrossReferences CrossReferences { get; set; } = new();
+}
+
+public class GroupedStatement
+{
+    public string Id { get; set; } = "";
+    public string GroupTag { get; set; } = ""; // start, middle, end
+    public string Type { get; set; } = "";
+    public string Text { get; set; } = "";
+    public string? SyntaxTag { get; set; }
+    public List<string> SemanticTags { get; set; } = new();
+}
+
+public class CrossReferences
+{
+    public List<SyntaxNodeReference> SyntaxNodes { get; set; } = new();
+    public List<SemanticSymbolReference> SemanticSymbols { get; set; } = new();
+}
+
+public class SyntaxNodeReference
+{
+    public string Tag { get; set; } = "";
+    public string Type { get; set; } = "";
+    public TextSpanInfo Span { get; set; } = new();
+}
+
+public class TextSpanInfo
+{
+    public int Start { get; set; }
+    public int Length { get; set; }
+}
+
+public class SemanticSymbolReference
+{
+    public string Tag { get; set; } = "";
+    public string Kind { get; set; } = "";
+    public string Type { get; set; } = "";
+    public string DeclaredAt { get; set; } = "";
+    public List<string> UsedAt { get; set; } = new();
 }

@@ -432,6 +432,35 @@ public class McpJsonRpcServer
                     },
                     required = new[] { "findPattern", "replacePattern", "patternType" }
                 }
+            },
+            new
+            {
+                name = "dotnet/find-statements",
+                description = "Find statements in code matching a pattern. Returns statement IDs for use with other operations. Uses Roslyn's syntax tree to enumerate all statements.",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        pattern = new { type = "string", description = "Text or regex pattern to match in statements" },
+                        scope = new 
+                        { 
+                            type = "object", 
+                            description = "Optional scope to limit search",
+                            properties = new
+                            {
+                                file = new { type = "string", description = "File path to search in" },
+                                className = new { type = "string", description = "Class name to search within" },
+                                methodName = new { type = "string", description = "Method name to search within" }
+                            }
+                        },
+                        patternType = new { type = "string", description = "Pattern type: 'text' (default) or 'regex'", @enum = new[] { "text", "regex" } },
+                        includeNestedStatements = new { type = "boolean", description = "Include statements inside blocks (if/while/for bodies)" },
+                        groupRelated = new { type = "boolean", description = "Group statements that share data flow or are in sequence" },
+                        workspacePath = new { type = "string", description = "Optional workspace path to search in" }
+                    },
+                    required = new[] { "pattern" }
+                }
             }
         };
         
@@ -525,6 +554,10 @@ public class McpJsonRpcServer
                 
             case "dotnet/fix-pattern":
                 result = await FixPatternAsync(toolCallParams.Arguments);
+                break;
+                
+            case "dotnet/find-statements":
+                result = await FindStatementsAsync(toolCallParams.Arguments);
                 break;
                 
             default:
@@ -2004,6 +2037,110 @@ public class McpJsonRpcServer
                     {
                         type = "text",
                         text = $"Error fixing pattern: {ex.Message}"
+                    }
+                }
+            };
+        }
+    }
+    
+    private async Task<object> FindStatementsAsync(JsonElement? args)
+    {
+        var pattern = args?.GetProperty("pattern").GetString();
+        
+        if (string.IsNullOrEmpty(pattern))
+        {
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = "Error: Pattern is required"
+                    }
+                }
+            };
+        }
+        
+        // Parse optional parameters
+        Dictionary<string, string>? scope = null;
+        if (args?.TryGetProperty("scope", out var scopeElement) == true)
+        {
+            scope = new Dictionary<string, string>();
+            if (scopeElement.TryGetProperty("file", out var file))
+                scope["file"] = file.GetString() ?? "";
+            if (scopeElement.TryGetProperty("className", out var className))
+                scope["className"] = className.GetString() ?? "";
+            if (scopeElement.TryGetProperty("methodName", out var methodName))
+                scope["methodName"] = methodName.GetString() ?? "";
+        }
+        
+        var patternType = args?.TryGetProperty("patternType", out var pt) == true ? pt.GetString() ?? "text" : "text";
+        var includeNestedStatements = args?.TryGetProperty("includeNestedStatements", out var nested) == true && nested.GetBoolean();
+        var groupRelated = args?.TryGetProperty("groupRelated", out var group) == true && group.GetBoolean();
+        var workspacePath = args?.TryGetProperty("workspacePath", out var ws) == true ? ws.GetString() : null;
+        
+        try
+        {
+            var result = await _workspaceManager.FindStatementsAsync(
+                pattern, scope, patternType, includeNestedStatements, groupRelated, workspacePath);
+            
+            if (!result.Success)
+            {
+                return new
+                {
+                    content = new[]
+                    {
+                        new
+                        {
+                            type = "text",
+                            text = $"Error: {result.Error}"
+                        }
+                    }
+                };
+            }
+            
+            // Format the response
+            var response = new System.Text.StringBuilder();
+            response.AppendLine($"Found {result.Statements.Count} statements matching '{pattern}':\n");
+            
+            foreach (var stmt in result.Statements)
+            {
+                response.AppendLine($"Statement ID: {stmt.StatementId}");
+                response.AppendLine($"Type: {stmt.Type}");
+                response.AppendLine($"Location: {stmt.Location.File}:{stmt.Location.Line}:{stmt.Location.Column}");
+                response.AppendLine($"Class: {stmt.ContainingClass}, Method: {stmt.ContainingMethod}");
+                response.AppendLine($"Code: {stmt.Text}");
+                if (stmt.SemanticTags.Any())
+                {
+                    response.AppendLine($"Semantic tags: {string.Join(", ", stmt.SemanticTags)}");
+                }
+                response.AppendLine();
+            }
+            
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = response.ToString()
+                    }
+                }
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to find statements matching {Pattern}", pattern);
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = $"Error finding statements: {ex.Message}"
                     }
                 }
             };
