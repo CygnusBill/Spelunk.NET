@@ -17,6 +17,7 @@ public class RoslynWorkspaceManager
 {
     private readonly ILogger<RoslynWorkspaceManager> _logger;
     private readonly Dictionary<string, Workspace> _workspaces = new();
+    private readonly MarkerManager _markerManager = new();
     private static bool _msBuildRegistered = false;
     
     public RoslynWorkspaceManager(ILogger<RoslynWorkspaceManager> logger)
@@ -2651,6 +2652,210 @@ public class RoslynWorkspaceManager
         
         return sb.ToString();
     }
+    
+    public async Task<MarkStatementResult> MarkStatementAsync(
+        string filePath,
+        int line,
+        int column,
+        string? label = null,
+        string? workspacePath = null)
+    {
+        var result = new MarkStatementResult { Success = true };
+        
+        try
+        {
+            if (!_markerManager.HasCapacity)
+            {
+                result.Success = false;
+                result.Error = $"Maximum number of markers (100) reached. Clear some markers first.";
+                return result;
+            }
+            
+            // Find the document
+            var workspacesToSearch = GetWorkspacesToSearch(workspacePath);
+            Document? targetDocument = null;
+            
+            foreach (var ws in workspacesToSearch)
+            {
+                var solution = ws.CurrentSolution;
+                targetDocument = solution.Projects
+                    .SelectMany(p => p.Documents)
+                    .FirstOrDefault(d => d.FilePath == filePath);
+                    
+                if (targetDocument != null) break;
+            }
+            
+            if (targetDocument == null)
+            {
+                result.Success = false;
+                result.Error = $"File not found in workspace: {filePath}";
+                return result;
+            }
+            
+            // Check if we have a marked version of this document
+            var markedDoc = _markerManager.GetMarkedDocument(filePath);
+            if (markedDoc != null)
+            {
+                targetDocument = markedDoc;
+            }
+            
+            // Get syntax tree
+            var syntaxTree = await targetDocument.GetSyntaxTreeAsync();
+            if (syntaxTree == null)
+            {
+                result.Success = false;
+                result.Error = $"Could not parse file: {filePath}";
+                return result;
+            }
+            
+            var root = await syntaxTree.GetRootAsync();
+            var sourceText = await targetDocument.GetTextAsync();
+            
+            // Find the statement at the location
+            var position = sourceText.Lines.GetPosition(new LinePosition(line - 1, column - 1));
+            var token = root.FindToken(position);
+            var statement = token.Parent?.AncestorsAndSelf().OfType<StatementSyntax>().FirstOrDefault();
+            
+            if (statement == null)
+            {
+                result.Success = false;
+                result.Error = $"No statement found at {filePath}:{line}:{column}";
+                return result;
+            }
+            
+            // Create marker
+            var markerId = _markerManager.CreateMarkerId(label);
+            var annotation = _markerManager.CreateMarker(markerId, label);
+            
+            // Annotate the statement
+            var annotatedStatement = statement.WithAdditionalAnnotations(annotation);
+            var newRoot = root.ReplaceNode(statement, annotatedStatement);
+            
+            // Create new document with marked statement
+            var newDocument = targetDocument.WithSyntaxRoot(newRoot);
+            
+            // Store the marked document
+            _markerManager.StoreMarkedDocument(filePath, newDocument);
+            
+            // Get location info
+            var statementLineSpan = statement.GetLocation().GetLineSpan();
+            var location = new Location
+            {
+                File = statementLineSpan.Path,
+                Line = statementLineSpan.StartLinePosition.Line + 1,
+                Column = statementLineSpan.StartLinePosition.Character + 1
+            };
+            
+            result.MarkerId = markerId;
+            result.Label = label;
+            result.MarkedStatement = statement.ToString().Trim();
+            result.Location = location;
+            result.Context = GetStatementContext(statement);
+        }
+        catch (Exception ex)
+        {
+            result.Success = false;
+            result.Error = $"Exception during statement marking: {ex.Message}";
+        }
+        
+        return result;
+    }
+    
+    public async Task<FindMarkedStatementsResult> FindMarkedStatementsAsync(
+        string? markerId = null,
+        string? filePath = null)
+    {
+        var result = new FindMarkedStatementsResult { Success = true };
+        
+        try
+        {
+            result.MarkedStatements = _markerManager.FindMarkedStatements(markerId, filePath);
+            result.TotalMarkers = _markerManager.MarkerCount;
+        }
+        catch (Exception ex)
+        {
+            result.Success = false;
+            result.Error = $"Exception finding marked statements: {ex.Message}";
+        }
+        
+        return result;
+    }
+    
+    public async Task<UnmarkStatementResult> UnmarkStatementAsync(string markerId)
+    {
+        var result = new UnmarkStatementResult { Success = true };
+        
+        try
+        {
+            if (_markerManager.RemoveMarker(markerId))
+            {
+                result.Message = $"Marker '{markerId}' removed successfully";
+                result.RemainingMarkers = _markerManager.MarkerCount;
+            }
+            else
+            {
+                result.Success = false;
+                result.Error = $"Marker '{markerId}' not found";
+            }
+        }
+        catch (Exception ex)
+        {
+            result.Success = false;
+            result.Error = $"Exception removing marker: {ex.Message}";
+        }
+        
+        return result;
+    }
+    
+    public async Task<ClearMarkersResult> ClearAllMarkersAsync()
+    {
+        var result = new ClearMarkersResult { Success = true };
+        
+        try
+        {
+            var previousCount = _markerManager.MarkerCount;
+            _markerManager.ClearAllMarkers();
+            result.ClearedCount = previousCount;
+            result.Message = $"Cleared {previousCount} marker(s)";
+        }
+        catch (Exception ex)
+        {
+            result.Success = false;
+            result.Error = $"Exception clearing markers: {ex.Message}";
+        }
+        
+        return result;
+    }
+    
+    private string GetStatementContext(StatementSyntax statement)
+    {
+        var parent = statement.Parent;
+        if (parent is BlockSyntax block)
+        {
+            var method = block.Parent as MethodDeclarationSyntax;
+            if (method != null)
+            {
+                var className = method.Parent is TypeDeclarationSyntax type ? type.Identifier.Text : "Unknown";
+                return $"{className}.{method.Identifier.Text}";
+            }
+            
+            var constructor = block.Parent as ConstructorDeclarationSyntax;
+            if (constructor != null)
+            {
+                var className = constructor.Parent is TypeDeclarationSyntax type ? type.Identifier.Text : "Unknown";
+                return $"{className}..ctor";
+            }
+            
+            var property = block.Parent as PropertyDeclarationSyntax;
+            if (property != null)
+            {
+                var className = property.Parent is TypeDeclarationSyntax type ? type.Identifier.Text : "Unknown";
+                return $"{className}.{property.Identifier.Text}";
+            }
+        }
+        
+        return parent?.GetType().Name.Replace("Syntax", "") ?? "Unknown";
+    }
 }
 
 public class ClassSearchResult
@@ -2917,4 +3122,187 @@ public class RemoveStatementResult
     public Location? RemovedFrom { get; set; }
     public string? Preview { get; set; }
     public bool WasOnlyStatementInBlock { get; set; }
+}
+
+public class MarkerManager
+{
+    private readonly Dictionary<string, SyntaxAnnotation> _markers = new();
+    private readonly Dictionary<string, Document> _markedDocuments = new();
+    private int _markerCounter = 0;
+    private const string MarkerKind = "MCP.Marker";
+    private const int MaxMarkers = 100;
+    
+    public string CreateMarkerId(string? label = null)
+    {
+        _markerCounter++;
+        return $"mark-{_markerCounter}";
+    }
+    
+    public SyntaxAnnotation CreateMarker(string markerId, string? label = null)
+    {
+        var data = $"{markerId}|{label ?? ""}|{DateTime.UtcNow:o}";
+        var annotation = new SyntaxAnnotation(MarkerKind, data);
+        _markers[markerId] = annotation;
+        return annotation;
+    }
+    
+    public bool TryGetMarker(string markerId, out SyntaxAnnotation? annotation)
+    {
+        return _markers.TryGetValue(markerId, out annotation);
+    }
+    
+    public void StoreMarkedDocument(string filePath, Document document)
+    {
+        _markedDocuments[filePath] = document;
+    }
+    
+    public Document? GetMarkedDocument(string filePath)
+    {
+        return _markedDocuments.TryGetValue(filePath, out var doc) ? doc : null;
+    }
+    
+    public List<MarkedStatement> FindMarkedStatements(string? markerId = null, string? filePath = null)
+    {
+        var results = new List<MarkedStatement>();
+        
+        var documentsToSearch = filePath != null && _markedDocuments.ContainsKey(filePath)
+            ? new[] { _markedDocuments[filePath] }
+            : _markedDocuments.Values.ToArray();
+            
+        foreach (var document in documentsToSearch)
+        {
+            var root = document.GetSyntaxRootAsync().Result;
+            if (root == null) continue;
+            
+            var markedNodes = root.GetAnnotatedNodes(MarkerKind);
+            
+            foreach (var node in markedNodes.OfType<StatementSyntax>())
+            {
+                var annotations = node.GetAnnotations(MarkerKind);
+                foreach (var annotation in annotations)
+                {
+                    var data = annotation.Data?.Split('|');
+                    if (data == null || data.Length < 1) continue;
+                    
+                    var nodeMarkerId = data[0];
+                    if (markerId != null && nodeMarkerId != markerId) continue;
+                    
+                    var label = data.Length > 1 ? data[1] : null;
+                    var location = node.GetLocation();
+                    var lineSpan = location.GetLineSpan();
+                    
+                    results.Add(new MarkedStatement
+                    {
+                        MarkerId = nodeMarkerId,
+                        Label = string.IsNullOrEmpty(label) ? null : label,
+                        Statement = node.ToString(),
+                        Location = new Location
+                        {
+                            File = lineSpan.Path,
+                            Line = lineSpan.StartLinePosition.Line + 1,
+                            Column = lineSpan.StartLinePosition.Character + 1
+                        },
+                        Context = GetStatementContext(node)
+                    });
+                }
+            }
+        }
+        
+        return results;
+    }
+    
+    private string GetStatementContext(StatementSyntax statement)
+    {
+        var parent = statement.Parent;
+        if (parent is BlockSyntax block)
+        {
+            var method = block.Parent as MethodDeclarationSyntax;
+            if (method != null)
+            {
+                return $"Method: {method.Identifier.Text}";
+            }
+        }
+        return parent?.GetType().Name ?? "Unknown";
+    }
+    
+    public bool RemoveMarker(string markerId)
+    {
+        if (!_markers.TryGetValue(markerId, out var annotation))
+            return false;
+            
+        _markers.Remove(markerId);
+        
+        // Update all documents to remove this marker
+        foreach (var kvp in _markedDocuments.ToList())
+        {
+            var document = kvp.Value;
+            var root = document.GetSyntaxRootAsync().Result;
+            if (root == null) continue;
+            
+            var markedNodes = root.GetAnnotatedNodes(annotation);
+            if (!markedNodes.Any()) continue;
+            
+            var newRoot = root.ReplaceNodes(
+                markedNodes,
+                (oldNode, newNode) => newNode.WithoutAnnotations(annotation));
+                
+            _markedDocuments[kvp.Key] = document.WithSyntaxRoot(newRoot);
+        }
+        
+        return true;
+    }
+    
+    public void ClearAllMarkers()
+    {
+        _markers.Clear();
+        _markedDocuments.Clear();
+        _markerCounter = 0;
+    }
+    
+    public int MarkerCount => _markers.Count;
+    public bool HasCapacity => _markers.Count < MaxMarkers;
+}
+
+public class MarkedStatement
+{
+    public string MarkerId { get; set; } = "";
+    public string? Label { get; set; }
+    public string Statement { get; set; } = "";
+    public Location Location { get; set; } = new();
+    public string? Context { get; set; }
+}
+
+public class MarkStatementResult
+{
+    public bool Success { get; set; }
+    public string? Error { get; set; }
+    public string? MarkerId { get; set; }
+    public string? Label { get; set; }
+    public string? MarkedStatement { get; set; }
+    public Location? Location { get; set; }
+    public string? Context { get; set; }
+}
+
+public class FindMarkedStatementsResult
+{
+    public bool Success { get; set; }
+    public string? Error { get; set; }
+    public List<MarkedStatement> MarkedStatements { get; set; } = new();
+    public int TotalMarkers { get; set; }
+}
+
+public class UnmarkStatementResult
+{
+    public bool Success { get; set; }
+    public string? Error { get; set; }
+    public string? Message { get; set; }
+    public int RemainingMarkers { get; set; }
+}
+
+public class ClearMarkersResult
+{
+    public bool Success { get; set; }
+    public string? Error { get; set; }
+    public string? Message { get; set; }
+    public int ClearedCount { get; set; }
 }

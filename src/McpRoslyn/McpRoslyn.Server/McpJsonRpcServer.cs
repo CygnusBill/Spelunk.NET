@@ -545,6 +545,71 @@ public class McpJsonRpcServer
                     },
                     required = new[] { "location" }
                 }
+            },
+            new
+            {
+                name = "dotnet/mark-statement",
+                description = "Mark a statement with an ephemeral marker for later reference. Markers are session-scoped and not persisted.",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        location = new 
+                        { 
+                            type = "object", 
+                            description = "Location of the statement to mark",
+                            properties = new
+                            {
+                                file = new { type = "string", description = "File path" },
+                                line = new { type = "number", description = "Line number (1-based)" },
+                                column = new { type = "number", description = "Column number (1-based)" }
+                            },
+                            required = new[] { "file", "line", "column" }
+                        },
+                        label = new { type = "string", description = "Optional label for the marker" },
+                        workspacePath = new { type = "string", description = "Optional workspace path" }
+                    },
+                    required = new[] { "location" }
+                }
+            },
+            new
+            {
+                name = "dotnet/find-marked-statements",
+                description = "Find all marked statements or specific markers. Returns current locations which may have changed due to edits.",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        markerId = new { type = "string", description = "Optional marker ID to find specific marker" },
+                        filePath = new { type = "string", description = "Optional file path to search within" }
+                    }
+                }
+            },
+            new
+            {
+                name = "dotnet/unmark-statement",
+                description = "Remove a specific marker from a statement.",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        markerId = new { type = "string", description = "The marker ID to remove" }
+                    },
+                    required = new[] { "markerId" }
+                }
+            },
+            new
+            {
+                name = "dotnet/clear-markers",
+                description = "Clear all markers from the current session.",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new { }
+                }
             }
         };
         
@@ -654,6 +719,22 @@ public class McpJsonRpcServer
                 
             case "dotnet/remove-statement":
                 result = await RemoveStatementAsync(toolCallParams.Arguments);
+                break;
+                
+            case "dotnet/mark-statement":
+                result = await MarkStatementAsync(toolCallParams.Arguments);
+                break;
+                
+            case "dotnet/find-marked-statements":
+                result = await FindMarkedStatementsAsync(toolCallParams.Arguments);
+                break;
+                
+            case "dotnet/unmark-statement":
+                result = await UnmarkStatementAsync(toolCallParams.Arguments);
+                break;
+                
+            case "dotnet/clear-markers":
+                result = await ClearMarkersAsync(toolCallParams.Arguments);
                 break;
                 
             default:
@@ -2582,6 +2663,288 @@ public class McpJsonRpcServer
                     {
                         type = "text",
                         text = $"Error removing statement: {ex.Message}"
+                    }
+                }
+            };
+        }
+    }
+    
+    private async Task<object> MarkStatementAsync(JsonElement? args)
+    {
+        // Get location
+        string? filePath = null;
+        int line = 0;
+        int column = 0;
+        
+        if (args?.TryGetProperty("location", out var loc) == true)
+        {
+            filePath = loc.GetProperty("file").GetString();
+            line = loc.GetProperty("line").GetInt32();
+            column = loc.GetProperty("column").GetInt32();
+        }
+        
+        if (string.IsNullOrEmpty(filePath) || line == 0 || column == 0)
+        {
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = "Error: Location (file, line, column) is required"
+                    }
+                }
+            };
+        }
+        
+        var label = args?.TryGetProperty("label", out var lbl) == true ? lbl.GetString() : null;
+        var workspacePath = args?.TryGetProperty("workspacePath", out var ws) == true ? ws.GetString() : null;
+        
+        try
+        {
+            var result = await _workspaceManager.MarkStatementAsync(
+                filePath, line, column, label, workspacePath);
+            
+            if (!result.Success)
+            {
+                return new
+                {
+                    content = new[]
+                    {
+                        new
+                        {
+                            type = "text",
+                            text = $"Error: {result.Error}"
+                        }
+                    }
+                };
+            }
+            
+            // Format the response
+            var response = new System.Text.StringBuilder();
+            response.AppendLine($"Statement marked successfully");
+            response.AppendLine($"Marker ID: {result.MarkerId}");
+            if (!string.IsNullOrEmpty(result.Label))
+            {
+                response.AppendLine($"Label: {result.Label}");
+            }
+            response.AppendLine($"Statement: {result.MarkedStatement}");
+            response.AppendLine($"Location: {result.Location}");
+            response.AppendLine($"Context: {result.Context}");
+            
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = response.ToString()
+                    }
+                }
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to mark statement");
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = $"Error marking statement: {ex.Message}"
+                    }
+                }
+            };
+        }
+    }
+    
+    private async Task<object> FindMarkedStatementsAsync(JsonElement? args)
+    {
+        var markerId = args?.TryGetProperty("markerId", out var mid) == true ? mid.GetString() : null;
+        var filePath = args?.TryGetProperty("filePath", out var fp) == true ? fp.GetString() : null;
+        
+        try
+        {
+            var result = await _workspaceManager.FindMarkedStatementsAsync(markerId, filePath);
+            
+            if (!result.Success)
+            {
+                return new
+                {
+                    content = new[]
+                    {
+                        new
+                        {
+                            type = "text",
+                            text = $"Error: {result.Error}"
+                        }
+                    }
+                };
+            }
+            
+            // Format the response
+            var response = new System.Text.StringBuilder();
+            response.AppendLine($"Found {result.MarkedStatements.Count} marked statement(s)");
+            response.AppendLine($"Total markers in session: {result.TotalMarkers}");
+            response.AppendLine();
+            
+            foreach (var marked in result.MarkedStatements)
+            {
+                response.AppendLine($"Marker ID: {marked.MarkerId}");
+                if (!string.IsNullOrEmpty(marked.Label))
+                {
+                    response.AppendLine($"Label: {marked.Label}");
+                }
+                response.AppendLine($"Location: {marked.Location}");
+                response.AppendLine($"Context: {marked.Context}");
+                response.AppendLine($"Statement: {marked.Statement}");
+                response.AppendLine();
+            }
+            
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = response.ToString()
+                    }
+                }
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to find marked statements");
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = $"Error finding marked statements: {ex.Message}"
+                    }
+                }
+            };
+        }
+    }
+    
+    private async Task<object> UnmarkStatementAsync(JsonElement? args)
+    {
+        var markerId = args?.GetProperty("markerId").GetString();
+        
+        if (string.IsNullOrEmpty(markerId))
+        {
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = "Error: Marker ID is required"
+                    }
+                }
+            };
+        }
+        
+        try
+        {
+            var result = await _workspaceManager.UnmarkStatementAsync(markerId);
+            
+            if (!result.Success)
+            {
+                return new
+                {
+                    content = new[]
+                    {
+                        new
+                        {
+                            type = "text",
+                            text = $"Error: {result.Error}"
+                        }
+                    }
+                };
+            }
+            
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = $"{result.Message}\nRemaining markers: {result.RemainingMarkers}"
+                    }
+                }
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to unmark statement");
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = $"Error unmarking statement: {ex.Message}"
+                    }
+                }
+            };
+        }
+    }
+    
+    private async Task<object> ClearMarkersAsync(JsonElement? args)
+    {
+        try
+        {
+            var result = await _workspaceManager.ClearAllMarkersAsync();
+            
+            if (!result.Success)
+            {
+                return new
+                {
+                    content = new[]
+                    {
+                        new
+                        {
+                            type = "text",
+                            text = $"Error: {result.Error}"
+                        }
+                    }
+                };
+            }
+            
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = result.Message
+                    }
+                }
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to clear markers");
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = $"Error clearing markers: {ex.Message}"
                     }
                 }
             };
