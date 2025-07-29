@@ -1,0 +1,1896 @@
+using System.Text.Json;
+using Microsoft.Extensions.Logging;
+
+namespace McpRoslyn.Server;
+
+public class McpJsonRpcServer
+{
+    private readonly ILogger _logger;
+    private readonly Dictionary<string, WorkspaceInfo> _workspaces = new();
+    private readonly JsonSerializerOptions _jsonOptions;
+    private readonly List<string> _allowedPaths;
+    private readonly RoslynWorkspaceManager _workspaceManager;
+    private bool _initialized = false;
+    
+    public McpJsonRpcServer(ILogger logger, List<string> allowedPaths, string? initialWorkspace)
+    {
+        _logger = logger;
+        _allowedPaths = allowedPaths;
+        _jsonOptions = new JsonSerializerOptions 
+        { 
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            WriteIndented = false 
+        };
+        
+        // Create logger factory for workspace manager
+        var loggerFactory = LoggerFactory.Create(builder =>
+        {
+            builder
+                .SetMinimumLevel(LogLevel.Information)
+                .AddConsole(options =>
+                {
+                    options.LogToStandardErrorThreshold = LogLevel.Trace;
+                });
+        });
+        
+        _workspaceManager = new RoslynWorkspaceManager(loggerFactory.CreateLogger<RoslynWorkspaceManager>());
+        
+        // Pre-load initial workspace if provided
+        if (!string.IsNullOrEmpty(initialWorkspace))
+        {
+            Task.Run(async () =>
+            {
+                try
+                {
+                    await LoadWorkspaceAsync(initialWorkspace);
+                    _logger.LogInformation("Pre-loaded workspace: {Path}", initialWorkspace);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to pre-load workspace: {Path}", initialWorkspace);
+                }
+            });
+        }
+    }
+    
+    public async Task RunAsync()
+    {
+        _logger.LogInformation("MCP Roslyn Server started - listening on stdio");
+        
+        var reader = Console.In;
+        var writer = Console.Out;
+        
+        // Read JSON-RPC messages from stdin
+        while (true)
+        {
+            try
+            {
+                var line = await reader.ReadLineAsync();
+                if (line == null) break;
+                
+                // Skip empty lines
+                if (string.IsNullOrWhiteSpace(line)) continue;
+                
+                _logger.LogDebug("Received: {Message}", line);
+                
+                // Parse JSON-RPC request
+                var request = JsonSerializer.Deserialize<JsonRpcRequest>(line, _jsonOptions);
+                if (request == null) continue;
+                
+                // Process request
+                var response = await ProcessRequestAsync(request);
+                
+                // Send response
+                await SendResponseAsync(writer, response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing request");
+                // Send error response
+                await SendResponseAsync(writer, new JsonRpcResponse
+                {
+                    JsonRpc = "2.0",
+                    Error = new JsonRpcError
+                    {
+                        Code = -32603,
+                        Message = "Internal error",
+                        Data = ex.Message
+                    }
+                });
+            }
+        }
+        
+        _logger.LogInformation("MCP Roslyn Server shutting down");
+    }
+    
+    public async Task<JsonRpcResponse> ProcessRequestAsync(JsonRpcRequest request)
+    {
+        _logger.LogInformation("Processing method: {Method}", request.Method);
+        
+        switch (request.Method)
+        {
+            case "initialize":
+                return await HandleInitializeAsync(request);
+                
+            case "tools/list":
+                return HandleToolsList(request);
+                
+            case "tools/call":
+                return await HandleToolCallAsync(request);
+                
+            case "workspaces/list":
+                return HandleWorkspacesList(request);
+                
+            default:
+                return new JsonRpcResponse
+                {
+                    JsonRpc = "2.0",
+                    Id = request.Id,
+                    Error = new JsonRpcError
+                    {
+                        Code = -32601,
+                        Message = "Method not found"
+                    }
+                };
+        }
+    }
+    
+    private async Task<JsonRpcResponse> HandleInitializeAsync(JsonRpcRequest request)
+    {
+        _initialized = true;
+        
+        var result = new
+        {
+            protocolVersion = "2024-11-05",
+            capabilities = new
+            {
+                tools = new { }
+            },
+            serverInfo = new
+            {
+                name = "mcp-roslyn",
+                version = "0.1.0"
+            }
+        };
+        
+        return new JsonRpcResponse
+        {
+            JsonRpc = "2.0",
+            Id = request.Id,
+            Result = result
+        };
+    }
+    
+    private JsonRpcResponse HandleToolsList(JsonRpcRequest request)
+    {
+        var tools = new object[]
+        {
+            new
+            {
+                name = "dotnet/load-workspace",
+                description = "Load a .NET solution or project into the workspace",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        path = new { type = "string", description = "Path to .sln or .csproj file" },
+                        workspaceId = new { type = "string", description = "Optional workspace ID (auto-generated if not provided)" }
+                    },
+                    required = new[] { "path" }
+                }
+            },
+            new
+            {
+                name = "dotnet/analyze-syntax",
+                description = "Analyzes the syntax tree of a C# or VB.NET file",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        filePath = new { type = "string", description = "Path to the source file" },
+                        workspaceId = new { type = "string", description = "Workspace ID for context" },
+                        includeTrivia = new { type = "boolean", description = "Include whitespace and comments" }
+                    },
+                    required = new[] { "filePath" }
+                }
+            },
+            new
+            {
+                name = "dotnet/get-symbols",
+                description = "Retrieves symbol information from code",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        filePath = new { type = "string", description = "Path to the source file" },
+                        workspaceId = new { type = "string", description = "Workspace ID for context" },
+                        position = new
+                        {
+                            type = "object",
+                            properties = new
+                            {
+                                line = new { type = "number" },
+                                column = new { type = "number" }
+                            }
+                        },
+                        symbolName = new { type = "string", description = "Specific symbol to find" }
+                    },
+                    required = new[] { "filePath" }
+                }
+            },
+            new
+            {
+                name = "dotnet/workspace-status",
+                description = "Get loading progress and workspace info",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        workspaceId = new { type = "string", description = "Specific workspace ID (or all if not specified)" }
+                    }
+                }
+            },
+            new
+            {
+                name = "dotnet/find-class",
+                description = "Find classes, interfaces, structs, or enums by name pattern (supports * and ? wildcards)",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        pattern = new { type = "string", description = "Name pattern to search for (e.g., '*Controller', 'I*Service', 'User?')" },
+                        workspacePath = new { type = "string", description = "Optional workspace path to search in (searches all if not specified)" }
+                    },
+                    required = new[] { "pattern" }
+                }
+            },
+            new
+            {
+                name = "dotnet/find-method",
+                description = "Find methods by name pattern with optional class pattern filter (supports * and ? wildcards)",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        methodPattern = new { type = "string", description = "Method name pattern (e.g., 'Get*', '*Async', 'Load?')" },
+                        classPattern = new { type = "string", description = "Optional class name pattern to filter by (e.g., '*Controller', 'Base*')" },
+                        workspacePath = new { type = "string", description = "Optional workspace path to search in" }
+                    },
+                    required = new[] { "methodPattern" }
+                }
+            },
+            new
+            {
+                name = "dotnet/find-property",
+                description = "Find properties and fields by name pattern with optional class pattern filter (supports * and ? wildcards)",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        propertyPattern = new { type = "string", description = "Property/field name pattern (e.g., 'Is*', '*Count', '_*')" },
+                        classPattern = new { type = "string", description = "Optional class name pattern to filter by" },
+                        workspacePath = new { type = "string", description = "Optional workspace path to search in" }
+                    },
+                    required = new[] { "propertyPattern" }
+                }
+            },
+            new
+            {
+                name = "dotnet/find-method-calls",
+                description = "Find all methods called by a specific method (call tree analysis)",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        methodName = new { type = "string", description = "Name of the method to analyze" },
+                        className = new { type = "string", description = "Name of the class containing the method" },
+                        workspacePath = new { type = "string", description = "Optional workspace path to search in" }
+                    },
+                    required = new[] { "methodName", "className" }
+                }
+            },
+            new
+            {
+                name = "dotnet/find-method-callers",
+                description = "Find all methods that call a specific method (caller tree analysis)",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        methodName = new { type = "string", description = "Name of the method to find callers for" },
+                        className = new { type = "string", description = "Name of the class containing the method" },
+                        workspacePath = new { type = "string", description = "Optional workspace path to search in" }
+                    },
+                    required = new[] { "methodName", "className" }
+                }
+            },
+            new
+            {
+                name = "dotnet/find-references",
+                description = "Find all references to a type, method, property, or field",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        symbolName = new { type = "string", description = "Name of the symbol to find references for" },
+                        symbolType = new { type = "string", description = "Type of symbol: 'type', 'method', 'property', 'field'" },
+                        containerName = new { type = "string", description = "Optional: containing type name (for methods/properties/fields)" },
+                        workspacePath = new { type = "string", description = "Optional workspace path to search in" }
+                    },
+                    required = new[] { "symbolName", "symbolType" }
+                }
+            },
+            new
+            {
+                name = "dotnet/find-implementations",
+                description = "Find all implementations of an interface or abstract class",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        interfaceName = new { type = "string", description = "Name of the interface or abstract class" },
+                        workspacePath = new { type = "string", description = "Optional workspace path to search in" }
+                    },
+                    required = new[] { "interfaceName" }
+                }
+            },
+            new
+            {
+                name = "dotnet/find-overrides",
+                description = "Find all overrides of a virtual or abstract method",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        methodName = new { type = "string", description = "Name of the virtual/abstract method" },
+                        className = new { type = "string", description = "Name of the class containing the method" },
+                        workspacePath = new { type = "string", description = "Optional workspace path to search in" }
+                    },
+                    required = new[] { "methodName", "className" }
+                }
+            },
+            new
+            {
+                name = "dotnet/find-derived-types",
+                description = "Find all types that derive from a base class",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        baseClassName = new { type = "string", description = "Name of the base class" },
+                        workspacePath = new { type = "string", description = "Optional workspace path to search in" }
+                    },
+                    required = new[] { "baseClassName" }
+                }
+            },
+            new
+            {
+                name = "dotnet/rename-symbol",
+                description = "Rename a symbol (type, method, property, field) and update all references",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        oldName = new { type = "string", description = "Current name of the symbol" },
+                        newName = new { type = "string", description = "New name for the symbol" },
+                        symbolType = new { type = "string", description = "Type of symbol: 'type', 'method', 'property', 'field'" },
+                        containerName = new { type = "string", description = "Optional: containing type name (for methods/properties/fields)" },
+                        workspacePath = new { type = "string", description = "Optional workspace path to apply rename in" },
+                        preview = new { type = "boolean", description = "If true, only preview changes without applying them" }
+                    },
+                    required = new[] { "oldName", "newName", "symbolType" }
+                }
+            },
+            new
+            {
+                name = "dotnet/fix-pattern",
+                description = "Find code matching a pattern and transform it to a new pattern",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        findPattern = new { type = "string", description = "Pattern to search for (supports wildcards)" },
+                        replacePattern = new { type = "string", description = "Pattern to replace with" },
+                        patternType = new { type = "string", description = "Type of pattern: 'method-call', 'property-access', 'async-usage', 'null-check', 'string-format'" },
+                        workspacePath = new { type = "string", description = "Optional workspace path to apply fixes in" },
+                        preview = new { type = "boolean", description = "If true, only preview changes without applying them" }
+                    },
+                    required = new[] { "findPattern", "replacePattern", "patternType" }
+                }
+            }
+        };
+        
+        return new JsonRpcResponse
+        {
+            JsonRpc = "2.0",
+            Id = request.Id,
+            Result = new { tools }
+        };
+    }
+    
+    private async Task<JsonRpcResponse> HandleToolCallAsync(JsonRpcRequest request)
+    {
+        var toolCallParams = request.Params?.Deserialize<ToolCallParams>(_jsonOptions);
+        if (toolCallParams == null)
+        {
+            return new JsonRpcResponse
+            {
+                JsonRpc = "2.0",
+                Id = request.Id,
+                Error = new JsonRpcError
+                {
+                    Code = -32602,
+                    Message = "Invalid params"
+                }
+            };
+        }
+        
+        object result;
+        switch (toolCallParams.Name)
+        {
+            case "dotnet/load-workspace":
+                result = await LoadWorkspaceToolAsync(toolCallParams.Arguments);
+                break;
+                
+            case "dotnet/analyze-syntax":
+                result = await AnalyzeSyntaxAsync(toolCallParams.Arguments);
+                break;
+                
+            case "dotnet/get-symbols":
+                result = await GetSymbolsAsync(toolCallParams.Arguments);
+                break;
+                
+            case "dotnet/workspace-status":
+                result = await GetWorkspaceStatusAsync(toolCallParams.Arguments);
+                break;
+                
+            case "dotnet/find-class":
+                result = await FindClassAsync(toolCallParams.Arguments);
+                break;
+                
+            case "dotnet/find-method":
+                result = await FindMethodAsync(toolCallParams.Arguments);
+                break;
+                
+            case "dotnet/find-property":
+                result = await FindPropertyAsync(toolCallParams.Arguments);
+                break;
+                
+            case "dotnet/find-method-calls":
+                result = await FindMethodCallsAsync(toolCallParams.Arguments);
+                break;
+                
+            case "dotnet/find-method-callers":
+                result = await FindMethodCallersAsync(toolCallParams.Arguments);
+                break;
+                
+            case "dotnet/find-references":
+                result = await FindReferencesAsync(toolCallParams.Arguments);
+                break;
+                
+            case "dotnet/find-implementations":
+                result = await FindImplementationsAsync(toolCallParams.Arguments);
+                break;
+                
+            case "dotnet/find-overrides":
+                result = await FindOverridesAsync(toolCallParams.Arguments);
+                break;
+                
+            case "dotnet/find-derived-types":
+                result = await FindDerivedTypesAsync(toolCallParams.Arguments);
+                break;
+                
+            case "dotnet/rename-symbol":
+                result = await RenameSymbolAsync(toolCallParams.Arguments);
+                break;
+                
+            case "dotnet/fix-pattern":
+                result = await FixPatternAsync(toolCallParams.Arguments);
+                break;
+                
+            default:
+                return new JsonRpcResponse
+                {
+                    JsonRpc = "2.0",
+                    Id = request.Id,
+                    Error = new JsonRpcError
+                    {
+                        Code = -32602,
+                        Message = $"Unknown tool: {toolCallParams.Name}"
+                    }
+                };
+        }
+        
+        return new JsonRpcResponse
+        {
+            JsonRpc = "2.0",
+            Id = request.Id,
+            Result = result
+        };
+    }
+    
+    private async Task<object> AnalyzeSyntaxAsync(JsonElement? args)
+    {
+        var filePath = args?.GetProperty("filePath").GetString() ?? "unknown";
+        
+        return new
+        {
+            content = new[]
+            {
+                new
+                {
+                    type = "text",
+                    text = $"Syntax analysis for {filePath} is not yet implemented"
+                }
+            }
+        };
+    }
+    
+    private async Task<object> GetSymbolsAsync(JsonElement? args)
+    {
+        var filePath = args?.GetProperty("filePath").GetString() ?? "unknown";
+        
+        return new
+        {
+            content = new[]
+            {
+                new
+                {
+                    type = "text",
+                    text = $"Symbol retrieval for {filePath} is not yet implemented"
+                }
+            }
+        };
+    }
+    
+    private async Task<object> GetWorkspaceStatusAsync(JsonElement? args)
+    {
+        var workspaceId = args?.TryGetProperty("workspaceId", out var wsId) == true ? wsId.GetString() : null;
+        
+        // Get detailed status from Roslyn workspace manager
+        var roslynStatus = _workspaceManager.GetStatus();
+        
+        if (!string.IsNullOrEmpty(workspaceId))
+        {
+            // Return specific workspace info
+            if (_workspaces.TryGetValue(workspaceId, out var workspace))
+            {
+                // Find corresponding Roslyn workspace details
+                var roslynWorkspaceInfo = roslynStatus.Workspaces
+                    .FirstOrDefault(w => ((dynamic)w).path == workspace.Path);
+                
+                var detailedInfo = new
+                {
+                    workspace.Id,
+                    workspace.Path,
+                    workspace.Type,
+                    workspace.Status,
+                    workspace.LoadedAt,
+                    workspace.ProjectCount,
+                    projects = roslynWorkspaceInfo != null ? ((dynamic)roslynWorkspaceInfo).projects : null
+                };
+                
+                return new
+                {
+                    content = new[]
+                    {
+                        new
+                        {
+                            type = "text",
+                            text = JsonSerializer.Serialize(detailedInfo, new JsonSerializerOptions { WriteIndented = true })
+                        }
+                    }
+                };
+            }
+            else
+            {
+                return new
+                {
+                    content = new[]
+                    {
+                        new
+                        {
+                            type = "text",
+                            text = $"Workspace '{workspaceId}' not found"
+                        }
+                    }
+                };
+            }
+        }
+        
+        // Return all workspaces with Roslyn details
+        var allWorkspaces = _workspaces.Select(kvp => 
+        {
+            var roslynWorkspaceInfo = roslynStatus.Workspaces
+                .FirstOrDefault(w => ((dynamic)w).path == kvp.Value.Path);
+                
+            return new
+            {
+                id = kvp.Key,
+                path = kvp.Value.Path,
+                type = kvp.Value.Type,
+                status = kvp.Value.Status,
+                loadedAt = kvp.Value.LoadedAt,
+                projectCount = kvp.Value.ProjectCount,
+                projects = roslynWorkspaceInfo != null ? ((dynamic)roslynWorkspaceInfo).projects : null
+            };
+        }).ToArray();
+        
+        return new
+        {
+            content = new[]
+            {
+                new
+                {
+                    type = "text",
+                    text = JsonSerializer.Serialize(new
+                    {
+                        workspaceCount = _workspaces.Count,
+                        totalProjectCount = roslynStatus.Workspaces.Sum(w => ((dynamic)w).projectCount),
+                        workspaces = allWorkspaces
+                    }, new JsonSerializerOptions { WriteIndented = true })
+                }
+            }
+        };
+    }
+    
+    private async Task<object> LoadWorkspaceToolAsync(JsonElement? args)
+    {
+        var path = args?.GetProperty("path").GetString();
+        if (string.IsNullOrEmpty(path))
+        {
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = "Error: 'path' parameter is required"
+                    }
+                }
+            };
+        }
+        
+        var workspaceId = args?.TryGetProperty("workspaceId", out var wsId) == true ? wsId.GetString() : null;
+        
+        try
+        {
+            var result = await LoadWorkspaceAsync(path, workspaceId);
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true })
+                    }
+                }
+            };
+        }
+        catch (Exception ex)
+        {
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = $"Error loading workspace: {ex.Message}"
+                    }
+                }
+            };
+        }
+    }
+    
+    private async Task<WorkspaceInfo> LoadWorkspaceAsync(string path, string? workspaceId = null)
+    {
+        // Validate path is allowed
+        var fullPath = Path.GetFullPath(path);
+        if (!IsPathAllowed(fullPath))
+        {
+            throw new UnauthorizedAccessException($"Path '{fullPath}' is not in allowed paths");
+        }
+        
+        // Generate workspace ID if not provided
+        if (string.IsNullOrEmpty(workspaceId))
+        {
+            workspaceId = Path.GetFileNameWithoutExtension(path) + "_" + Guid.NewGuid().ToString("N").Substring(0, 8);
+        }
+        
+        // Check if already loaded
+        if (_workspaces.ContainsKey(workspaceId))
+        {
+            _logger.LogInformation("Workspace {Id} already loaded", workspaceId);
+            return _workspaces[workspaceId];
+        }
+        
+        // Load workspace using Roslyn
+        _logger.LogInformation("Loading workspace {Id} from {Path} using Roslyn", workspaceId, path);
+        
+        var (success, message, workspace) = await _workspaceManager.LoadWorkspaceAsync(fullPath);
+        
+        if (!success || workspace == null)
+        {
+            throw new InvalidOperationException($"Failed to load workspace: {message}");
+        }
+        
+        // Count projects in the workspace
+        var projectCount = workspace.CurrentSolution.Projects.Count();
+        
+        var workspaceInfo = new WorkspaceInfo
+        {
+            Id = workspaceId,
+            Path = fullPath,
+            Type = path.EndsWith(".sln") ? "Solution" : "Project",
+            Status = "Loaded",
+            LoadedAt = DateTime.UtcNow,
+            ProjectCount = projectCount
+        };
+        
+        _workspaces[workspaceId] = workspaceInfo;
+        _logger.LogInformation("Loaded workspace {Id} from {Path} with {Count} projects", workspaceId, path, projectCount);
+        
+        return workspaceInfo;
+    }
+    
+    private bool IsPathAllowed(string path)
+    {
+        var normalizedPath = Path.GetFullPath(path);
+        return _allowedPaths.Any(allowed => 
+            normalizedPath.StartsWith(Path.GetFullPath(allowed), StringComparison.OrdinalIgnoreCase));
+    }
+    
+    private JsonRpcResponse HandleWorkspacesList(JsonRpcRequest request)
+    {
+        var workspaces = _workspaces.Select(kvp => new
+        {
+            id = kvp.Key,
+            path = kvp.Value.Path,
+            type = kvp.Value.Type,
+            status = kvp.Value.Status,
+            loadedAt = kvp.Value.LoadedAt,
+            projectCount = kvp.Value.ProjectCount
+        }).ToArray();
+        
+        return new JsonRpcResponse
+        {
+            JsonRpc = "2.0",
+            Id = request.Id,
+            Result = new { workspaces }
+        };
+    }
+    
+    private async Task SendResponseAsync(TextWriter writer, JsonRpcResponse response)
+    {
+        var json = JsonSerializer.Serialize(response, _jsonOptions);
+        await writer.WriteLineAsync(json);
+        await writer.FlushAsync();
+        _logger.LogDebug("Sent: {Response}", json);
+    }
+    
+    private async Task<object> FindClassAsync(JsonElement? args)
+    {
+        var pattern = args?.GetProperty("pattern").GetString();
+        if (string.IsNullOrEmpty(pattern))
+        {
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = "Error: Pattern is required"
+                    }
+                }
+            };
+        }
+        
+        var workspacePath = args?.TryGetProperty("workspacePath", out var ws) == true ? ws.GetString() : null;
+        
+        try
+        {
+            var results = await _workspaceManager.FindClassesAsync(pattern, workspacePath);
+            
+            if (results.Count == 0)
+            {
+                return new
+                {
+                    content = new[]
+                    {
+                        new
+                        {
+                            type = "text",
+                            text = $"No types found matching pattern '{pattern}'"
+                        }
+                    }
+                };
+            }
+            
+            // Format results as a detailed report
+            var report = $"Found {results.Count} types matching pattern '{pattern}':\n\n";
+            
+            foreach (var result in results)
+            {
+                report += $"• {result.FullyQualifiedName}\n";
+                report += $"  Type: {result.TypeKind}\n";
+                report += $"  File: {result.FilePath}:{result.Line}:{result.Column}\n";
+                report += $"  Project: {result.ProjectName}\n";
+                if (!string.IsNullOrEmpty(result.Namespace))
+                    report += $"  Namespace: {result.Namespace}\n";
+                report += "\n";
+            }
+            
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = report
+                    }
+                }
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to find classes with pattern {Pattern}", pattern);
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = $"Error searching for classes: {ex.Message}"
+                    }
+                }
+            };
+        }
+    }
+    
+    private async Task<object> FindMethodAsync(JsonElement? args)
+    {
+        var methodPattern = args?.GetProperty("methodPattern").GetString();
+        if (string.IsNullOrEmpty(methodPattern))
+        {
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = "Error: Method pattern is required"
+                    }
+                }
+            };
+        }
+        
+        var classPattern = args?.TryGetProperty("classPattern", out var cp) == true ? cp.GetString() : null;
+        var workspacePath = args?.TryGetProperty("workspacePath", out var ws) == true ? ws.GetString() : null;
+        
+        try
+        {
+            var results = await _workspaceManager.FindMethodsAsync(methodPattern, classPattern, workspacePath);
+            
+            if (results.Count == 0)
+            {
+                return new
+                {
+                    content = new[]
+                    {
+                        new
+                        {
+                            type = "text",
+                            text = $"No methods found matching pattern '{methodPattern}'" + 
+                                   (classPattern != null ? $" in classes matching '{classPattern}'" : "")
+                        }
+                    }
+                };
+            }
+            
+            // Format results
+            var report = $"Found {results.Count} methods matching pattern '{methodPattern}'";
+            if (classPattern != null) report += $" in classes matching '{classPattern}'";
+            report += ":\n\n";
+            
+            foreach (var result in results)
+            {
+                report += $"• {result.ClassName}.{result.MemberName}{result.Parameters}\n";
+                report += $"  Returns: {result.ReturnType}\n";
+                report += $"  Access: {result.AccessModifier}";
+                if (result.IsStatic) report += " static";
+                if (result.IsAsync) report += " async";
+                report += "\n";
+                report += $"  File: {result.FilePath}:{result.Line}:{result.Column}\n";
+                report += $"  Project: {result.ProjectName}\n\n";
+            }
+            
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = report
+                    }
+                }
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to find methods with pattern {Pattern}", methodPattern);
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = $"Error searching for methods: {ex.Message}"
+                    }
+                }
+            };
+        }
+    }
+    
+    private async Task<object> FindPropertyAsync(JsonElement? args)
+    {
+        var propertyPattern = args?.GetProperty("propertyPattern").GetString();
+        if (string.IsNullOrEmpty(propertyPattern))
+        {
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = "Error: Property pattern is required"
+                    }
+                }
+            };
+        }
+        
+        var classPattern = args?.TryGetProperty("classPattern", out var cp) == true ? cp.GetString() : null;
+        var workspacePath = args?.TryGetProperty("workspacePath", out var ws) == true ? ws.GetString() : null;
+        
+        try
+        {
+            var results = await _workspaceManager.FindPropertiesAsync(propertyPattern, classPattern, workspacePath);
+            
+            if (results.Count == 0)
+            {
+                return new
+                {
+                    content = new[]
+                    {
+                        new
+                        {
+                            type = "text",
+                            text = $"No properties/fields found matching pattern '{propertyPattern}'" + 
+                                   (classPattern != null ? $" in classes matching '{classPattern}'" : "")
+                        }
+                    }
+                };
+            }
+            
+            // Format results
+            var report = $"Found {results.Count} properties/fields matching pattern '{propertyPattern}'";
+            if (classPattern != null) report += $" in classes matching '{classPattern}'";
+            report += ":\n\n";
+            
+            // Group by type
+            var grouped = results.GroupBy(r => r.MemberType);
+            
+            foreach (var group in grouped)
+            {
+                if (grouped.Count() > 1)
+                    report += $"=== {group.Key}s ===\n";
+                
+                foreach (var result in group)
+                {
+                    report += $"• {result.ClassName}.{result.MemberName}\n";
+                    report += $"  Type: {result.ReturnType}\n";
+                    report += $"  Access: {result.AccessModifier}";
+                    if (result.IsStatic) report += " static";
+                    if (result.IsReadOnly == true) report += " readonly";
+                    if (result.MemberType == "Property")
+                    {
+                        var accessors = new List<string>();
+                        if (result.HasGetter == true) accessors.Add("get");
+                        if (result.HasSetter == true) accessors.Add("set");
+                        if (accessors.Any()) report += $" {{ {string.Join("; ", accessors)} }}";
+                    }
+                    report += "\n";
+                    report += $"  File: {result.FilePath}:{result.Line}:{result.Column}\n";
+                    report += $"  Project: {result.ProjectName}\n\n";
+                }
+            }
+            
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = report
+                    }
+                }
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to find properties with pattern {Pattern}", propertyPattern);
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = $"Error searching for properties: {ex.Message}"
+                    }
+                }
+            };
+        }
+    }
+    
+    private async Task<object> FindMethodCallsAsync(JsonElement? args)
+    {
+        var methodName = args?.GetProperty("methodName").GetString();
+        var className = args?.GetProperty("className").GetString();
+        
+        if (string.IsNullOrEmpty(methodName) || string.IsNullOrEmpty(className))
+        {
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = "Error: Method name and class name are required"
+                    }
+                }
+            };
+        }
+        
+        var workspacePath = args?.TryGetProperty("workspacePath", out var ws) == true ? ws.GetString() : null;
+        
+        try
+        {
+            var analysis = await _workspaceManager.FindMethodCallsAsync(methodName, className, workspacePath);
+            
+            if (!string.IsNullOrEmpty(analysis.Error))
+            {
+                return new
+                {
+                    content = new[]
+                    {
+                        new
+                        {
+                            type = "text",
+                            text = analysis.Error
+                        }
+                    }
+                };
+            }
+            
+            // Format results
+            var report = $"Call analysis for {analysis.TargetMethod}:\n\n";
+            
+            // Direct calls
+            if (analysis.DirectCalls.Any())
+            {
+                report += $"=== Direct Calls ({analysis.DirectCalls.Count}) ===\n";
+                foreach (var call in analysis.DirectCalls.OrderBy(c => c.MethodSignature))
+                {
+                    report += $"• {call.MethodSignature}\n";
+                    report += $"  Location: {call.FilePath}:{call.Line}:{call.Column}\n";
+                    if (call.IsExternal) report += $"  External: Yes (from {call.ProjectName})\n";
+                    report += "\n";
+                }
+            }
+            else
+            {
+                report += "No direct method calls found.\n\n";
+            }
+            
+            // Call tree
+            if (analysis.CallTree.Any())
+            {
+                report += $"\n=== Call Tree (depth limit: 5) ===\n";
+                var printed = new HashSet<string>();
+                report += PrintCallTree(analysis.TargetMethod, analysis.CallTree, printed, 0);
+            }
+            
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = report
+                    }
+                }
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to find method calls for {Method}", $"{className}.{methodName}");
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = $"Error analyzing method calls: {ex.Message}"
+                    }
+                }
+            };
+        }
+    }
+    
+    private string PrintCallTree(string methodKey, Dictionary<string, List<MethodCallInfo>> tree, HashSet<string> printed, int depth)
+    {
+        if (printed.Contains(methodKey)) return "";
+        printed.Add(methodKey);
+        
+        var result = "";
+        var indent = new string(' ', depth * 2);
+        
+        if (tree.TryGetValue(methodKey, out var calls))
+        {
+            foreach (var call in calls)
+            {
+                result += $"{indent}└─ {call.MethodSignature}";
+                if (call.IsExternal) result += " [External]";
+                result += "\n";
+                
+                // Recursively print subcalls
+                if (!call.IsExternal)
+                {
+                    result += PrintCallTree(call.MethodSignature, tree, printed, depth + 1);
+                }
+            }
+        }
+        
+        return result;
+    }
+    
+    private async Task<object> FindMethodCallersAsync(JsonElement? args)
+    {
+        var methodName = args?.GetProperty("methodName").GetString();
+        var className = args?.GetProperty("className").GetString();
+        
+        if (string.IsNullOrEmpty(methodName) || string.IsNullOrEmpty(className))
+        {
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = "Error: Method name and class name are required"
+                    }
+                }
+            };
+        }
+        
+        var workspacePath = args?.TryGetProperty("workspacePath", out var ws) == true ? ws.GetString() : null;
+        
+        try
+        {
+            var analysis = await _workspaceManager.FindMethodCallersAsync(methodName, className, workspacePath);
+            
+            if (!string.IsNullOrEmpty(analysis.Error))
+            {
+                return new
+                {
+                    content = new[]
+                    {
+                        new
+                        {
+                            type = "text",
+                            text = analysis.Error
+                        }
+                    }
+                };
+            }
+            
+            // Format results
+            var report = $"Caller analysis for {analysis.TargetMethod}:\n\n";
+            
+            // Direct callers
+            if (analysis.DirectCallers.Any())
+            {
+                report += $"=== Direct Callers ({analysis.DirectCallers.Count}) ===\n";
+                foreach (var caller in analysis.DirectCallers.OrderBy(c => c.MethodSignature))
+                {
+                    report += $"• {caller.MethodSignature}\n";
+                    report += $"  Calls from: {caller.FilePath}:{caller.Line}:{caller.Column}\n";
+                    report += $"  Project: {caller.ProjectName}\n\n";
+                }
+            }
+            else
+            {
+                report += "No direct callers found.\n\n";
+            }
+            
+            // Caller tree
+            if (analysis.CallerTree.Any())
+            {
+                report += $"\n=== Caller Tree (who calls whom, depth limit: 5) ===\n";
+                
+                // Find root callers (methods that aren't called by others in the tree)
+                var allCalledMethods = new HashSet<string>();
+                foreach (var callers in analysis.CallerTree.Values)
+                {
+                    foreach (var caller in callers)
+                    {
+                        allCalledMethods.Add(caller.MethodSignature);
+                    }
+                }
+                
+                // Start from the target method
+                report += $"{analysis.TargetMethod}\n";
+                if (analysis.CallerTree.TryGetValue(analysis.TargetMethod, out var targetCallers))
+                {
+                    report += PrintCallerTree(targetCallers, analysis.CallerTree, new HashSet<string>(), 1);
+                }
+            }
+            
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = report
+                    }
+                }
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to find method callers for {Method}", $"{className}.{methodName}");
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = $"Error analyzing method callers: {ex.Message}"
+                    }
+                }
+            };
+        }
+    }
+    
+    private string PrintCallerTree(List<MethodCallInfo> callers, Dictionary<string, List<MethodCallInfo>> tree, HashSet<string> printed, int depth)
+    {
+        var result = "";
+        var indent = new string(' ', depth * 2);
+        
+        foreach (var caller in callers)
+        {
+            if (printed.Contains(caller.MethodSignature)) 
+            {
+                result += $"{indent}└─ {caller.MethodSignature} [Already shown]\n";
+                continue;
+            }
+            
+            printed.Add(caller.MethodSignature);
+            result += $"{indent}└─ {caller.MethodSignature}\n";
+            
+            // Recursively print who calls this caller
+            if (tree.TryGetValue(caller.MethodSignature, out var callerCallers))
+            {
+                result += PrintCallerTree(callerCallers, tree, printed, depth + 1);
+            }
+        }
+        
+        return result;
+    }
+    
+    private async Task<object> FindReferencesAsync(JsonElement? args)
+    {
+        var symbolName = args?.GetProperty("symbolName").GetString();
+        var symbolType = args?.GetProperty("symbolType").GetString();
+        
+        if (string.IsNullOrEmpty(symbolName) || string.IsNullOrEmpty(symbolType))
+        {
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = "Error: Symbol name and type are required"
+                    }
+                }
+            };
+        }
+        
+        var containerName = args?.TryGetProperty("containerName", out var cn) == true ? cn.GetString() : null;
+        var workspacePath = args?.TryGetProperty("workspacePath", out var ws) == true ? ws.GetString() : null;
+        
+        try
+        {
+            var references = await _workspaceManager.FindReferencesAsync(symbolName, symbolType, containerName, workspacePath);
+            
+            if (!references.Any())
+            {
+                return new
+                {
+                    content = new[]
+                    {
+                        new
+                        {
+                            type = "text",
+                            text = $"No references found for {symbolType} '{symbolName}'"
+                        }
+                    }
+                };
+            }
+            
+            // Format results
+            var report = $"Found {references.Count} references to {symbolType} '{symbolName}':\n\n";
+            
+            // Group by file
+            var byFile = references.GroupBy(r => r.FilePath).OrderBy(g => g.Key);
+            
+            foreach (var fileGroup in byFile)
+            {
+                report += $"📄 {fileGroup.Key}\n";
+                foreach (var reference in fileGroup.OrderBy(r => r.Line))
+                {
+                    report += $"  Line {reference.Line}:{reference.Column} - {reference.Context}\n";
+                }
+                report += "\n";
+            }
+            
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = report
+                    }
+                }
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to find references for {SymbolType} {SymbolName}", symbolType, symbolName);
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = $"Error finding references: {ex.Message}"
+                    }
+                }
+            };
+        }
+    }
+    
+    private async Task<object> FindImplementationsAsync(JsonElement? args)
+    {
+        var interfaceName = args?.GetProperty("interfaceName").GetString();
+        
+        if (string.IsNullOrEmpty(interfaceName))
+        {
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = "Error: Interface name is required"
+                    }
+                }
+            };
+        }
+        
+        var workspacePath = args?.TryGetProperty("workspacePath", out var ws) == true ? ws.GetString() : null;
+        
+        try
+        {
+            var implementations = await _workspaceManager.FindImplementationsAsync(interfaceName, workspacePath);
+            
+            if (!implementations.Any())
+            {
+                return new
+                {
+                    content = new[]
+                    {
+                        new
+                        {
+                            type = "text",
+                            text = $"No implementations found for interface '{interfaceName}'"
+                        }
+                    }
+                };
+            }
+            
+            // Format results
+            var report = $"Found {implementations.Count} implementations of '{interfaceName}':\n\n";
+            
+            foreach (var impl in implementations.OrderBy(i => i.ImplementingType))
+            {
+                report += $"• {impl.ImplementingType}\n";
+                report += $"  File: {impl.FilePath}:{impl.Line}:{impl.Column}\n";
+                report += $"  Project: {impl.ProjectName}\n";
+                if (!string.IsNullOrEmpty(impl.BaseTypes))
+                {
+                    report += $"  Also implements: {impl.BaseTypes}\n";
+                }
+                report += "\n";
+            }
+            
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = report
+                    }
+                }
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to find implementations for {InterfaceName}", interfaceName);
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = $"Error finding implementations: {ex.Message}"
+                    }
+                }
+            };
+        }
+    }
+    
+    private async Task<object> FindOverridesAsync(JsonElement? args)
+    {
+        var methodName = args?.GetProperty("methodName").GetString();
+        var className = args?.GetProperty("className").GetString();
+        
+        if (string.IsNullOrEmpty(methodName) || string.IsNullOrEmpty(className))
+        {
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = "Error: Method name and class name are required"
+                    }
+                }
+            };
+        }
+        
+        var workspacePath = args?.TryGetProperty("workspacePath", out var ws) == true ? ws.GetString() : null;
+        
+        try
+        {
+            var overrides = await _workspaceManager.FindOverridesAsync(methodName, className, workspacePath);
+            
+            if (!overrides.Any())
+            {
+                return new
+                {
+                    content = new[]
+                    {
+                        new
+                        {
+                            type = "text",
+                            text = $"No overrides found for method '{className}.{methodName}'"
+                        }
+                    }
+                };
+            }
+            
+            // Format results
+            var report = $"Found {overrides.Count} overrides of '{className}.{methodName}':\n\n";
+            
+            foreach (var ovr in overrides.OrderBy(o => o.OverridingType))
+            {
+                report += $"• {ovr.OverridingType}.{ovr.MethodName}{ovr.Parameters}\n";
+                report += $"  File: {ovr.FilePath}:{ovr.Line}:{ovr.Column}\n";
+                report += $"  Project: {ovr.ProjectName}\n";
+                report += $"  Access: {ovr.AccessModifier}";
+                if (ovr.IsSealed) report += " sealed";
+                report += "\n\n";
+            }
+            
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = report
+                    }
+                }
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to find overrides for {Method}", $"{className}.{methodName}");
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = $"Error finding overrides: {ex.Message}"
+                    }
+                }
+            };
+        }
+    }
+    
+    private async Task<object> FindDerivedTypesAsync(JsonElement? args)
+    {
+        var baseClassName = args?.GetProperty("baseClassName").GetString();
+        
+        if (string.IsNullOrEmpty(baseClassName))
+        {
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = "Error: Base class name is required"
+                    }
+                }
+            };
+        }
+        
+        var workspacePath = args?.TryGetProperty("workspacePath", out var ws) == true ? ws.GetString() : null;
+        
+        try
+        {
+            var derivedTypes = await _workspaceManager.FindDerivedTypesAsync(baseClassName, workspacePath);
+            
+            if (!derivedTypes.Any())
+            {
+                return new
+                {
+                    content = new[]
+                    {
+                        new
+                        {
+                            type = "text",
+                            text = $"No derived types found for '{baseClassName}'"
+                        }
+                    }
+                };
+            }
+            
+            // Format results
+            var report = $"Found {derivedTypes.Count} types derived from '{baseClassName}':\n\n";
+            
+            // Build hierarchy  
+            var directDerived = derivedTypes.Where(d => 
+                d.BaseType == baseClassName || 
+                d.BaseType.Contains($".{baseClassName}<") ||
+                d.BaseType.EndsWith($".{baseClassName}")).OrderBy(d => d.DerivedType);
+            
+            // If no direct derived found, show all
+            if (!directDerived.Any() && derivedTypes.Any())
+            {
+                directDerived = derivedTypes.OrderBy(d => d.DerivedType);
+            }
+            
+            foreach (var derived in directDerived)
+            {
+                report += FormatDerivedTypeHierarchy(derived, derivedTypes, 0);
+            }
+            
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = report
+                    }
+                }
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to find derived types for {BaseClass}", baseClassName);
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = $"Error finding derived types: {ex.Message}"
+                    }
+                }
+            };
+        }
+    }
+    
+    private string FormatDerivedTypeHierarchy(DerivedTypeInfo type, List<DerivedTypeInfo> allTypes, int depth)
+    {
+        var indent = new string(' ', depth * 2);
+        var result = $"{indent}• {type.DerivedType}";
+        if (type.IsAbstract) result += " (abstract)";
+        if (type.IsSealed) result += " (sealed)";
+        result += $"\n{indent}  File: {type.FilePath}:{type.Line}:{type.Column}\n";
+        result += $"{indent}  Project: {type.ProjectName}\n\n";
+        
+        // Find children
+        var children = allTypes.Where(t => t.BaseType == type.DerivedType).OrderBy(t => t.DerivedType);
+        foreach (var child in children)
+        {
+            result += FormatDerivedTypeHierarchy(child, allTypes, depth + 1);
+        }
+        
+        return result;
+    }
+    
+    private async Task<object> RenameSymbolAsync(JsonElement? args)
+    {
+        var oldName = args?.GetProperty("oldName").GetString();
+        var newName = args?.GetProperty("newName").GetString();
+        var symbolType = args?.GetProperty("symbolType").GetString();
+        
+        if (string.IsNullOrEmpty(oldName) || string.IsNullOrEmpty(newName) || string.IsNullOrEmpty(symbolType))
+        {
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = "Error: Old name, new name, and symbol type are required"
+                    }
+                }
+            };
+        }
+        
+        var containerName = args?.TryGetProperty("containerName", out var cn) == true ? cn.GetString() : null;
+        var workspacePath = args?.TryGetProperty("workspacePath", out var ws) == true ? ws.GetString() : null;
+        var preview = args?.TryGetProperty("preview", out var prev) == true && prev.GetBoolean();
+        
+        try
+        {
+            var result = await _workspaceManager.RenameSymbolAsync(oldName, newName, symbolType, containerName, workspacePath, preview);
+            
+            if (!result.Success)
+            {
+                return new
+                {
+                    content = new[]
+                    {
+                        new
+                        {
+                            type = "text",
+                            text = $"Error: {result.Error}"
+                        }
+                    }
+                };
+            }
+            
+            // Format results
+            var report = $"Rename '{oldName}' to '{newName}' ({symbolType})\n";
+            report += $"Status: {(preview ? "Preview" : "Applied")}\n";
+            
+            // Show impact summary
+            if (!string.IsNullOrEmpty(result.ImpactSummary))
+            {
+                report += $"\n⚡ Impact: {result.ImpactSummary}\n";
+            }
+            
+            // Show warnings
+            if (!string.IsNullOrEmpty(result.Warning))
+            {
+                report += $"\n⚠️  {result.Warning}\n";
+            }
+            
+            report += "\n";
+            
+            if (result.Changes.Any())
+            {
+                report += $"Changes in {result.Changes.Count} files:\n\n";
+                
+                foreach (var change in result.Changes.OrderBy(c => c.FilePath))
+                {
+                    report += $"📄 {change.FilePath}\n";
+                    foreach (var edit in change.Edits.OrderBy(e => e.Line))
+                    {
+                        report += $"  Line {edit.Line}: {edit.OldText} → {edit.NewText}\n";
+                    }
+                    report += "\n";
+                }
+                
+                report += $"Total edits: {result.Changes.Sum(c => c.Edits.Count)}";
+            }
+            else
+            {
+                report += "No changes needed.";
+            }
+            
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = report
+                    }
+                }
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to rename symbol {OldName} to {NewName}", oldName, newName);
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = $"Error renaming symbol: {ex.Message}"
+                    }
+                }
+            };
+        }
+    }
+    
+    private async Task<object> FixPatternAsync(JsonElement? args)
+    {
+        var findPattern = args?.GetProperty("findPattern").GetString();
+        var replacePattern = args?.GetProperty("replacePattern").GetString();
+        var patternType = args?.GetProperty("patternType").GetString();
+        
+        if (string.IsNullOrEmpty(findPattern) || string.IsNullOrEmpty(replacePattern) || string.IsNullOrEmpty(patternType))
+        {
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = "Error: Find pattern, replace pattern, and pattern type are required"
+                    }
+                }
+            };
+        }
+        
+        var workspacePath = args?.TryGetProperty("workspacePath", out var ws) == true ? ws.GetString() : null;
+        var preview = args?.TryGetProperty("preview", out var prev) == true && prev.GetBoolean();
+        
+        try
+        {
+            var result = await _workspaceManager.FixPatternAsync(findPattern, replacePattern, patternType, workspacePath, preview);
+            
+            if (!result.Success)
+            {
+                return new
+                {
+                    content = new[]
+                    {
+                        new
+                        {
+                            type = "text",
+                            text = $"Error: {result.Error}"
+                        }
+                    }
+                };
+            }
+            
+            // Format results
+            var report = $"Pattern Fix: {patternType}\n";
+            report += $"Find: {findPattern}\n";
+            report += $"Replace: {replacePattern}\n";
+            report += $"Status: {(preview ? "Preview" : "Applied")}\n\n";
+            
+            if (result.Fixes.Any())
+            {
+                report += $"Found {result.Fixes.Count} matches:\n\n";
+                
+                foreach (var fix in result.Fixes.OrderBy(f => f.FilePath).ThenBy(f => f.Line))
+                {
+                    report += $"📄 {fix.FilePath}:{fix.Line}\n";
+                    report += $"  Before: {fix.OriginalCode}\n";
+                    report += $"  After:  {fix.FixedCode}\n";
+                    if (!string.IsNullOrEmpty(fix.Description))
+                    {
+                        report += $"  Note:   {fix.Description}\n";
+                    }
+                    report += "\n";
+                }
+            }
+            else
+            {
+                report += "No patterns found to fix.";
+            }
+            
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = report
+                    }
+                }
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to fix pattern {Pattern}", findPattern);
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = $"Error fixing pattern: {ex.Message}"
+                    }
+                }
+            };
+        }
+    }
+}

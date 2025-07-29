@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "mcp-roslyn": {
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "/Users/bill/ClaudeDir/McpDotnet/src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj",
+        "--",
+        "--allowed-path",
+        "/Users/bill/Projects",
+        "--allowed-path", 
+        "/Users/bill/Code"
+      ],
+      "env": {
+        "MCP_ROSLYN_WORKSPACE": "/Users/bill/Projects/MyDotNetProject/MyProject.sln"
+      }
+    }
+  }
+}

@@ -1,0 +1,5 @@
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}
+{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
+{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"dotnet/load-workspace","arguments":{"path":"/Users/bill/ClaudeDir/McpDotnet/src/McpRoslyn/McpRoslyn.sln"}}}
+{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"dotnet/workspace-status","arguments":{}}}
+{"jsonrpc":"2.0","id":5,"method":"workspaces/list","params":{}}
