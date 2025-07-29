@@ -2000,6 +2000,8 @@ public class RoslynWorkspaceManager
         public int Value { get; set; } = 0;
     }
     
+    // Track statement information for the session - removed as find is read-only
+    
     private async Task ProcessDocumentForStatements(
         Document document,
         string pattern,
@@ -2051,9 +2053,11 @@ public class RoslynWorkspaceManager
                 var containingMethod = statement.Ancestors().OfType<MethodDeclarationSyntax>().FirstOrDefault();
                 var containingClass = statement.Ancestors().OfType<TypeDeclarationSyntax>().FirstOrDefault();
                 
+                var statementId = $"stmt-{++statementIdCounter.Value}";
+                
                 var statementInfo = new StatementInfo
                 {
-                    StatementId = $"stmt-{++statementIdCounter.Value}",
+                    StatementId = statementId,
                     Type = statement.GetType().Name,
                     Text = statementText,
                     Location = new Location
@@ -2113,6 +2117,159 @@ public class RoslynWorkspaceManager
             parent = parent.Parent;
         }
         return false;
+    }
+    
+    public async Task<ReplaceStatementResult> ReplaceStatementAsync(
+        string filePath,
+        int line,
+        int column,
+        string newStatement,
+        bool preserveComments = true,
+        string? workspacePath = null)
+    {
+        var result = new ReplaceStatementResult { Success = true };
+        
+        try
+        {
+            // Find the document
+            var workspacesToSearch = GetWorkspacesToSearch(workspacePath);
+            Document? targetDocument = null;
+            
+            foreach (var ws in workspacesToSearch)
+            {
+                var solution = ws.CurrentSolution;
+                targetDocument = solution.Projects
+                    .SelectMany(p => p.Documents)
+                    .FirstOrDefault(d => d.FilePath == filePath);
+                    
+                if (targetDocument != null) break;
+            }
+            
+            if (targetDocument == null)
+            {
+                result.Success = false;
+                result.Error = $"File not found in workspace: {filePath}";
+                return result;
+            }
+            
+            // Get syntax tree
+            var root = await targetDocument.GetSyntaxRootAsync();
+            if (root == null)
+            {
+                result.Success = false;
+                result.Error = "Failed to get syntax root";
+                return result;
+            }
+            
+            var sourceText = await targetDocument.GetTextAsync();
+            
+            // Find the statement at the specified location
+            var position = sourceText.Lines.GetPosition(new LinePosition(line - 1, column - 1));
+            var token = root.FindToken(position);
+            
+            // Find the containing statement
+            var statement = token.Parent?.AncestorsAndSelf()
+                .OfType<StatementSyntax>()
+                .FirstOrDefault();
+                
+            if (statement == null)
+            {
+                result.Success = false;
+                result.Error = $"No statement found at {filePath}:{line}:{column}";
+                return result;
+            }
+            
+            // Parse the new statement
+            var newStatementSyntax = SyntaxFactory.ParseStatement(newStatement);
+            if (newStatementSyntax.ContainsDiagnostics)
+            {
+                result.Success = false;
+                result.Error = "New statement contains syntax errors";
+                return result;
+            }
+            
+            // Preserve leading trivia (comments, whitespace) if requested
+            if (preserveComments)
+            {
+                newStatementSyntax = newStatementSyntax
+                    .WithLeadingTrivia(statement.GetLeadingTrivia())
+                    .WithTrailingTrivia(statement.GetTrailingTrivia());
+            }
+            else
+            {
+                // At least preserve indentation
+                var leadingWhitespace = statement.GetLeadingTrivia()
+                    .Where(t => t.IsKind(SyntaxKind.WhitespaceTrivia))
+                    .LastOrDefault();
+                if (leadingWhitespace != default)
+                {
+                    newStatementSyntax = newStatementSyntax.WithLeadingTrivia(leadingWhitespace);
+                }
+                
+                // Preserve line ending
+                var trailingTrivia = statement.GetTrailingTrivia()
+                    .Where(t => t.IsKind(SyntaxKind.EndOfLineTrivia))
+                    .LastOrDefault();
+                if (trailingTrivia != default)
+                {
+                    newStatementSyntax = newStatementSyntax.WithTrailingTrivia(trailingTrivia);
+                }
+            }
+            
+            // Replace the statement
+            var newRoot = root.ReplaceNode(statement, newStatementSyntax);
+            
+            // Update the document
+            var newDocument = targetDocument.WithSyntaxRoot(newRoot);
+            
+            // Apply the changes
+            var workspace = targetDocument.Project.Solution.Workspace;
+            var success = workspace.TryApplyChanges(newDocument.Project.Solution);
+            
+            if (!success)
+            {
+                result.Success = false;
+                result.Error = "Failed to apply changes to workspace";
+                return result;
+            }
+            
+            result.ModifiedFile = filePath;
+            result.OriginalStatement = statement.ToString();
+            result.NewStatement = newStatementSyntax.ToString();
+            
+            // Generate preview
+            var statementLineSpan = sourceText.Lines.GetLinePositionSpan(statement.Span);
+            var startLine = Math.Max(0, statementLineSpan.Start.Line - 2);
+            var endLine = Math.Min(sourceText.Lines.Count - 1, statementLineSpan.End.Line + 2);
+            
+            var preview = new System.Text.StringBuilder();
+            preview.AppendLine("Before:");
+            for (int i = startLine; i <= endLine; i++)
+            {
+                var lineText = sourceText.Lines[i].ToString();
+                preview.AppendLine($"  {i + 1}: {lineText}");
+            }
+            
+            var newText = newRoot.GetText();
+            preview.AppendLine("\nAfter:");
+            for (int i = startLine; i <= endLine; i++)
+            {
+                if (i < newText.Lines.Count)
+                {
+                    var lineText = newText.Lines[i].ToString();
+                    preview.AppendLine($"  {i + 1}: {lineText}");
+                }
+            }
+            
+            result.Preview = preview.ToString();
+        }
+        catch (Exception ex)
+        {
+            result.Success = false;
+            result.Error = ex.Message;
+        }
+        
+        return result;
     }
 }
 
@@ -2349,4 +2506,14 @@ public class SemanticSymbolReference
     public string Type { get; set; } = "";
     public string DeclaredAt { get; set; } = "";
     public List<string> UsedAt { get; set; } = new();
+}
+
+public class ReplaceStatementResult
+{
+    public bool Success { get; set; }
+    public string? Error { get; set; }
+    public string? ModifiedFile { get; set; }
+    public string? OriginalStatement { get; set; }
+    public string? NewStatement { get; set; }
+    public string? Preview { get; set; }
 }

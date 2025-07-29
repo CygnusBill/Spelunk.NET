@@ -461,6 +461,35 @@ public class McpJsonRpcServer
                     },
                     required = new[] { "pattern" }
                 }
+            },
+            new
+            {
+                name = "dotnet/replace-statement",
+                description = "Replace a statement with new code. The statement is identified by its location from find-statements. Preserves indentation and formatting context.",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        statementId = new { type = "string", description = "Statement ID from find-statements (e.g., 'stmt-123')" },
+                        location = new 
+                        { 
+                            type = "object", 
+                            description = "Alternative to statementId - direct location",
+                            properties = new
+                            {
+                                file = new { type = "string", description = "File path" },
+                                line = new { type = "number", description = "Line number (1-based)" },
+                                column = new { type = "number", description = "Column number (1-based)" }
+                            },
+                            required = new[] { "file", "line", "column" }
+                        },
+                        newStatement = new { type = "string", description = "The new statement code (including semicolon)" },
+                        preserveComments = new { type = "boolean", description = "Keep existing comments attached to the statement", @default = true },
+                        workspacePath = new { type = "string", description = "Optional workspace path" }
+                    },
+                    required = new[] { "newStatement" }
+                }
             }
         };
         
@@ -558,6 +587,10 @@ public class McpJsonRpcServer
                 
             case "dotnet/find-statements":
                 result = await FindStatementsAsync(toolCallParams.Arguments);
+                break;
+                
+            case "dotnet/replace-statement":
+                result = await ReplaceStatementAsync(toolCallParams.Arguments);
                 break;
                 
             default:
@@ -2141,6 +2174,133 @@ public class McpJsonRpcServer
                     {
                         type = "text",
                         text = $"Error finding statements: {ex.Message}"
+                    }
+                }
+            };
+        }
+    }
+    
+    private async Task<object> ReplaceStatementAsync(JsonElement? args)
+    {
+        var newStatement = args?.GetProperty("newStatement").GetString();
+        
+        if (string.IsNullOrEmpty(newStatement))
+        {
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = "Error: New statement is required"
+                    }
+                }
+            };
+        }
+        
+        // Get location from either statementId or direct location
+        string? filePath = null;
+        int line = 0;
+        int column = 0;
+        
+        // Check if statementId is provided (format: stmt-123)
+        if (args?.TryGetProperty("statementId", out var stmtId) == true)
+        {
+            var statementId = stmtId.GetString();
+            // For now, we require location since we're not persisting statement info
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = "Error: Statement IDs are ephemeral. Please provide location directly from find-statements output."
+                    }
+                }
+            };
+        }
+        
+        // Get direct location
+        if (args?.TryGetProperty("location", out var loc) == true)
+        {
+            filePath = loc.GetProperty("file").GetString();
+            line = loc.GetProperty("line").GetInt32();
+            column = loc.GetProperty("column").GetInt32();
+        }
+        
+        if (string.IsNullOrEmpty(filePath) || line == 0 || column == 0)
+        {
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = "Error: Location (file, line, column) is required"
+                    }
+                }
+            };
+        }
+        
+        var preserveComments = args?.TryGetProperty("preserveComments", out var pc) == true ? pc.GetBoolean() : true;
+        var workspacePath = args?.TryGetProperty("workspacePath", out var ws) == true ? ws.GetString() : null;
+        
+        try
+        {
+            var result = await _workspaceManager.ReplaceStatementAsync(
+                filePath, line, column, newStatement, preserveComments, workspacePath);
+            
+            if (!result.Success)
+            {
+                return new
+                {
+                    content = new[]
+                    {
+                        new
+                        {
+                            type = "text",
+                            text = $"Error: {result.Error}"
+                        }
+                    }
+                };
+            }
+            
+            // Format the response
+            var response = new System.Text.StringBuilder();
+            response.AppendLine($"Statement replaced successfully in {result.ModifiedFile}");
+            response.AppendLine();
+            response.AppendLine($"Original: {result.OriginalStatement}");
+            response.AppendLine($"New: {result.NewStatement}");
+            response.AppendLine();
+            response.AppendLine("Preview:");
+            response.AppendLine(result.Preview);
+            
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = response.ToString()
+                    }
+                }
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to replace statement");
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = $"Error replacing statement: {ex.Message}"
                     }
                 }
             };
