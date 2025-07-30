@@ -1,8 +1,13 @@
 #!/bin/bash
 
+# Get the script's directory and project root
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
 # Test the MCP Roslyn server with some JSON-RPC commands
 
 echo "Testing MCP Roslyn Server..."
+echo "Project root: $PROJECT_ROOT"
 
 # Create a named pipe for bidirectional communication
 PIPE_IN=/tmp/mcp_test_in
@@ -16,7 +21,7 @@ mkfifo $PIPE_IN
 mkfifo $PIPE_OUT
 
 # Start the server in the background, redirecting stderr to a log file
-dotnet run --project /Users/bill/ClaudeDir/McpDotnet/src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj < $PIPE_IN > $PIPE_OUT 2> mcp-server.log &
+dotnet run --project "$PROJECT_ROOT/src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj" < $PIPE_IN > $PIPE_OUT 2> "$SCRIPT_DIR/mcp-server.log" &
 SERVER_PID=$!
 
 # Give the server time to start
