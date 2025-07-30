@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace McpRoslyn.Server.RoslynPath
 {
@@ -18,7 +19,7 @@ namespace McpRoslyn.Server.RoslynPath
         /// <param name="path">The RoslynPath expression</param>
         /// <param name="semanticModel">Optional semantic model for semantic queries</param>
         /// <returns>Matching syntax nodes</returns>
-        public static IEnumerable<SyntaxNode> Find(SyntaxTree tree, string path, SemanticModel semanticModel = null)
+        public static IEnumerable<SyntaxNode> Find(SyntaxTree tree, string path, SemanticModel? semanticModel = null)
         {
             var evaluator = new RoslynPathEvaluator(tree, semanticModel);
             return evaluator.Evaluate(path);
@@ -64,7 +65,7 @@ namespace McpRoslyn.Server.RoslynPath
             return "/" + string.Join("/", parts);
         }
 
-        private static string GetNodePathPart(SyntaxNode node)
+        private static string? GetNodePathPart(SyntaxNode node)
         {
             var typeName = node switch
             {
@@ -98,7 +99,7 @@ namespace McpRoslyn.Server.RoslynPath
             return typeName;
         }
 
-        private static string GetNodeName(SyntaxNode node)
+        private static string? GetNodeName(SyntaxNode node)
         {
             return node switch
             {
@@ -126,11 +127,11 @@ namespace McpRoslyn.Server.RoslynPath
 
     public class NodeResult
     {
-        public SyntaxNode Node { get; set; }
-        public string Text { get; set; }
-        public NodeLocation Location { get; set; }
-        public string NodeType { get; set; }
-        public string Path { get; set; }
+        public SyntaxNode Node { get; set; } = null!;
+        public string Text { get; set; } = null!;
+        public NodeLocation Location { get; set; } = null!;
+        public string NodeType { get; set; } = null!;
+        public string Path { get; set; } = null!;
     }
 
     public class NodeLocation

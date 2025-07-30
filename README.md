@@ -13,6 +13,13 @@ This MCP server exposes Roslyn's advanced code analysis capabilities, allowing A
 
 ## Key Capabilities
 
+### Statement-Level Editing
+The server provides precise statement-level operations, treating statements as the fundamental unit of code modification. This approach:
+- **Preserves code structure** - Maintains proper indentation and formatting
+- **Handles edge cases** - Correctly manages comments, trivia, and block structures
+- **Enables composability** - Complex refactorings built from simple operations
+- **Provides stability** - Operations work reliably across different code styles
+
 ### Semantic-Syntax Traversal
 The server leverages Roslyn's unique ability to seamlessly move between syntactic representation (how code looks) and semantic representation (what code means). This enables:
 - Finding ALL uses of a property, even through method calls and assignments
@@ -35,6 +42,16 @@ The server leverages Roslyn's unique ability to seamlessly move between syntacti
 - `dotnet/find-method-calls` - Find what methods a given method calls
 - `dotnet/find-method-callers` - Find what methods call a given method
 
+### Statement-Level Operations
+- `dotnet/find-statements` - Find statements matching patterns with stable IDs
+- `dotnet/replace-statement` - Replace any statement precisely
+- `dotnet/insert-statement` - Insert statements before/after existing ones
+- `dotnet/remove-statement` - Remove statements while preserving comments
+- `dotnet/mark-statement` - Mark statements with ephemeral markers
+- `dotnet/find-marked-statements` - Find previously marked statements
+- `dotnet/unmark-statement` - Remove specific markers
+- `dotnet/clear-markers` - Clear all markers
+
 ### Code Modification
 - `dotnet/rename-symbol` - Safely rename any symbol with full validation
   - Prevents renaming system types
@@ -46,6 +63,8 @@ The server leverages Roslyn's unique ability to seamlessly move between syntacti
   - `add-method` - Add methods to classes
   - `add-property` - Add properties to classes
   - `make-async` - Convert synchronous methods to async
+  
+- `dotnet/fix-pattern` - Find and fix code patterns across the codebase
 
 ### Workspace Management
 - `dotnet/load-workspace` - Load a .NET solution or project
@@ -73,10 +92,11 @@ dotnet run --project McpRoslyn.Server/McpRoslyn.Server.csproj -- --allowed-path 
 dotnet run --project McpRoslyn.Server.Sse/McpRoslyn.Server.Sse.csproj
 ```
 
-## Usage Example
+## Usage Examples
 
-```python
-# Load a workspace
+### Basic Operations
+```json
+// Load a workspace
 {
   "tool": "dotnet/load-workspace",
   "arguments": {
@@ -84,7 +104,7 @@ dotnet run --project McpRoslyn.Server.Sse/McpRoslyn.Server.Sse.csproj
   }
 }
 
-# Find all references to a method
+// Find all references to a method
 {
   "tool": "dotnet/find-references", 
   "arguments": {
@@ -93,20 +113,63 @@ dotnet run --project McpRoslyn.Server.Sse/McpRoslyn.Server.Sse.csproj
     "containerName": "UserController"
   }
 }
+```
 
-# Safely rename a symbol
+### Statement-Level Editing
+```json
+// Find all Console.WriteLine statements
 {
-  "tool": "dotnet/rename-symbol",
+  "tool": "dotnet/find-statements",
   "arguments": {
-    "oldName": "GetUser",
-    "newName": "FetchUser",
-    "symbolType": "method",
-    "containerName": "UserService",
-    "preview": true
+    "pattern": "Console.WriteLine",
+    "patternType": "text"
   }
 }
 
-# Add a method to a class
+// Replace a specific statement
+{
+  "tool": "dotnet/replace-statement",
+  "arguments": {
+    "location": {
+      "file": "/path/to/Program.cs",
+      "line": 25,
+      "column": 9
+    },
+    "newStatement": "_logger.LogInformation(\"Application started\");"
+  }
+}
+
+// Insert validation at the start of a method
+{
+  "tool": "dotnet/insert-statement",
+  "arguments": {
+    "position": "before",
+    "location": {
+      "file": "/path/to/UserService.cs",
+      "line": 30,
+      "column": 9
+    },
+    "statement": "ArgumentNullException.ThrowIfNull(user);"
+  }
+}
+
+// Mark statements for multi-step refactoring
+{
+  "tool": "dotnet/mark-statement",
+  "arguments": {
+    "location": {
+      "file": "/path/to/OrderService.cs",
+      "line": 45,
+      "column": 13
+    },
+    "label": "validation-point"
+  }
+}
+```
+
+### Advanced Refactoring
+```json
+// Add a method to a class
 {
   "tool": "dotnet/edit-code",
   "arguments": {
@@ -114,6 +177,16 @@ dotnet run --project McpRoslyn.Server.Sse/McpRoslyn.Server.Sse.csproj
     "operation": "add-method",
     "className": "UserService",
     "code": "public async Task<bool> IsValidUser(int id) { return await GetUser(id) != null; }"
+  }
+}
+
+// Fix a pattern across the codebase
+{
+  "tool": "dotnet/fix-pattern",
+  "arguments": {
+    "findPattern": "DateTime.Now",
+    "replacePattern": "DateTime.UtcNow",
+    "patternType": "property-access"
   }
 }
 ```
