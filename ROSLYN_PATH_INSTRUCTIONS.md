@@ -85,18 +85,141 @@ var returns = RoslynPath.Find(sourceCode, "//method[ProcessOrder]//statement[@ty
 ## Examples for Common Refactoring Tasks
 
 ### Replace Console.WriteLine with Logger
-1. Find: `//statement[@contains='Console.WriteLine']`
-2. Each result gives you the exact location to replace
+
+**Before:**
+```csharp
+public void ProcessOrder(Order order)
+{
+    Console.WriteLine($"Processing order {order.Id}");
+    ValidateOrder(order);
+    Console.WriteLine("Order validated");
+    SaveOrder(order);
+    Console.WriteLine($"Order {order.Id} saved");
+}
+```
+
+**Step 1 - Find:** `//statement[@contains='Console.WriteLine']`
+```
+Found 3 statements:
+- Line 3: Console.WriteLine($"Processing order {order.Id}");
+- Line 5: Console.WriteLine("Order validated");
+- Line 7: Console.WriteLine($"Order {order.Id} saved");
+```
+
+**Step 2 - Replace each with logger calls**
+
+**After:**
+```csharp
+public void ProcessOrder(Order order)
+{
+    _logger.LogInformation($"Processing order {order.Id}");
+    ValidateOrder(order);
+    _logger.LogInformation("Order validated");
+    SaveOrder(order);  
+    _logger.LogInformation($"Order {order.Id} saved");
+}
+```
 
 ### Add Null Checks to Public Methods
-1. Find: `//method[@public]`
-2. For each, insert at: `/block/statement[1]`
+
+**Before:**
+```csharp
+public class CustomerService
+{
+    public void UpdateCustomer(Customer customer)
+    {
+        customer.ModifiedDate = DateTime.UtcNow;
+        _repository.Update(customer);
+    }
+    
+    private void ValidateCustomer(Customer customer)
+    {
+        // Private method - no null check needed
+    }
+}
+```
+
+**Step 1 - Find:** `//method[@public]`
+```
+Found: UpdateCustomer at line 3
+```
+
+**Step 2 - Insert at:** `{method-path}/block/statement[1]`
+
+**After:**
+```csharp
+public void UpdateCustomer(Customer customer)
+{
+    ArgumentNullException.ThrowIfNull(customer);
+    customer.ModifiedDate = DateTime.UtcNow;
+    _repository.Update(customer);
+}
+```
 
 ### Find Long Methods
-1. Find: `//method[count(.//statement) > 20]`
+
+**Input:**
+```csharp
+public class ReportGenerator
+{
+    public void GenerateReport()  // 25 statements - too long!
+    {
+        var data = LoadData();
+        ValidateData(data);
+        // ... 20 more statements ...
+        FormatReport();
+        SaveReport();
+    }
+    
+    public void PrintSummary()  // 5 statements - OK
+    {
+        var summary = GetSummary();
+        Format(summary);
+        Console.WriteLine(summary);
+        LogCompletion();
+        return;
+    }
+}
+```
+
+**Find:** `//method[count(.//statement) > 20]`
+```
+Found 1 long method:
+- GenerateReport at line 3
+  Statement count: 25
+  Path: /class[ReportGenerator]/method[GenerateReport]
+  Recommendation: Consider breaking into smaller methods
+```
 
 ### Find Empty Catch Blocks
-1. Find: `//catch[block[count(statement)=0]]`
+
+**Input:**
+```csharp
+public void RiskyOperation()
+{
+    try
+    {
+        DoSomethingDangerous();
+    }
+    catch (IOException)
+    {
+        // Empty - swallowing exception!
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Operation failed");
+        throw;
+    }
+}
+```
+
+**Find:** `//catch[block[count(statement)=0]]`
+```
+Found 1 empty catch block:
+- IOException handler at line 7
+  Path: /method[RiskyOperation]/statement[1]/catch[1]
+  Warning: Exception being swallowed without logging or rethrowing
+```
 
 ## Tips
 

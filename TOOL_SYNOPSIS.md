@@ -16,6 +16,22 @@ Many tools accept or return location objects:
 }
 ```
 
+### RoslynPath Format (New - More Stable)
+RoslynPath provides stable code references that survive edits:
+```json
+{
+  "roslynPath": "//class[UserService]/method[GetUser]/block/statement[1]",
+  "file": "/absolute/path/to/file.cs"
+}
+```
+
+**Common RoslynPath Patterns:**
+- `//method[ProcessOrder]` - Find method named ProcessOrder
+- `//method[@async]` - Find all async methods
+- `//statement[@contains='Console.WriteLine']` - Find console output
+- `//statement[@type=IfStatement and @contains='null']` - Find null checks
+- See [ROSLYN_PATH_INSTRUCTIONS.md](./ROSLYN_PATH_INSTRUCTIONS.md) for full syntax
+
 ### Pattern Syntax
 - **Wildcards**: `*` (multiple chars), `?` (single char)
   - Examples: `*Controller`, `Get*`, `Is?Valid`
@@ -419,7 +435,7 @@ Found 5 type(s) deriving from 'ControllerBase':
 
 **Purpose**: Search for statements matching text or regex patterns for analysis or bulk operations.
 
-**Input Format**:
+**Input Format (Traditional Pattern Matching):**
 ```json
 {
   "pattern": "Console.WriteLine",      // Required: text or regex pattern
@@ -434,6 +450,19 @@ Found 5 type(s) deriving from 'ControllerBase':
   "workspacePath": "/path/to/search"  // Optional
 }
 ```
+
+**Input Format (RoslynPath - More Powerful):**
+```json
+{
+  "roslynPath": "//method[@async]//statement[@type=ReturnStatement and not(@contains='await')]",
+  "workspacePath": "/path/to/search"  // Optional
+}
+```
+
+**RoslynPath Examples:**
+- `//statement[@contains='TODO']` - Find TODO comments
+- `//method[Get*]//statement[@type=ThrowStatement]` - Throws in Get methods
+- `//foreach//expression[@contains='.First(']` - N+1 query patterns
 
 **Output Format**:
 ```text

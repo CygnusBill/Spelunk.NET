@@ -1,0 +1,66 @@
+=== Complex RoslynPath Query Demo ===
+
+QUERY: Find potentially problematic async methods
+Path: //method[@async and (
+            not(.//expression[@type=AwaitExpression]) or
+            .//statement[@type=ReturnStatement and not(@contains='await')]
+        )]
+
+This finds:
+- Async methods with NO await expressions at all
+- Async methods with return statements that don't use await
+
+================================================================================
+
+Found 3 suspicious async methods:
+
+❌ SUSPICIOUS: MethodDeclaration
+   Location: Line 34
+   Stable Path: /namespace[MyApp.Services]/class[DataService]/method[GetOrderAsync]
+   Signature: public async Task<Order> GetOrderAsync(int id)
+   Issues:
+     - No await expressions found
+     - Has return without await (Task not awaited)
+
+❌ SUSPICIOUS: MethodDeclaration
+   Location: Line 58
+   Stable Path: /namespace[MyApp.Services]/class[DataService]/method[ValidateOrderAsync]
+   Signature: public async Task<bool> ValidateOrderAsync(Order order)
+   Issues:
+     - Has return without await (Task not awaited)
+
+❌ SUSPICIOUS: MethodDeclaration
+   Location: Line 94
+   Stable Path: /namespace[MyApp.Services]/class[DataService]/method[ProcessBatchAsync]
+   Signature: public async Task ProcessBatchAsync(List<int> ids)
+   Issues:
+     - No await expressions found
+
+================================================================================
+
+For comparison, here are the GOOD async methods:
+✅ GOOD: public async Task<User> GetUserAsync(int id)
+   Has 3 await expression(s)
+✅ GOOD: private async void OnDataChanged(object sender, EventArgs e)
+   Has 2 await expression(s)
+✅ GOOD: public async Task<Report> GenerateReportAsync(DateTime from, DateTime to)
+   Has 3 await expression(s)
+
+================================================================================
+
+OTHER USEFUL COMPLEX QUERIES:
+
+1. Find methods with multiple exit points:
+   //method[count(.//statement[@type=ReturnStatement]) > 2]
+
+2. Find if-statements checking for null without using pattern matching:
+   //statement[@type=IfStatement and @contains='== null' and not(@contains='is null')]
+
+3. Find catch blocks that might be swallowing exceptions:
+   //catch[not(.//statement[@type=ThrowStatement]) and not(.//expression[@contains='Log'])]
+
+4. Find fire-and-forget async calls (dangerous pattern):
+   //expression[@type=InvocationExpression and @contains='Async(' and not(ancestor::expression[@type=AwaitExpression])]
+
+5. Find classes with too many dependencies (constructor with >5 parameters):
+   //constructor[count(parameter) > 5]

@@ -187,33 +187,189 @@ children()      - Child nodes
 ### Practical Examples
 
 #### Find all TODO comments
+**Input Code:**
+```csharp
+public class UserService
+{
+    public async Task<User> GetUserAsync(int id)
+    {
+        // TODO: Add caching here
+        var user = await _repository.GetUserAsync(id);
+        // TODO: Add validation
+        return user;
+    }
+}
 ```
-//comment[@contains='TODO']
+
+**Query:** `//comment[@contains='TODO']`
+
+**Output:**
+```
+Found 2 matches:
+1. Line 5: // TODO: Add caching here
+   Path: /class[UserService]/method[GetUserAsync]/comment[1]
+2. Line 7: // TODO: Add validation
+   Path: /class[UserService]/method[GetUserAsync]/comment[2]
 ```
 
 #### Find methods that throw exceptions
+**Input Code:**
+```csharp
+public class OrderService
+{
+    public void ProcessOrder(Order order)
+    {
+        if (order == null)
+            throw new ArgumentNullException(nameof(order));
+        
+        if (order.Items.Count == 0)
+            throw new InvalidOperationException("Order has no items");
+            
+        // Process order...
+    }
+    
+    public void SaveOrder(Order order)
+    {
+        // No exceptions thrown here
+        _repository.Save(order);
+    }
+}
 ```
-//method[block//statement[@type=ThrowStatement]]
+
+**Query:** `//method[.//statement[@type=ThrowStatement]]`
+
+**Output:**
+```
+Found 1 match:
+1. Method: ProcessOrder at line 3
+   Path: /class[OrderService]/method[ProcessOrder]
+   Contains 2 throw statements
 ```
 
 #### Find async methods not using await
+**Input Code:**
+```csharp
+public class DataService
+{
+    // BAD: async without await
+    public async Task<string> GetDataAsync()
+    {
+        return _cache.GetData();  // Missing await!
+    }
+    
+    // GOOD: async with await
+    public async Task<string> FetchDataAsync()
+    {
+        var result = await _api.GetDataAsync();
+        return result;
+    }
+}
 ```
-//method[@async and not(block//expression[@contains='await'])]
+
+**Query:** `//method[@async and not(.//expression[@contains='await'])]`
+
+**Output:**
+```
+Found 1 suspicious async method:
+1. Method: GetDataAsync at line 4
+   Path: /class[DataService]/method[GetDataAsync]
+   Issue: Async method contains no await expressions
 ```
 
 #### Find classes implementing multiple interfaces
+**Input Code:**
+```csharp
+public interface IService { }
+public interface IDisposable { }
+public interface ILogger { }
+
+public class BasicService : IService { }
+
+public class ComplexService : IService, IDisposable, ILogger
+{
+    // Implementation
+}
 ```
-//class[count(@implements) > 1]
+
+**Query:** `//class[count(@implements) > 1]`
+
+**Output:**
+```
+Found 1 match:
+1. Class: ComplexService at line 7
+   Path: /class[ComplexService]
+   Implements: IService, IDisposable, ILogger (3 interfaces)
 ```
 
 #### Find switch expressions (C# 8+)
+**Input Code:**
+```csharp
+public class PriceCalculator
+{
+    public decimal CalculateDiscount(CustomerType type)
+    {
+        // Old style switch statement
+        switch (type)
+        {
+            case CustomerType.Regular: return 0.05m;
+            case CustomerType.Premium: return 0.10m;
+            default: return 0m;
+        }
+    }
+    
+    public decimal CalculateBonus(CustomerType type) =>
+        // New switch expression
+        type switch
+        {
+            CustomerType.Regular => 0.02m,
+            CustomerType.Premium => 0.05m,
+            _ => 0m
+        };
+}
 ```
-//expression[@type=SwitchExpression]
+
+**Query:** `//expression[@type=SwitchExpression]`
+
+**Output:**
+```
+Found 1 match:
+1. Switch expression at line 15
+   Path: /class[PriceCalculator]/method[CalculateBonus]/expression[1]
+   Pattern: type switch { ... }
 ```
 
 #### Find all null-forgiving operators
+**Input Code:**
+```csharp
+public class UserManager
+{
+    public void ProcessUser(User? user)
+    {
+        // Using null-forgiving operator (dangerous!)
+        var name = user!.Name;
+        var email = user!.Email!.ToLower();
+        
+        // Safe null check
+        if (user?.Address != null)
+        {
+            Console.WriteLine(user.Address);
+        }
+    }
+}
 ```
-//expression[@type=PostfixUnaryExpression and @operator='!']
+
+**Query:** `//expression[@type=PostfixUnaryExpression and @operator='!']`
+
+**Output:**
+```
+Found 3 matches:
+1. Line 6: user!.Name
+   Path: /class[UserManager]/method[ProcessUser]/statement[1]/expression[1]
+2. Line 7: user!.Email
+   Path: /class[UserManager]/method[ProcessUser]/statement[2]/expression[1]
+3. Line 7: user!.Email!
+   Path: /class[UserManager]/method[ProcessUser]/statement[2]/expression[2]
+   Warning: Multiple null-forgiving operators in chain
 ```
 
 ## Stability Strategies

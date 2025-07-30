@@ -4,6 +4,36 @@
 
 RoslynPath is a query language for finding code elements in C# syntax trees. It provides stable references that survive code edits, unlike fragile line/column positions.
 
+## Quick Example
+
+**The Problem:** Line numbers break when code changes
+```csharp
+// Original code
+public class UserService  // Line 1
+{                        // Line 2
+    public void Process() // Line 3
+    {
+        Console.WriteLine("Processing");  // Line 5 - Target this
+    }
+}
+
+// After adding a comment...
+public class UserService  // Line 1
+{                        // Line 2  
+    // New comment!      // Line 3 <-- Added
+    public void Process() // Line 4 <-- Was line 3
+    {
+        Console.WriteLine("Processing");  // Line 6 <-- Was line 5!
+    }
+}
+```
+
+**The Solution:** RoslynPath stays stable
+```
+Path: //class[UserService]/method[Process]//statement[@contains='Console.WriteLine']
+```
+This path finds the Console.WriteLine regardless of line number changes!
+
 ## Installation
 
 1. Add the RoslynPath files to your project:
@@ -36,14 +66,57 @@ foreach (var result in results)
 
 **Task**: Replace all Console.WriteLine calls with logger calls
 
+**Input Code:**
 ```csharp
-// Step 1: Find all Console.WriteLine statements
-var consoleWrites = RoslynPath.Find(code, "//statement[@contains='Console.WriteLine']");
+public class OrderProcessor
+{
+    public void ProcessOrder(Order order)
+    {
+        Console.WriteLine($"Processing order {order.Id}");
+        
+        if (order.Items.Count == 0)
+        {
+            Console.WriteLine("Warning: Order has no items");
+            return;
+        }
+        
+        foreach (var item in order.Items)
+        {
+            Console.WriteLine($"Processing item {item.Name}");
+            ProcessItem(item);
+        }
+        
+        Console.WriteLine("Order processing complete");
+    }
+}
+```
 
-// Step 2: For each result, you have:
-// - result.Location (line/column)
-// - result.Path (stable path like /class[Program]/method[Main]/block/statement[3])
-// - result.Text (the actual statement text)
+**Step 1: Find all Console.WriteLine statements**
+```csharp
+var results = RoslynPath.Find(code, "//statement[@contains='Console.WriteLine']");
+```
+
+**Results:**
+```
+Found 4 matches:
+1. Line 5: Console.WriteLine($"Processing order {order.Id}");
+   Path: /class[OrderProcessor]/method[ProcessOrder]/block/statement[1]
+   
+2. Line 9: Console.WriteLine("Warning: Order has no items");
+   Path: /class[OrderProcessor]/method[ProcessOrder]/block/statement[2]/block/statement[1]
+   
+3. Line 15: Console.WriteLine($"Processing item {item.Name}");
+   Path: /class[OrderProcessor]/method[ProcessOrder]/block/statement[3]/block/statement[1]
+   
+4. Line 19: Console.WriteLine("Order processing complete");
+   Path: /class[OrderProcessor]/method[ProcessOrder]/block/statement[4]
+```
+
+**Step 2: For each result, replace with logger**
+```csharp
+// result.Location gives line/column for traditional editing
+// result.Path gives stable reference that survives edits
+// result.Text gives the actual statement to transform
 ```
 
 ### Scenario 2: Add Null Checks

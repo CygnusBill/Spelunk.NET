@@ -161,21 +161,142 @@ method[@public and not(@async)]              - Public sync methods
 ## Real-World Examples
 
 ### Task: "Add logging to all public methods"
-1. Find targets: `//method[@public]`
-2. For each, insert at: `/block/statement[1]`
+
+**Input Code:**
+```csharp
+public class OrderService
+{
+    public void CreateOrder(Order order)
+    {
+        ValidateOrder(order);
+        SaveOrder(order);
+    }
+    
+    private void ValidateOrder(Order order)
+    {
+        // Validation logic
+    }
+}
+```
+
+**Step 1 - Find targets:** `//method[@public]`
+```
+Found: CreateOrder at line 3
+Path: /class[OrderService]/method[CreateOrder]
+```
+
+**Step 2 - Insert at:** `/block/statement[1]`
+```csharp
+public void CreateOrder(Order order)
+{
+    _logger.LogInformation("CreateOrder called");  // <-- Inserted here
+    ValidateOrder(order);
+    SaveOrder(order);
+}
+```
 
 ### Task: "Replace Console.WriteLine with logger"
-1. Find all: `//statement[@contains='Console.WriteLine']`
-2. Each one has a stable path for replacement
+
+**Input Code:**
+```csharp
+public void ProcessData()
+{
+    Console.WriteLine("Starting process");
+    // Do work
+    Console.WriteLine($"Processed {count} items");
+}
+```
+
+**Find all:** `//statement[@contains='Console.WriteLine']`
+```
+Found 2 statements:
+1. Line 3: Console.WriteLine("Starting process");
+   Path: /method[ProcessData]/block/statement[1]
+2. Line 5: Console.WriteLine($"Processed {count} items");
+   Path: /method[ProcessData]/block/statement[2]
+```
+
+**After replacement:**
+```csharp
+public void ProcessData()
+{
+    _logger.LogInformation("Starting process");
+    // Do work
+    _logger.LogInformation($"Processed {count} items");
+}
+```
 
 ### Task: "Find async methods without await"
+
+**Input Code:**
+```csharp
+public class UserService
+{
+    // BAD: async without await
+    public async Task<User> GetUserAsync(int id)
+    {
+        return _cache.GetUser(id);  // Synchronous call!
+    }
+    
+    // GOOD: async with await  
+    public async Task<List<User>> GetAllUsersAsync()
+    {
+        return await _repository.GetUsersAsync();
+    }
+}
 ```
-//method[@async and not(.//expression[@type=AwaitExpression])]
+
+**Query:** `//method[@async and not(.//expression[@type=AwaitExpression])]`
+```
+Found 1 problematic method:
+- GetUserAsync at line 4
+  Path: /class[UserService]/method[GetUserAsync]
+  Issue: Async method with no await expressions
 ```
 
 ### Task: "Add null checks to methods with User parameters"
-1. Find methods: `//method[parameter[@type='User']]`
-2. Insert at: `/block/statement[1]`
+
+**Input Code:**
+```csharp
+public class UserManager
+{
+    public void UpdateUser(User user)
+    {
+        user.LastModified = DateTime.Now;
+        SaveUser(user);
+    }
+    
+    public string GetUserName(User user, bool formal)
+    {
+        return formal ? user.FullName : user.FirstName;
+    }
+}
+```
+
+**Step 1 - Find methods:** `//method[parameter[@type='User']]`
+```
+Found 2 methods:
+1. UpdateUser at line 3
+   Path: /class[UserManager]/method[UpdateUser]
+2. GetUserName at line 9  
+   Path: /class[UserManager]/method[GetUserName]
+```
+
+**Step 2 - Insert at:** `/block/statement[1]`
+```csharp
+public void UpdateUser(User user)
+{
+    if (user == null) throw new ArgumentNullException(nameof(user));
+    user.LastModified = DateTime.Now;
+    SaveUser(user);
+}
+
+public string GetUserName(User user, bool formal)  
+{
+    if (user == null) throw new ArgumentNullException(nameof(user));
+    return formal ? user.FullName : user.FirstName;
+}
+```
 
 ## Tips for Stable Paths
 
@@ -201,13 +322,55 @@ method[@public and not(@async)]              - Public sync methods
 
 ## Common Pitfalls
 
-1. **Forgetting the type**: `statement[return]` won't work, use `statement[@type=ReturnStatement]`
+### 1. Forgetting the type attribute
+❌ **Wrong:** `statement[return]`
+✅ **Right:** `statement[@type=ReturnStatement]`
 
-2. **Wrong axis**: `/method/statement` only finds direct children, use `//method//statement` for all statements
+**Example:**
+```csharp
+public int Calculate()
+{
+    return 42;  // This is a ReturnStatement
+}
+```
 
-3. **1-based indexing**: First element is `[1]`, not `[0]`
+### 2. Wrong axis for nested elements
+❌ **Wrong:** `/method/statement` (only direct children)
+✅ **Right:** `//method//statement` (all descendants)
 
-4. **Case sensitivity**: Method names are case-sensitive
+**Example:**
+```csharp
+public void Process()
+{
+    if (condition)  // This statement is /method/block/statement[1]
+    {
+        DoWork();   // This is deeper: /method/block/statement[1]/block/statement[1]
+    }              // Need // to find both
+}
+```
+
+### 3. Zero vs One-based indexing  
+❌ **Wrong:** `[0]` (like arrays)
+✅ **Right:** `[1]` (first element)
+
+**Example:**
+```csharp
+public void Example()
+{
+    FirstStatement();   // This is statement[1], not statement[0]
+    SecondStatement();  // This is statement[2]
+}
+```
+
+### 4. Case sensitivity
+❌ **Wrong:** `//method[getuser]`
+✅ **Right:** `//method[GetUser]`
+
+**Example:**
+```csharp
+public User GetUser(int id) { }  // Capital G, capital U
+public User getuser(int id) { }  // Different method!
+```
 
 ## Quick Decision Tree
 
