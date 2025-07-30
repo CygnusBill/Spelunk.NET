@@ -116,10 +116,12 @@ expression      - Any expression
 #### Content Selectors
 ```
 /statement[@contains='Console.WriteLine']   - Contains text
-/statement[@matches='await.*Async']         - Regex match
+/statement[@matches='await.*Async']         - Regex match  
 /method[@async]                             - Async methods
 /class[@abstract]                           - Abstract classes
 ```
+
+> **Important**: `@contains` searches the normalized syntax tree text, not raw source code. Whitespace variations don't affect matching: `x==null`, `x == null`, and `x  ==  null` all match `@contains='== null'`. This makes queries robust against code formatting differences.
 
 ### Navigation Axes
 

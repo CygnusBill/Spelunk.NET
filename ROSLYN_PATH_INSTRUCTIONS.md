@@ -54,6 +54,7 @@ var returns = RoslynPath.Find(sourceCode, "//method[ProcessOrder]//statement[@ty
 ```
 //statement[@type=IfStatement and @contains='== null']
 ```
+> **Note**: Searches normalized syntax tree text, so `x==null`, `x == null`, and `x  ==  null` all match.
 
 **Find methods that throw exceptions:**
 ```

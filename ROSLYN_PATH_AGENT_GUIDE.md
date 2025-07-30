@@ -52,6 +52,7 @@ This means: "Find a method named CalculateTotal anywhere in the code"
 ```
 //statement[@type=IfStatement and @contains='== null']
 ```
+> **Note**: The `@contains='== null'` comparison is robust - it searches the normalized syntax tree text, not raw source. This means it finds null checks regardless of whitespace: `x==null`, `x == null`, or `x  ==  null` all match.
 
 ## Understanding the Syntax
 

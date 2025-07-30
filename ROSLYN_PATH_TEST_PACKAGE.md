@@ -163,6 +163,7 @@ var methods = RoslynPath.Find(code,
 | Public methods | `//method[@public]` |
 | All if statements | `//statement[@type=IfStatement]` |
 | Null checks | `//statement[@type=IfStatement and @contains='== null']` |
+| | *(Note: Searches normalized syntax, so whitespace doesn't matter)* |
 | Return statements | `//statement[@type=ReturnStatement]` |
 | First statement | `//method/block/statement[1]` |
 | Last statement | `//method/block/statement[last()]` |
@@ -227,6 +228,7 @@ namespace TestApp
    ```
    //statement[@type=IfStatement and @contains='== null']
    ```
+   > **Note**: Uses normalized syntax tree text - finds `x==null`, `x == null`, and `x  ==  null`.
 
 4. **Find async methods**:
    ```
