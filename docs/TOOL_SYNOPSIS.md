@@ -435,11 +435,11 @@ Found 5 type(s) deriving from 'ControllerBase':
 
 **Purpose**: Search for statements matching text or regex patterns for analysis or bulk operations.
 
-**Input Format (Traditional Pattern Matching):**
+**Input Format:**
 ```json
 {
-  "pattern": "Console.WriteLine",      // Required: text or regex pattern
-  "patternType": "text",              // Optional: "text" (default) or "regex"
+  "pattern": "Console.WriteLine",      // Required: text, regex, or RoslynPath pattern
+  "patternType": "text",              // Optional: "text" (default), "regex", or "roslynpath"
   "scope": {                          // Optional: limit search scope
     "file": "/path/to/file.cs",
     "className": "UserService",
@@ -451,18 +451,17 @@ Found 5 type(s) deriving from 'ControllerBase':
 }
 ```
 
-**Input Format (RoslynPath - More Powerful):**
-```json
-{
-  "roslynPath": "//method[@async]//statement[@type=ReturnStatement and not(@contains='await')]",
-  "workspacePath": "/path/to/search"  // Optional
-}
-```
+**Pattern Types:**
+- **text** (default): Simple text search within statement text
+- **regex**: Regular expression pattern matching
+- **roslynpath**: XPath-style queries for sophisticated matching
 
 **RoslynPath Examples:**
 - `//statement[@contains='TODO']` - Find TODO comments
 - `//method[Get*]//statement[@type=ThrowStatement]` - Throws in Get methods
-- `//foreach//expression[@contains='.First(']` - N+1 query patterns
+- `//method[@async]//statement[@type=ReturnStatement and not(@contains='await')]` - Non-awaited returns in async methods
+- `//foreach//expression[@contains='.First(']` - Potential N+1 query patterns
+- `//class[*Service]//statement[@type=IfStatement and @contains='== null']` - Null checks in service classes
 
 **Output Format**:
 ```text

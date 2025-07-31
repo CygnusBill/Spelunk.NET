@@ -14,9 +14,9 @@ namespace McpRoslyn.Server.RoslynPath
     public class RoslynPathEvaluator
     {
         private readonly SyntaxTree _tree;
-        private readonly SemanticModel _semanticModel;
+        private readonly SemanticModel? _semanticModel;
 
-        public RoslynPathEvaluator(SyntaxTree tree, SemanticModel semanticModel = null)
+        public RoslynPathEvaluator(SyntaxTree tree, SemanticModel? semanticModel = null)
         {
             _tree = tree;
             _semanticModel = semanticModel;

@@ -10,6 +10,7 @@ using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using McpRoslyn.Server.RoslynPath;
 
 namespace McpRoslyn.Server;
 
@@ -2020,70 +2021,128 @@ public class RoslynWorkspaceManager
         
         var sourceText = await document.GetTextAsync();
         
-        // Get all statements using Roslyn's built-in traversal
-        var statements = root.DescendantNodes()
-            .Where(n => n is StatementSyntax)
-            .Cast<StatementSyntax>();
-        
-        // Filter by scope if specified
-        if (scope?.ContainsKey("className") == true || scope?.ContainsKey("methodName") == true)
+        // Handle RoslynPath pattern type
+        if (patternType.ToLower() == "roslynpath")
         {
-            statements = statements.Where(stmt => IsInScope(stmt, scope));
-        }
-        
-        // Filter nested statements if requested
-        if (!includeNestedStatements)
-        {
-            statements = statements.Where(stmt => !IsNestedStatement(stmt));
-        }
-        
-        foreach (var statement in statements)
-        {
-            var statementText = statement.ToString();
-            
-            // Apply pattern matching
-            bool matches = patternType switch
+            try
             {
-                "regex" => System.Text.RegularExpressions.Regex.IsMatch(statementText, pattern),
-                _ => statementText.Contains(pattern, StringComparison.OrdinalIgnoreCase)
-            };
-            
-            if (matches)
-            {
-                var lineSpan = sourceText.Lines.GetLinePositionSpan(statement.Span);
-                var containingMethod = statement.Ancestors().OfType<MethodDeclarationSyntax>().FirstOrDefault();
-                var containingClass = statement.Ancestors().OfType<TypeDeclarationSyntax>().FirstOrDefault();
+                var syntaxTree = await document.GetSyntaxTreeAsync();
+                if (syntaxTree == null) return;
                 
-                var statementId = $"stmt-{++statementIdCounter.Value}";
+                // Use RoslynPath to find nodes
+                var matchingNodes = RoslynPath.RoslynPath.Find(syntaxTree, pattern, semanticModel);
                 
-                var statementInfo = new StatementInfo
+                // Filter to only statements if the path doesn't specifically target statements
+                var statements = matchingNodes
+                    .Where(n => n is StatementSyntax)
+                    .Cast<StatementSyntax>();
+                
+                // Apply scope filter if specified
+                if (scope?.ContainsKey("className") == true || scope?.ContainsKey("methodName") == true)
                 {
-                    StatementId = statementId,
-                    Type = statement.GetType().Name,
-                    Text = statementText,
-                    Location = new Location
-                    {
-                        File = document.FilePath ?? "",
-                        Line = lineSpan.Start.Line + 1,
-                        Column = lineSpan.Start.Character + 1
-                    },
-                    ContainingMethod = containingMethod?.Identifier.Text ?? "",
-                    ContainingClass = containingClass?.Identifier.Text ?? "",
-                    SyntaxTag = $"syntax-{statementIdCounter.Value}"
-                };
+                    statements = statements.Where(stmt => IsInScope(stmt, scope));
+                }
                 
-                // Add semantic tags for symbols in the statement
-                var symbols = statement.DescendantNodes()
-                    .Select(node => semanticModel.GetSymbolInfo(node).Symbol)
-                    .Where(symbol => symbol != null)
-                    .Select(symbol => $"symbol-{symbol!.Name}")
-                    .Distinct();
+                // Filter nested statements if requested
+                if (!includeNestedStatements)
+                {
+                    statements = statements.Where(stmt => !IsNestedStatement(stmt));
+                }
                 
-                statementInfo.SemanticTags.AddRange(symbols);
-                
-                result.Statements.Add(statementInfo);
+                foreach (var statement in statements)
+                {
+                    await AddStatementToResult(statement, sourceText, semanticModel, 
+                        document.FilePath ?? "", result, statementIdCounter);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning($"RoslynPath query failed: {ex.Message}. Falling back to text search.");
+                // Fall back to text search
+                patternType = "text";
             }
         }
+        
+        // Handle text and regex pattern types
+        if (patternType.ToLower() != "roslynpath")
+        {
+            // Get all statements using Roslyn's built-in traversal
+            var statements = root.DescendantNodes()
+                .Where(n => n is StatementSyntax)
+                .Cast<StatementSyntax>();
+            
+            // Filter by scope if specified
+            if (scope?.ContainsKey("className") == true || scope?.ContainsKey("methodName") == true)
+            {
+                statements = statements.Where(stmt => IsInScope(stmt, scope));
+            }
+            
+            // Filter nested statements if requested
+            if (!includeNestedStatements)
+            {
+                statements = statements.Where(stmt => !IsNestedStatement(stmt));
+            }
+            
+            foreach (var statement in statements)
+            {
+                var statementText = statement.ToString();
+                
+                // Apply pattern matching
+                bool matches = patternType switch
+                {
+                    "regex" => System.Text.RegularExpressions.Regex.IsMatch(statementText, pattern),
+                    _ => statementText.Contains(pattern, StringComparison.OrdinalIgnoreCase)
+                };
+                
+                if (matches)
+                {
+                    await AddStatementToResult(statement, sourceText, semanticModel, 
+                        document.FilePath ?? "", result, statementIdCounter);
+                }
+            }
+        }
+    }
+    
+    private async Task AddStatementToResult(
+        StatementSyntax statement,
+        SourceText sourceText,
+        SemanticModel semanticModel,
+        string filePath,
+        FindStatementsResult result,
+        StatementIdCounter statementIdCounter)
+    {
+        var lineSpan = sourceText.Lines.GetLinePositionSpan(statement.Span);
+        var containingMethod = statement.Ancestors().OfType<MethodDeclarationSyntax>().FirstOrDefault();
+        var containingClass = statement.Ancestors().OfType<TypeDeclarationSyntax>().FirstOrDefault();
+        
+        var statementId = $"stmt-{++statementIdCounter.Value}";
+        
+        var statementInfo = new StatementInfo
+        {
+            StatementId = statementId,
+            Type = statement.GetType().Name,
+            Text = statement.ToString(),
+            Location = new Location
+            {
+                File = filePath,
+                Line = lineSpan.Start.Line + 1,
+                Column = lineSpan.Start.Character + 1
+            },
+            ContainingMethod = containingMethod?.Identifier.Text ?? "",
+            ContainingClass = containingClass?.Identifier.Text ?? "",
+            SyntaxTag = $"syntax-{statementIdCounter.Value}"
+        };
+        
+        // Add semantic tags for symbols in the statement
+        var symbols = statement.DescendantNodes()
+            .Select(node => semanticModel.GetSymbolInfo(node).Symbol)
+            .Where(symbol => symbol != null)
+            .Select(symbol => $"symbol-{symbol!.Name}")
+            .Distinct();
+        
+        statementInfo.SemanticTags.AddRange(symbols);
+        
+        result.Statements.Add(statementInfo);
     }
     
     private bool IsInScope(StatementSyntax statement, Dictionary<string, string> scope)
