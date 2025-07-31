@@ -86,7 +86,7 @@ def run_test(title, pattern, pattern_type="roslynpath", expected_count=None):
         response = send_request(process, "tools/call", {
             "name": "dotnet/load-workspace",
             "arguments": {
-                "workspacePath": os.path.abspath(test_workspace)
+                "path": os.path.join(test_workspace, "TestProject.csproj")
             }
         })
         
