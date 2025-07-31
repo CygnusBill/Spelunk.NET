@@ -14,7 +14,6 @@ public interface IMessageLogger
 // Test classes
 public class UserController
 {
-    private readonly IWorkspaceService? _workspaceService;
     private readonly IMessageLogger _logger;
     
     public string Name { get; set; } = "UserController";
@@ -61,8 +60,6 @@ public class UserController
 
 public class ProductController
 {
-    private int _productCount;
-    
     public string ProductName { get; set; } = "";
     public decimal Price { get; set; }
     public bool IsAvailable { get; } = true;

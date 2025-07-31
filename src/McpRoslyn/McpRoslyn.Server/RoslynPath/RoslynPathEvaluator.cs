@@ -223,7 +223,7 @@ namespace McpRoslyn.Server.RoslynPath
             });
         }
 
-        private string GetNodeName(SyntaxNode node)
+        private string? GetNodeName(SyntaxNode node)
         {
             return node switch
             {
@@ -241,7 +241,7 @@ namespace McpRoslyn.Server.RoslynPath
             };
         }
 
-        private string GetNamespaceName(NameSyntax name)
+        private string? GetNamespaceName(NameSyntax name)
         {
             return name?.ToString();
         }

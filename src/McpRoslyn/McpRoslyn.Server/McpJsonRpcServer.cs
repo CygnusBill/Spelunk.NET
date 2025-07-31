@@ -10,7 +10,6 @@ public class McpJsonRpcServer
     private readonly JsonSerializerOptions _jsonOptions;
     private readonly List<string> _allowedPaths;
     private readonly RoslynWorkspaceManager _workspaceManager;
-    private bool _initialized = false;
     
     public McpJsonRpcServer(ILogger logger, List<string> allowedPaths, string? initialWorkspace)
     {
@@ -137,8 +136,6 @@ public class McpJsonRpcServer
     
     private async Task<JsonRpcResponse> HandleInitializeAsync(JsonRpcRequest request)
     {
-        _initialized = true;
-        
         var result = new
         {
             protocolVersion = "2024-11-05",

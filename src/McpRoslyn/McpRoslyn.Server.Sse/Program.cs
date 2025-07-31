@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Connections;
 using Microsoft.Build.Locator;
 using ModelContextProtocol.AspNetCore;
 using McpRoslyn.Server.Sse.Tools;
@@ -57,4 +58,24 @@ app.MapMcp();
 app.Logger.LogInformation("MCP Roslyn SSE Server starting on port {Port}", port);
 app.Logger.LogInformation("Allowed paths: {Paths}", string.Join(", ", allowedPaths));
 
-app.Run();
+try
+{
+    app.Run();
+}
+catch (IOException ioEx) when (ioEx.InnerException is AddressInUseException)
+{
+    Console.ForegroundColor = ConsoleColor.Red;
+    Console.WriteLine("\n=================================================================");
+    Console.WriteLine($"ERROR: Port {port} is already in use!");
+    Console.WriteLine("=================================================================");
+    Console.WriteLine("\nAnother process is already using this port. This is likely:");
+    Console.WriteLine("  - Another instance of the SSE server running");
+    Console.WriteLine("  - A different application using the same port");
+    Console.WriteLine("\nTo fix this issue:");
+    Console.WriteLine($"  1. Find the process: lsof -i :{port}");
+    Console.WriteLine($"  2. Kill the process: kill <PID>");
+    Console.WriteLine($"  3. Or use a different port: --port=<PORT>");
+    Console.WriteLine("=================================================================\n");
+    Console.ResetColor();
+    Environment.Exit(1);
+}

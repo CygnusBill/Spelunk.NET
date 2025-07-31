@@ -48,7 +48,7 @@ namespace McpRoslyn.Server.RoslynPath
     public class Token
     {
         public TokenType Type { get; set; }
-        public string Value { get; set; }
+        public string Value { get; set; } = string.Empty;
         public int Position { get; set; }
     }
 
@@ -257,8 +257,8 @@ namespace McpRoslyn.Server.RoslynPath
     public class PathStep : PathExpression
     {
         public StepType Type { get; set; }
-        public string Axis { get; set; }
-        public string NodeTest { get; set; }
+        public string Axis { get; set; } = string.Empty;
+        public string NodeTest { get; set; } = string.Empty;
         public List<Predicate> Predicates { get; set; } = new List<Predicate>();
     }
 
@@ -279,37 +279,37 @@ namespace McpRoslyn.Server.RoslynPath
 
     public class NamePredicate : Predicate
     {
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
         public bool HasWildcard { get; set; }
     }
 
     public class PositionPredicate : Predicate
     {
-        public string Expression { get; set; } // "1", "last()", "last()-1"
+        public string Expression { get; set; } = string.Empty; // "1", "last()", "last()-1"
     }
 
     public class AttributePredicate : Predicate
     {
-        public string Name { get; set; }
-        public string Operator { get; set; } // =, contains, matches
-        public string Value { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Operator { get; set; } = string.Empty; // =, contains, matches
+        public string Value { get; set; } = string.Empty;
     }
 
     public class BooleanPredicate : Predicate
     {
-        public string Name { get; set; } // @async, @public
+        public string Name { get; set; } = string.Empty; // @async, @public
     }
 
     public class CompoundPredicate : Predicate
     {
-        public Predicate Left { get; set; }
-        public string Operator { get; set; } // and, or
-        public Predicate Right { get; set; }
+        public Predicate? Left { get; set; }
+        public string Operator { get; set; } = string.Empty; // and, or
+        public Predicate? Right { get; set; }
     }
 
     public class NotPredicate : Predicate
     {
-        public Predicate Inner { get; set; }
+        public Predicate? Inner { get; set; }
     }
 
     public class PathExpressionParser
