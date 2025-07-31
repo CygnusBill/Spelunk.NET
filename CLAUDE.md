@@ -1,5 +1,14 @@
 # CLAUDE.md - Project Overview for AI Assistants
 
+## Quick Start for Context Recreation
+
+If you're starting fresh with this codebase:
+1. **Read this file first** - It's designed to give you all essential context
+2. **Check recent changes** - See "Recent Changes" section below
+3. **Review key files** - Listed in "Key Implementation Files" section
+4. **Understand the architecture** - MCP server with 24 Roslyn-based tools
+5. **Check pending tasks** - See implementation status sections
+
 ## Project Structure
 
 This is the MCP Roslyn Server project, which provides code analysis and manipulation tools for C# via the Model Context Protocol (MCP).
@@ -10,9 +19,12 @@ This is the MCP Roslyn Server project, which provides code analysis and manipula
 McpDotnet/
 ├── src/
 │   └── McpRoslyn/
-│       └── McpRoslyn.Server/      # Main server implementation
-│           ├── RoslynPath/        # RoslynPath query engine
-│           └── *.cs              # Core server files
+│       ├── McpRoslyn.Server/      # Main server implementation
+│       │   ├── RoslynPath/        # RoslynPath query engine
+│       │   └── *.cs              # Core server files
+│       └── McpRoslyn.Server.Sse/  # SSE server (experimental)
+│           ├── Program.cs         # SSE server entry point
+│           └── Tools/            # SSE-specific tools
 ├── docs/                         # Current documentation
 │   ├── TOOL_SYNOPSIS.md         # Reference for all 24 tools
 │   ├── design/                  # Design documents
@@ -82,11 +94,16 @@ Complex refactorings are built from simple, composable tools. The 24 implemented
 - ✅ RoslynPath query engine with parser and evaluator
 - ✅ Comprehensive test suite
 
+### Recently Completed
+- ✅ RoslynPath integration into find-statements tool
+- ✅ Fixed compilation warnings across all projects
+- ✅ Added clear error handling for port conflicts in SSE server
+
 ### High Priority Pending
-- 🔲 Integrate RoslynPath into find-statements tool
 - 🔲 Implement get-statement-context tool (semantic info)
 
 ### Medium Priority Pending
+- 🔲 Update test files to use new project paths (15 files still reference /Users/bill/ClaudeDir)
 - 🔲 Refactor fix-pattern to use statement-level operations
 - 🔲 Design generic syntax tree navigation tools
 - 🔲 Implement get-data-flow tool
@@ -128,8 +145,11 @@ See examples in `docs/roslyn-path/examples/`:
 
 ### Find and Replace Pattern
 ```python
-# 1. Find targets
-results = find_statements(pattern="Console.WriteLine")
+# 1. Find targets (now supports RoslynPath!)
+results = find_statements(
+    pattern="//statement[@contains='Console.WriteLine']",
+    patternType="roslynpath"
+)
 
 # 2. Replace each
 for result in results:
@@ -156,6 +176,31 @@ for method in methods:
 2. Check server logs for detailed Roslyn operations
 3. RoslynPath queries can be tested standalone with examples
 4. The marker system helps track statements through transformations
+
+## Key Implementation Files
+
+### Core Server Components
+- `RoslynWorkspaceManager.cs` - Main workspace and tool implementations
+- `McpJsonRpcServer.cs` - MCP protocol handling
+- `Program.cs` - Server entry point and configuration
+
+### RoslynPath Components
+- `RoslynPath/RoslynPath.cs` - Main query engine
+- `RoslynPath/RoslynPathParser.cs` - Query parser
+- `RoslynPath/RoslynPathEvaluator.cs` - AST evaluator
+
+### Recent Changes (as of commit 56c3c24)
+- RoslynPath integrated into find-statements tool (see ProcessDocumentForStatements method)
+- All nullable reference warnings fixed
+- SSE server now shows clear error when port is in use
+
+## Common Pitfalls & Gotchas
+
+1. **Test Paths**: 15 test files still reference old `/Users/bill/ClaudeDir` paths
+2. **Port Conflicts**: SSE server uses port 3333 - check with `lsof -i :3333`
+3. **Nullable Warnings**: Project uses nullable reference types - initialize all properties
+4. **Build Warnings**: Run clean builds to catch all warnings: `dotnet clean && dotnet build`
+5. **RoslynPath Case**: Pattern type is case-insensitive but use lowercase "roslynpath"
 
 ## Contributing
 
