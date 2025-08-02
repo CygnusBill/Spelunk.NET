@@ -2987,10 +2987,14 @@ public class RoslynWorkspaceManager : IDisposable
             var root = await syntaxTree.GetRootAsync();
             var sourceText = await targetDocument.GetTextAsync();
             
+            // Get language handler
+            var language = targetDocument.Project.Language;
+            var handler = LanguageHandlerFactory.GetHandler(language);
+            
             // Find the statement at the location
             var position = sourceText.Lines.GetPosition(new LinePosition(line - 1, column - 1));
             var token = root.FindToken(position);
-            var statement = token.Parent?.AncestorsAndSelf().OfType<CS.StatementSyntax>().FirstOrDefault();
+            var statement = token.Parent?.AncestorsAndSelf().FirstOrDefault(n => handler.IsStatement(n));
             
             if (statement == null)
             {
@@ -3103,34 +3107,65 @@ public class RoslynWorkspaceManager : IDisposable
         return result;
     }
     
-    private string GetStatementContext(CS.StatementSyntax statement)
+    private string GetStatementContext(SyntaxNode statement)
     {
-        var parent = statement.Parent;
-        if (parent is CS.BlockSyntax block)
+        // Try to find the containing method/property/constructor
+        var containingMember = statement.Ancestors().FirstOrDefault(n => 
+            n is CS.MethodDeclarationSyntax || n is CS.ConstructorDeclarationSyntax || n is CS.PropertyDeclarationSyntax ||
+            n is VB.MethodBlockSyntax || n is VB.MethodStatementSyntax || n is VB.PropertyBlockSyntax || n is VB.SubNewStatementSyntax);
+            
+        if (containingMember != null)
         {
-            var method = block.Parent as CS.MethodDeclarationSyntax;
-            if (method != null)
+            string? memberName = null;
+            string? className = null;
+            
+            // C# cases
+            if (containingMember is CS.MethodDeclarationSyntax csMethod)
             {
-                var className = method.Parent is CS.TypeDeclarationSyntax type ? type.Identifier.Text : "Unknown";
-                return $"{className}.{method.Identifier.Text}";
+                memberName = csMethod.Identifier.Text;
+                className = (csMethod.Parent as CS.TypeDeclarationSyntax)?.Identifier.Text;
+            }
+            else if (containingMember is CS.ConstructorDeclarationSyntax csConstructor)
+            {
+                memberName = ".ctor";
+                className = (csConstructor.Parent as CS.TypeDeclarationSyntax)?.Identifier.Text;
+            }
+            else if (containingMember is CS.PropertyDeclarationSyntax csProperty)
+            {
+                memberName = csProperty.Identifier.Text;
+                className = (csProperty.Parent as CS.TypeDeclarationSyntax)?.Identifier.Text;
+            }
+            // VB.NET cases
+            else if (containingMember is VB.MethodBlockSyntax vbMethodBlock)
+            {
+                memberName = vbMethodBlock.SubOrFunctionStatement.Identifier.Text;
+                var containingType = vbMethodBlock.Ancestors().OfType<VB.TypeBlockSyntax>().FirstOrDefault();
+                className = containingType?.BlockStatement.Identifier.Text;
+            }
+            else if (containingMember is VB.PropertyBlockSyntax vbPropertyBlock)
+            {
+                memberName = vbPropertyBlock.PropertyStatement.Identifier.Text;
+                var containingType = vbPropertyBlock.Ancestors().OfType<VB.TypeBlockSyntax>().FirstOrDefault();
+                className = containingType?.BlockStatement.Identifier.Text;
+            }
+            else if (containingMember is VB.SubNewStatementSyntax vbConstructor)
+            {
+                memberName = "New";
+                var containingType = vbConstructor.Ancestors().OfType<VB.TypeBlockSyntax>().FirstOrDefault();
+                className = containingType?.BlockStatement.Identifier.Text;
             }
             
-            var constructor = block.Parent as CS.ConstructorDeclarationSyntax;
-            if (constructor != null)
+            if (className != null && memberName != null)
             {
-                var className = constructor.Parent is CS.TypeDeclarationSyntax type ? type.Identifier.Text : "Unknown";
-                return $"{className}..ctor";
+                return $"{className}.{memberName}";
             }
-            
-            var property = block.Parent as CS.PropertyDeclarationSyntax;
-            if (property != null)
+            else if (memberName != null)
             {
-                var className = property.Parent is CS.TypeDeclarationSyntax type ? type.Identifier.Text : "Unknown";
-                return $"{className}.{property.Identifier.Text}";
+                return memberName;
             }
         }
         
-        return parent?.GetType().Name.Replace("Syntax", "") ?? "Unknown";
+        return statement.Parent?.GetType().Name.Replace("Syntax", "") ?? "Unknown";
     }
     
     private Document? GetDocumentByPath(Solution solution, string filePath)
@@ -3956,18 +3991,38 @@ public class MarkerManager
         return results;
     }
     
-    private string GetStatementContext(CS.StatementSyntax statement)
+    private string GetStatementContext(SyntaxNode statement)
     {
-        var parent = statement.Parent;
-        if (parent is CS.BlockSyntax block)
+        // Try to find the containing method
+        var containingMethod = statement.Ancestors().FirstOrDefault(n => 
+            n is CS.MethodDeclarationSyntax || 
+            n is VB.MethodBlockSyntax || 
+            n is VB.MethodStatementSyntax);
+            
+        if (containingMethod != null)
         {
-            var method = block.Parent as CS.MethodDeclarationSyntax;
-            if (method != null)
+            string? methodName = null;
+            
+            if (containingMethod is CS.MethodDeclarationSyntax csMethod)
             {
-                return $"Method: {method.Identifier.Text}";
+                methodName = csMethod.Identifier.Text;
+            }
+            else if (containingMethod is VB.MethodBlockSyntax vbMethodBlock)
+            {
+                methodName = vbMethodBlock.SubOrFunctionStatement.Identifier.Text;
+            }
+            else if (containingMethod is VB.MethodStatementSyntax vbMethodStmt)
+            {
+                methodName = vbMethodStmt.Identifier.Text;
+            }
+            
+            if (methodName != null)
+            {
+                return $"Method: {methodName}";
             }
         }
-        return parent?.GetType().Name ?? "Unknown";
+        
+        return statement.Parent?.GetType().Name ?? "Unknown";
     }
     
     public bool RemoveMarker(string markerId)
