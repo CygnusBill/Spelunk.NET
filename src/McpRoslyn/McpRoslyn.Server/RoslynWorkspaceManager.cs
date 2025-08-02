@@ -4,7 +4,8 @@ using Microsoft.CodeAnalysis.MSBuild;
 using Microsoft.CodeAnalysis.FindSymbols;
 using Microsoft.CodeAnalysis.Formatting;
 using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
+using CS = Microsoft.CodeAnalysis.CSharp.Syntax;
+using VB = Microsoft.CodeAnalysis.VisualBasic.Syntax;
 using Microsoft.CodeAnalysis.Rename;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.Logging;
@@ -270,9 +271,23 @@ public class RoslynWorkspaceManager : IDisposable
                     {
                         var semanticModel = compilation.GetSemanticModel(tree);
                         var root = await tree.GetRootAsync();
+                        
+                        // Determine language from the tree
+                        var document = project.Documents.FirstOrDefault(d => d.FilePath == tree.FilePath);
+                        if (document == null) continue;
+                        
+                        var language = LanguageDetector.GetLanguageFromDocument(document);
+                        var handler = LanguageHandlerFactory.GetHandler(language);
+                        
+                        if (handler == null)
+                        {
+                            _logger.LogWarning("No language handler found for {Language} in file {FilePath}", language, tree.FilePath);
+                            continue;
+                        }
+                        
+                        // Find type declarations using language handler
                         var typeDeclarations = root.DescendantNodes()
-                            .Where(node => node is Microsoft.CodeAnalysis.CSharp.Syntax.TypeDeclarationSyntax ||
-                                         node is Microsoft.CodeAnalysis.CSharp.Syntax.EnumDeclarationSyntax);
+                            .Where(node => handler.IsTypeDeclaration(node));
                         
                         foreach (var typeDecl in typeDeclarations)
                         {
@@ -351,9 +366,22 @@ public class RoslynWorkspaceManager : IDisposable
                         var semanticModel = compilation.GetSemanticModel(tree);
                         var root = await tree.GetRootAsync();
                         
-                        // Find all method declarations
+                        // Determine language from the tree
+                        var document = project.Documents.FirstOrDefault(d => d.FilePath == tree.FilePath);
+                        if (document == null) continue;
+                        
+                        var language = LanguageDetector.GetLanguageFromDocument(document);
+                        var handler = LanguageHandlerFactory.GetHandler(language);
+                        
+                        if (handler == null)
+                        {
+                            _logger.LogWarning("No language handler found for {Language} in file {FilePath}", language, tree.FilePath);
+                            continue;
+                        }
+                        
+                        // Find all method declarations using language handler
                         var methodDeclarations = root.DescendantNodes()
-                            .OfType<Microsoft.CodeAnalysis.CSharp.Syntax.MethodDeclarationSyntax>();
+                            .Where(node => handler.IsMethodDeclaration(node));
                         
                         foreach (var methodDecl in methodDeclarations)
                         {
@@ -428,9 +456,22 @@ public class RoslynWorkspaceManager : IDisposable
                         var semanticModel = compilation.GetSemanticModel(tree);
                         var root = await tree.GetRootAsync();
                         
-                        // Find all property declarations
+                        // Determine language from the tree
+                        var document = project.Documents.FirstOrDefault(d => d.FilePath == tree.FilePath);
+                        if (document == null) continue;
+                        
+                        var language = LanguageDetector.GetLanguageFromDocument(document);
+                        var handler = LanguageHandlerFactory.GetHandler(language);
+                        
+                        if (handler == null)
+                        {
+                            _logger.LogWarning("No language handler found for {Language} in file {FilePath}", language, tree.FilePath);
+                            continue;
+                        }
+                        
+                        // Find all property declarations using language handler
                         var propertyDeclarations = root.DescendantNodes()
-                            .OfType<Microsoft.CodeAnalysis.CSharp.Syntax.PropertyDeclarationSyntax>();
+                            .Where(node => handler.IsPropertyDeclaration(node));
                         
                         foreach (var propDecl in propertyDeclarations)
                         {
@@ -468,11 +509,14 @@ public class RoslynWorkspaceManager : IDisposable
                         
                         // Also find fields
                         var fieldDeclarations = root.DescendantNodes()
-                            .OfType<Microsoft.CodeAnalysis.CSharp.Syntax.FieldDeclarationSyntax>();
+                            .Where(node => handler.IsFieldDeclaration(node));
                         
                         foreach (var fieldDecl in fieldDeclarations)
                         {
-                            foreach (var variable in fieldDecl.Declaration.Variables)
+                            // For C#, handle FieldDeclarationSyntax
+                            if (fieldDecl is CS.FieldDeclarationSyntax csField)
+                            {
+                                foreach (var variable in csField.Declaration.Variables)
                             {
                                 var fieldSymbol = semanticModel.GetDeclaredSymbol(variable) as IFieldSymbol;
                                 if (fieldSymbol == null) continue;
@@ -502,6 +546,46 @@ public class RoslynWorkspaceManager : IDisposable
                                         AccessModifier = GetAccessModifier(fieldSymbol),
                                         IsReadOnly = fieldSymbol.IsReadOnly
                                     });
+                                }
+                            }
+                            }
+                            // For VB.NET, handle FieldDeclarationSyntax
+                            else if (fieldDecl is VB.FieldDeclarationSyntax vbField)
+                            {
+                                foreach (var declarator in vbField.Declarators)
+                                {
+                                    foreach (var name in declarator.Names)
+                                    {
+                                        var fieldSymbol = semanticModel.GetDeclaredSymbol(name) as IFieldSymbol;
+                                        if (fieldSymbol == null) continue;
+                                        
+                                        // Check if field name matches pattern
+                                        if (!propertyRegex.IsMatch(fieldSymbol.Name)) continue;
+                                        
+                                        // Check if class name matches pattern (if specified)
+                                        if (classRegex != null && !classRegex.IsMatch(fieldSymbol.ContainingType.Name)) continue;
+                                        
+                                        var location = fieldSymbol.Locations.FirstOrDefault();
+                                        if (location != null && location.IsInSource)
+                                        {
+                                            var lineSpan = location.GetLineSpan();
+                                            results.Add(new MemberSearchResult
+                                            {
+                                                MemberName = fieldSymbol.Name,
+                                                MemberType = "Field",
+                                                ClassName = fieldSymbol.ContainingType.Name,
+                                                FullyQualifiedClassName = fieldSymbol.ContainingType.ToDisplayString(),
+                                                ReturnType = fieldSymbol.Type.ToDisplayString(),
+                                                FilePath = lineSpan.Path,
+                                                Line = lineSpan.StartLinePosition.Line + 1,
+                                                Column = lineSpan.StartLinePosition.Character + 1,
+                                                ProjectName = project.Name,
+                                                IsStatic = fieldSymbol.IsStatic,
+                                                AccessModifier = GetAccessModifier(fieldSymbol),
+                                                IsReadOnly = fieldSymbol.IsReadOnly
+                                            });
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -653,7 +737,7 @@ public class RoslynWorkspaceManager : IDisposable
     
     private async Task FindDirectCallsAsync(SyntaxNode methodBody, SemanticModel semanticModel, List<MethodCallInfo> calls, string projectName)
     {
-        var invocations = methodBody.DescendantNodes().OfType<InvocationExpressionSyntax>();
+        var invocations = methodBody.DescendantNodes().OfType<CS.InvocationExpressionSyntax>();
         
         foreach (var invocation in invocations)
         {
@@ -801,7 +885,7 @@ public class RoslynWorkspaceManager : IDisposable
                             
                             // Find the containing method
                             var containingMethod = node.AncestorsAndSelf()
-                                .OfType<MethodDeclarationSyntax>()
+                                .OfType<CS.MethodDeclarationSyntax>()
                                 .FirstOrDefault();
                             
                             if (containingMethod != null)
@@ -870,7 +954,7 @@ public class RoslynWorkspaceManager : IDisposable
                     {
                         var node = root.FindNode(location.Location.SourceSpan);
                         var containingMethod = node.AncestorsAndSelf()
-                            .OfType<MethodDeclarationSyntax>()
+                            .OfType<CS.MethodDeclarationSyntax>()
                             .FirstOrDefault();
                         
                         if (containingMethod != null)
@@ -1100,7 +1184,7 @@ public class RoslynWorkspaceManager : IDisposable
         
         // Find the class
         var classDeclaration = root.DescendantNodes()
-            .OfType<ClassDeclarationSyntax>()
+            .OfType<CS.ClassDeclarationSyntax>()
             .FirstOrDefault(c => c.Identifier.Text == className);
         
         if (classDeclaration == null)
@@ -1113,14 +1197,14 @@ public class RoslynWorkspaceManager : IDisposable
         // Parse the method code
         var parsedMethod = SyntaxFactory.ParseCompilationUnit(methodCode)
             .DescendantNodes()
-            .OfType<MethodDeclarationSyntax>()
+            .OfType<CS.MethodDeclarationSyntax>()
             .FirstOrDefault();
         
         if (parsedMethod == null)
         {
             // Try parsing as a member declaration
             var member = SyntaxFactory.ParseMemberDeclaration(methodCode);
-            if (member is MethodDeclarationSyntax method)
+            if (member is CS.MethodDeclarationSyntax method)
             {
                 parsedMethod = method;
             }
@@ -1148,7 +1232,7 @@ public class RoslynWorkspaceManager : IDisposable
         
         // Find the class
         var classDeclaration = root.DescendantNodes()
-            .OfType<ClassDeclarationSyntax>()
+            .OfType<CS.ClassDeclarationSyntax>()
             .FirstOrDefault(c => c.Identifier.Text == className);
         
         if (classDeclaration == null)
@@ -1159,7 +1243,7 @@ public class RoslynWorkspaceManager : IDisposable
         }
         
         // Parse the property code
-        var parsedProperty = SyntaxFactory.ParseMemberDeclaration(propertyCode) as PropertyDeclarationSyntax;
+        var parsedProperty = SyntaxFactory.ParseMemberDeclaration(propertyCode) as CS.PropertyDeclarationSyntax;
         
         if (parsedProperty == null)
         {
@@ -1184,7 +1268,7 @@ public class RoslynWorkspaceManager : IDisposable
         
         // Find the class
         var classDeclaration = root.DescendantNodes()
-            .OfType<ClassDeclarationSyntax>()
+            .OfType<CS.ClassDeclarationSyntax>()
             .FirstOrDefault(c => c.Identifier.Text == className);
         
         if (classDeclaration == null)
@@ -1196,7 +1280,7 @@ public class RoslynWorkspaceManager : IDisposable
         
         // Find the method
         var methodDeclaration = classDeclaration.DescendantNodes()
-            .OfType<MethodDeclarationSyntax>()
+            .OfType<CS.MethodDeclarationSyntax>()
             .FirstOrDefault(m => m.Identifier.Text == methodName);
         
         if (methodDeclaration == null)
@@ -1219,19 +1303,19 @@ public class RoslynWorkspaceManager : IDisposable
         
         // Change return type if needed
         var returnType = methodDeclaration.ReturnType;
-        if (returnType is PredefinedTypeSyntax predefined && predefined.Keyword.IsKind(SyntaxKind.VoidKeyword))
+        if (returnType is CS.PredefinedTypeSyntax predefined && predefined.Keyword.IsKind(SyntaxKind.VoidKeyword))
         {
             // void -> Task
             newMethod = newMethod.WithReturnType(SyntaxFactory.ParseTypeName("Task"));
         }
-        else if (returnType is not GenericNameSyntax generic || generic.Identifier.Text != "Task")
+        else if (returnType is not CS.GenericNameSyntax generic || generic.Identifier.Text != "Task")
         {
             // T -> Task<T>
             newMethod = newMethod.WithReturnType(
                 SyntaxFactory.GenericName("Task")
                     .WithTypeArgumentList(
                         SyntaxFactory.TypeArgumentList(
-                            SyntaxFactory.SingletonSeparatedList<TypeSyntax>(returnType))));
+                            SyntaxFactory.SingletonSeparatedList<CS.TypeSyntax>(returnType))));
         }
         
         var modifiedRoot = root.ReplaceNode(methodDeclaration, newMethod);
@@ -1834,7 +1918,7 @@ public class RoslynWorkspaceManager : IDisposable
     
     private async Task FindMethodCallPatterns(SyntaxNode root, SemanticModel semanticModel, SourceText sourceText, string filePath, string findPattern, string replacePattern, List<PatternFix> fixes)
     {
-        var invocations = root.DescendantNodes().OfType<InvocationExpressionSyntax>();
+        var invocations = root.DescendantNodes().OfType<CS.InvocationExpressionSyntax>();
         
         foreach (var invocation in invocations)
         {
@@ -1872,12 +1956,12 @@ public class RoslynWorkspaceManager : IDisposable
         // Find async methods without await
         if (findPattern == "async-without-await")
         {
-            var methods = root.DescendantNodes().OfType<MethodDeclarationSyntax>()
+            var methods = root.DescendantNodes().OfType<CS.MethodDeclarationSyntax>()
                 .Where(m => m.Modifiers.Any(mod => mod.IsKind(SyntaxKind.AsyncKeyword)));
             
             foreach (var method in methods)
             {
-                var hasAwait = method.DescendantNodes().OfType<AwaitExpressionSyntax>().Any();
+                var hasAwait = method.DescendantNodes().OfType<CS.AwaitExpressionSyntax>().Any();
                 if (!hasAwait)
                 {
                     var lineSpan = method.Identifier.GetLocation().GetLineSpan();
@@ -1897,7 +1981,7 @@ public class RoslynWorkspaceManager : IDisposable
         // Find missing await on async calls
         else if (findPattern == "missing-await")
         {
-            var invocations = root.DescendantNodes().OfType<InvocationExpressionSyntax>();
+            var invocations = root.DescendantNodes().OfType<CS.InvocationExpressionSyntax>();
             
             foreach (var invocation in invocations)
             {
@@ -1926,12 +2010,12 @@ public class RoslynWorkspaceManager : IDisposable
         // Find old-style null checks and replace with null-conditional operator
         if (findPattern == "if-null-check")
         {
-            var ifStatements = root.DescendantNodes().OfType<IfStatementSyntax>();
+            var ifStatements = root.DescendantNodes().OfType<CS.IfStatementSyntax>();
             
             foreach (var ifStatement in ifStatements)
             {
                 // Look for pattern: if (x != null) x.Method()
-                if (ifStatement.Condition is BinaryExpressionSyntax binary &&
+                if (ifStatement.Condition is CS.BinaryExpressionSyntax binary &&
                     binary.IsKind(SyntaxKind.NotEqualsExpression) &&
                     binary.Right.IsKind(SyntaxKind.NullLiteralExpression))
                 {
@@ -1962,7 +2046,7 @@ public class RoslynWorkspaceManager : IDisposable
         // Find string.Format and replace with interpolation
         if (findPattern == "string.Format")
         {
-            var invocations = root.DescendantNodes().OfType<InvocationExpressionSyntax>()
+            var invocations = root.DescendantNodes().OfType<CS.InvocationExpressionSyntax>()
                 .Where(i => i.Expression.ToString() == "string.Format");
             
             foreach (var invocation in invocations)
@@ -2106,8 +2190,8 @@ public class RoslynWorkspaceManager : IDisposable
                 
                 // Filter to only statements if the path doesn't specifically target statements
                 var statements = matchingNodes
-                    .Where(n => n is StatementSyntax)
-                    .Cast<StatementSyntax>();
+                    .Where(n => n is CS.StatementSyntax)
+                    .Cast<CS.StatementSyntax>();
                 
                 // Apply scope filter if specified
                 if (scope?.ContainsKey("className") == true || scope?.ContainsKey("methodName") == true)
@@ -2140,8 +2224,8 @@ public class RoslynWorkspaceManager : IDisposable
         {
             // Get all statements using Roslyn's built-in traversal
             var statements = root.DescendantNodes()
-                .Where(n => n is StatementSyntax)
-                .Cast<StatementSyntax>();
+                .Where(n => n is CS.StatementSyntax)
+                .Cast<CS.StatementSyntax>();
             
             // Filter by scope if specified
             if (scope?.ContainsKey("className") == true || scope?.ContainsKey("methodName") == true)
@@ -2176,7 +2260,7 @@ public class RoslynWorkspaceManager : IDisposable
     }
     
     private async Task AddStatementToResult(
-        StatementSyntax statement,
+        CS.StatementSyntax statement,
         SourceText sourceText,
         SemanticModel semanticModel,
         string filePath,
@@ -2184,8 +2268,8 @@ public class RoslynWorkspaceManager : IDisposable
         StatementIdCounter statementIdCounter)
     {
         var lineSpan = sourceText.Lines.GetLinePositionSpan(statement.Span);
-        var containingMethod = statement.Ancestors().OfType<MethodDeclarationSyntax>().FirstOrDefault();
-        var containingClass = statement.Ancestors().OfType<TypeDeclarationSyntax>().FirstOrDefault();
+        var containingMethod = statement.Ancestors().OfType<CS.MethodDeclarationSyntax>().FirstOrDefault();
+        var containingClass = statement.Ancestors().OfType<CS.TypeDeclarationSyntax>().FirstOrDefault();
         
         var statementId = $"stmt-{++statementIdCounter.Value}";
         
@@ -2217,18 +2301,18 @@ public class RoslynWorkspaceManager : IDisposable
         result.Statements.Add(statementInfo);
     }
     
-    private bool IsInScope(StatementSyntax statement, Dictionary<string, string> scope)
+    private bool IsInScope(CS.StatementSyntax statement, Dictionary<string, string> scope)
     {
         if (scope.ContainsKey("methodName"))
         {
-            var method = statement.Ancestors().OfType<MethodDeclarationSyntax>().FirstOrDefault();
+            var method = statement.Ancestors().OfType<CS.MethodDeclarationSyntax>().FirstOrDefault();
             if (method?.Identifier.Text != scope["methodName"])
                 return false;
         }
         
         if (scope.ContainsKey("className"))
         {
-            var type = statement.Ancestors().OfType<TypeDeclarationSyntax>().FirstOrDefault();
+            var type = statement.Ancestors().OfType<CS.TypeDeclarationSyntax>().FirstOrDefault();
             if (type?.Identifier.Text != scope["className"])
                 return false;
         }
@@ -2236,15 +2320,15 @@ public class RoslynWorkspaceManager : IDisposable
         return true;
     }
     
-    private bool IsNestedStatement(StatementSyntax statement)
+    private bool IsNestedStatement(CS.StatementSyntax statement)
     {
         // Check if this statement is inside another statement (like inside if/while/for body)
         var parent = statement.Parent;
         while (parent != null)
         {
-            if (parent is BlockSyntax block && block.Parent is StatementSyntax)
+            if (parent is CS.BlockSyntax block && block.Parent is CS.StatementSyntax)
                 return true;
-            if (parent is StatementSyntax && !(parent is BlockSyntax))
+            if (parent is CS.StatementSyntax && !(parent is CS.BlockSyntax))
                 return true;
             parent = parent.Parent;
         }
@@ -2301,7 +2385,7 @@ public class RoslynWorkspaceManager : IDisposable
             
             // Find the containing statement
             var statement = token.Parent?.AncestorsAndSelf()
-                .OfType<StatementSyntax>()
+                .OfType<CS.StatementSyntax>()
                 .FirstOrDefault();
                 
             if (statement == null)
@@ -2454,7 +2538,7 @@ public class RoslynWorkspaceManager : IDisposable
             
             // Find the containing statement
             var referenceStatement = token.Parent?.AncestorsAndSelf()
-                .OfType<StatementSyntax>()
+                .OfType<CS.StatementSyntax>()
                 .FirstOrDefault();
                 
             if (referenceStatement == null)
@@ -2503,7 +2587,7 @@ public class RoslynWorkspaceManager : IDisposable
             
             SyntaxNode newRoot;
             
-            if (parent is BlockSyntax block)
+            if (parent is CS.BlockSyntax block)
             {
                 // Insert within a block
                 var statements = block.Statements;
@@ -2516,7 +2600,7 @@ public class RoslynWorkspaceManager : IDisposable
                     return result;
                 }
                 
-                List<StatementSyntax> newStatements;
+                List<CS.StatementSyntax> newStatements;
                 if (position.ToLower() == "before")
                 {
                     newStatements = statements.Take(index)
@@ -2570,7 +2654,7 @@ public class RoslynWorkspaceManager : IDisposable
             // Calculate where it was inserted
             var newText = newRoot.GetText();
             var insertedNode = newRoot.DescendantNodes()
-                .OfType<StatementSyntax>()
+                .OfType<CS.StatementSyntax>()
                 .FirstOrDefault(s => s.ToString().Trim() == statement.Trim());
                 
             if (insertedNode != null)
@@ -2659,7 +2743,7 @@ public class RoslynWorkspaceManager : IDisposable
             // Find the statement at the location
             var position = sourceText.Lines.GetPosition(new LinePosition(line - 1, column - 1));
             var token = root.FindToken(position);
-            var statement = token.Parent?.AncestorsAndSelf().OfType<StatementSyntax>().FirstOrDefault();
+            var statement = token.Parent?.AncestorsAndSelf().OfType<CS.StatementSyntax>().FirstOrDefault();
             
             if (statement == null)
             {
@@ -2679,7 +2763,7 @@ public class RoslynWorkspaceManager : IDisposable
             };
             
             // Check if this is the only statement in a block
-            var parentBlock = statement.Parent as BlockSyntax;
+            var parentBlock = statement.Parent as CS.BlockSyntax;
             var isOnlyStatement = parentBlock != null && parentBlock.Statements.Count == 1;
             
             // Get the trivia to preserve
@@ -2709,7 +2793,7 @@ public class RoslynWorkspaceManager : IDisposable
                 {
                     // Find the next statement and attach the comments
                     var nodeAfterRemoval = newRoot.FindToken(position).Parent?.AncestorsAndSelf()
-                        .OfType<StatementSyntax>().FirstOrDefault();
+                        .OfType<CS.StatementSyntax>().FirstOrDefault();
                         
                     if (nodeAfterRemoval != null)
                     {
@@ -2750,7 +2834,7 @@ public class RoslynWorkspaceManager : IDisposable
         return result;
     }
     
-    private string GenerateRemovalPreview(SyntaxNode oldRoot, SyntaxNode newRoot, StatementSyntax removedStatement, SyntaxTree syntaxTree)
+    private string GenerateRemovalPreview(SyntaxNode oldRoot, SyntaxNode newRoot, CS.StatementSyntax removedStatement, SyntaxTree syntaxTree)
     {
         var sb = new System.Text.StringBuilder();
         var removedLineSpan = removedStatement.GetLocation().GetLineSpan();
@@ -2845,7 +2929,7 @@ public class RoslynWorkspaceManager : IDisposable
             // Find the statement at the location
             var position = sourceText.Lines.GetPosition(new LinePosition(line - 1, column - 1));
             var token = root.FindToken(position);
-            var statement = token.Parent?.AncestorsAndSelf().OfType<StatementSyntax>().FirstOrDefault();
+            var statement = token.Parent?.AncestorsAndSelf().OfType<CS.StatementSyntax>().FirstOrDefault();
             
             if (statement == null)
             {
@@ -2958,29 +3042,29 @@ public class RoslynWorkspaceManager : IDisposable
         return result;
     }
     
-    private string GetStatementContext(StatementSyntax statement)
+    private string GetStatementContext(CS.StatementSyntax statement)
     {
         var parent = statement.Parent;
-        if (parent is BlockSyntax block)
+        if (parent is CS.BlockSyntax block)
         {
-            var method = block.Parent as MethodDeclarationSyntax;
+            var method = block.Parent as CS.MethodDeclarationSyntax;
             if (method != null)
             {
-                var className = method.Parent is TypeDeclarationSyntax type ? type.Identifier.Text : "Unknown";
+                var className = method.Parent is CS.TypeDeclarationSyntax type ? type.Identifier.Text : "Unknown";
                 return $"{className}.{method.Identifier.Text}";
             }
             
-            var constructor = block.Parent as ConstructorDeclarationSyntax;
+            var constructor = block.Parent as CS.ConstructorDeclarationSyntax;
             if (constructor != null)
             {
-                var className = constructor.Parent is TypeDeclarationSyntax type ? type.Identifier.Text : "Unknown";
+                var className = constructor.Parent is CS.TypeDeclarationSyntax type ? type.Identifier.Text : "Unknown";
                 return $"{className}..ctor";
             }
             
-            var property = block.Parent as PropertyDeclarationSyntax;
+            var property = block.Parent as CS.PropertyDeclarationSyntax;
             if (property != null)
             {
-                var className = property.Parent is TypeDeclarationSyntax type ? type.Identifier.Text : "Unknown";
+                var className = property.Parent is CS.TypeDeclarationSyntax type ? type.Identifier.Text : "Unknown";
                 return $"{className}.{property.Identifier.Text}";
             }
         }
@@ -3069,24 +3153,24 @@ public class RoslynWorkspaceManager : IDisposable
         // Add specific node properties
         switch (node)
         {
-            case ClassDeclarationSyntax cls:
+            case CS.ClassDeclarationSyntax cls:
                 nodeInfo["name"] = cls.Identifier.Text;
                 nodeInfo["modifiers"] = cls.Modifiers.ToString();
                 break;
-            case MethodDeclarationSyntax method:
+            case CS.MethodDeclarationSyntax method:
                 nodeInfo["name"] = method.Identifier.Text;
                 nodeInfo["returnType"] = method.ReturnType.ToString();
                 nodeInfo["modifiers"] = method.Modifiers.ToString();
                 break;
-            case PropertyDeclarationSyntax prop:
+            case CS.PropertyDeclarationSyntax prop:
                 nodeInfo["name"] = prop.Identifier.Text;
                 nodeInfo["type"] = prop.Type.ToString();
                 nodeInfo["modifiers"] = prop.Modifiers.ToString();
                 break;
-            case VariableDeclaratorSyntax var:
+            case CS.VariableDeclaratorSyntax var:
                 nodeInfo["name"] = var.Identifier.Text;
                 break;
-            case ParameterSyntax param:
+            case CS.ParameterSyntax param:
                 nodeInfo["name"] = param.Identifier.Text;
                 nodeInfo["type"] = param.Type?.ToString() ?? "var";
                 break;
@@ -3247,13 +3331,13 @@ public class RoslynWorkspaceManager : IDisposable
             
         // Find all declaration nodes
         var declarations = root.DescendantNodes()
-            .Where(n => n is TypeDeclarationSyntax || 
-                       n is MethodDeclarationSyntax || 
-                       n is PropertyDeclarationSyntax || 
-                       n is FieldDeclarationSyntax ||
-                       n is EventDeclarationSyntax ||
-                       n is ConstructorDeclarationSyntax ||
-                       n is VariableDeclaratorSyntax);
+            .Where(n => n is CS.TypeDeclarationSyntax || 
+                       n is CS.MethodDeclarationSyntax || 
+                       n is CS.PropertyDeclarationSyntax || 
+                       n is CS.FieldDeclarationSyntax ||
+                       n is CS.EventDeclarationSyntax ||
+                       n is CS.ConstructorDeclarationSyntax ||
+                       n is CS.VariableDeclaratorSyntax);
                        
         var symbols = new List<object>();
         foreach (var node in declarations)
@@ -3776,7 +3860,7 @@ public class MarkerManager
             
             var markedNodes = root.GetAnnotatedNodes(MarkerKind);
             
-            foreach (var node in markedNodes.OfType<StatementSyntax>())
+            foreach (var node in markedNodes.OfType<CS.StatementSyntax>())
             {
                 var annotations = node.GetAnnotations(MarkerKind);
                 foreach (var annotation in annotations)
@@ -3811,12 +3895,12 @@ public class MarkerManager
         return results;
     }
     
-    private string GetStatementContext(StatementSyntax statement)
+    private string GetStatementContext(CS.StatementSyntax statement)
     {
         var parent = statement.Parent;
-        if (parent is BlockSyntax block)
+        if (parent is CS.BlockSyntax block)
         {
-            var method = block.Parent as MethodDeclarationSyntax;
+            var method = block.Parent as CS.MethodDeclarationSyntax;
             if (method != null)
             {
                 return $"Method: {method.Identifier.Text}";
