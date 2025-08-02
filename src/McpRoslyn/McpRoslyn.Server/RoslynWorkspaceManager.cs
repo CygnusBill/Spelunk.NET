@@ -2783,10 +2783,14 @@ public class RoslynWorkspaceManager : IDisposable
             var root = await syntaxTree.GetRootAsync();
             var sourceText = await targetDocument.GetTextAsync();
             
+            // Get language handler
+            var language = targetDocument.Project.Language;
+            var handler = LanguageHandlerFactory.GetHandler(language);
+            
             // Find the statement at the location
             var position = sourceText.Lines.GetPosition(new LinePosition(line - 1, column - 1));
             var token = root.FindToken(position);
-            var statement = token.Parent?.AncestorsAndSelf().OfType<CS.StatementSyntax>().FirstOrDefault();
+            var statement = token.Parent?.AncestorsAndSelf().FirstOrDefault(n => handler.IsStatement(n));
             
             if (statement == null)
             {
@@ -2806,11 +2810,16 @@ public class RoslynWorkspaceManager : IDisposable
             };
             
             // Check if this is the only statement in a block
-            var parentBlock = statement.Parent as CS.BlockSyntax;
-            var isOnlyStatement = parentBlock != null && parentBlock.Statements.Count == 1;
+            var parentBlock = statement.Parent;
+            var isOnlyStatement = false;
+            if (parentBlock != null && handler.IsBlock(parentBlock))
+            {
+                var blockStatements = handler.GetBlockStatements(parentBlock).ToList();
+                isOnlyStatement = blockStatements.Count == 1;
+            }
             
             // Get the trivia to preserve
-            var leadingTrivia = preserveComments ? statement.GetLeadingTrivia() : SyntaxFactory.TriviaList();
+            var leadingTrivia = preserveComments ? statement.GetLeadingTrivia() : new SyntaxTriviaList();
             var trailingTrivia = statement.GetTrailingTrivia();
             
             // Create new root with statement removed
@@ -2819,9 +2828,19 @@ public class RoslynWorkspaceManager : IDisposable
             {
                 // If it's the only statement in a block, we might want to preserve the block structure
                 // by adding an empty line or comment
-                var emptyStatement = SyntaxFactory.EmptyStatement()
-                    .WithLeadingTrivia(leadingTrivia)
-                    .WithTrailingTrivia(trailingTrivia);
+                SyntaxNode emptyStatement;
+                if (language == LanguageNames.CSharp)
+                {
+                    emptyStatement = Microsoft.CodeAnalysis.CSharp.SyntaxFactory.EmptyStatement()
+                        .WithLeadingTrivia(leadingTrivia)
+                        .WithTrailingTrivia(trailingTrivia);
+                }
+                else
+                {
+                    emptyStatement = Microsoft.CodeAnalysis.VisualBasic.SyntaxFactory.EmptyStatement()
+                        .WithLeadingTrivia(leadingTrivia)
+                        .WithTrailingTrivia(trailingTrivia);
+                }
                     
                 newRoot = root.ReplaceNode(statement, emptyStatement);
             }
@@ -2831,12 +2850,11 @@ public class RoslynWorkspaceManager : IDisposable
                 newRoot = root.RemoveNode(statement, SyntaxRemoveOptions.KeepNoTrivia);
                 
                 // If we preserved comments, we might need to attach them to the next statement
-                if (preserveComments && leadingTrivia.Any(t => t.IsKind(SyntaxKind.SingleLineCommentTrivia) || 
-                                                                 t.IsKind(SyntaxKind.MultiLineCommentTrivia)))
+                if (preserveComments && leadingTrivia.Any(t => handler.IsCommentTrivia(t)))
                 {
                     // Find the next statement and attach the comments
                     var nodeAfterRemoval = newRoot.FindToken(position).Parent?.AncestorsAndSelf()
-                        .OfType<CS.StatementSyntax>().FirstOrDefault();
+                        .FirstOrDefault(n => handler.IsStatement(n));
                         
                     if (nodeAfterRemoval != null)
                     {
@@ -2877,7 +2895,7 @@ public class RoslynWorkspaceManager : IDisposable
         return result;
     }
     
-    private string GenerateRemovalPreview(SyntaxNode oldRoot, SyntaxNode newRoot, CS.StatementSyntax removedStatement, SyntaxTree syntaxTree)
+    private string GenerateRemovalPreview(SyntaxNode oldRoot, SyntaxNode newRoot, SyntaxNode removedStatement, SyntaxTree syntaxTree)
     {
         var sb = new System.Text.StringBuilder();
         var removedLineSpan = removedStatement.GetLocation().GetLineSpan();

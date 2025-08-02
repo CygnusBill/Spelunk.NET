@@ -34,7 +34,34 @@ public class VisualBasicLanguageHandler : ILanguageHandler
     
     public bool IsStatement(SyntaxNode node)
     {
-        return node is StatementSyntax;
+        return node is StatementSyntax && 
+            !(node is MethodStatementSyntax) && 
+            !(node is PropertyStatementSyntax) &&
+            !(node is FieldDeclarationSyntax) &&
+            !(node is ClassStatementSyntax) &&
+            !(node is StructureStatementSyntax) &&
+            !(node is InterfaceStatementSyntax) &&
+            !(node is ModuleStatementSyntax) &&
+            !(node is EnumStatementSyntax) &&
+            !(node is EndBlockStatementSyntax) &&
+            !(node is NamespaceBlockSyntax) &&
+            !(node is TypeBlockSyntax) &&
+            !(node is MethodBlockBaseSyntax) &&
+            !(node is PropertyBlockSyntax) &&
+            !(node is NamespaceStatementSyntax) &&
+            !(node is DelegateStatementSyntax) &&
+            !(node is MultiLineIfBlockSyntax) &&
+            !(node is SingleLineIfStatementSyntax) &&  // Exclude if we want the contained statements
+            !(node is MultiLineLambdaExpressionSyntax) &&
+            !(node is WithBlockSyntax) &&
+            !(node is UsingBlockSyntax) &&
+            !(node is SyncLockBlockSyntax) &&
+            !(node is TryBlockSyntax) &&
+            !(node is WhileBlockSyntax) &&
+            !(node is DoLoopBlockSyntax) &&
+            !(node is ForBlockSyntax) &&
+            !(node is ForEachBlockSyntax) &&
+            !(node is SelectBlockSyntax);
     }
     
     public string? GetTypeDeclarationName(SyntaxNode node)
@@ -128,7 +155,11 @@ End Module";
             !(n is InterfaceStatementSyntax) &&
             !(n is ModuleStatementSyntax) &&
             !(n is EnumStatementSyntax) &&
-            !(n is EndBlockStatementSyntax));
+            !(n is EndBlockStatementSyntax) &&
+            !(n is NamespaceBlockSyntax) &&
+            !(n is TypeBlockSyntax) &&
+            !(n is MethodBlockBaseSyntax) &&
+            !(n is PropertyBlockSyntax));
     }
     
     public bool IsAsyncMethod(SyntaxNode methodNode)
