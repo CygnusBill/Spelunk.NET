@@ -1002,6 +1002,93 @@ Cleared 3 marker(s)
 
 **Use Case**: Hierarchical context walking for AI agents, semantic-aware code modification, diagnostic-driven fixes
 
+#### `dotnet-get-data-flow`
+**MCP Description**: "Get comprehensive data flow analysis for a code region showing variable usage, dependencies, and control flow"
+
+**Purpose**: Provides deep data flow analysis to understand how variables flow through code, detect dependencies, and identify potential issues.
+
+**Input Format**:
+```json
+{
+  "file": "/path/to/file.cs",              // Required: file to analyze
+  "startLine": 10,                         // Required: start line (1-based)
+  "startColumn": 5,                        // Required: start column (1-based)
+  "endLine": 20,                           // Required: end line (1-based)
+  "endColumn": 30,                         // Required: end column (1-based)
+  "includeControlFlow": true,              // Optional: include control flow analysis (default: true)
+  "workspacePath": "/path/to/workspace"    // Optional
+}
+```
+
+**Output Format**:
+```json
+{
+  "region": {
+    "file": "/path/to/file.cs",
+    "startLine": 10,
+    "startColumn": 5,
+    "endLine": 20,
+    "endColumn": 30,
+    "code": "int sum = x + y;\nint product = x * y;\nreturn sum + product;"
+  },
+  "dataFlow": {
+    "dataFlowsIn": ["x", "y"],              // Variables that flow into the region
+    "dataFlowsOut": ["result"],             // Variables that flow out of the region
+    "alwaysAssigned": ["sum", "product"],   // Variables always assigned
+    "readInside": ["x", "y", "sum", "product"],
+    "writtenInside": ["sum", "product", "result"],
+    "readOutside": [],
+    "writtenOutside": ["logger"],
+    "captured": ["localVar"],               // Variables captured by closures
+    "capturedInside": [],
+    "unsafeAddressTaken": []
+  },
+  "controlFlow": {
+    "alwaysReturns": true,
+    "endPointIsReachable": false,
+    "startPointIsReachable": true,
+    "returnStatements": 1,
+    "hasYieldStatements": false,
+    "exitPoints": ["Return", "Throw"]
+  },
+  "variableFlows": [
+    {
+      "name": "sum",
+      "type": "int",
+      "declaredAt": "10:9",
+      "readLocations": ["12:20", "12:35"],
+      "writeLocations": ["10:9"],
+      "isDefinitelyAssignedOnEntry": false,
+      "isDefinitelyAssignedOnExit": true,
+      "mayBeUnassigned": false
+    }
+  ],
+  "dependencies": [
+    {
+      "variable": "result",
+      "dependsOn": ["sum", "product"],
+      "reason": "Initialization"
+    }
+  ],
+  "warnings": [
+    {
+      "type": "UnusedVariable",
+      "message": "Variable 'temp' is declared but never used",
+      "variable": "temp",
+      "location": "15:13"
+    },
+    {
+      "type": "UninitializedRead",
+      "message": "Variable 'x' may be used before being initialized",
+      "variable": "x",
+      "location": "16:25"
+    }
+  ]
+}
+```
+
+**Use Case**: Complex refactoring planning, dead code detection, dependency analysis, null safety verification
+
 ### 6. Code Modification Tools
 
 #### `dotnet-rename-symbol`

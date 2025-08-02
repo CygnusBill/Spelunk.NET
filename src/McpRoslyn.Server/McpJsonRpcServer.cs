@@ -652,6 +652,26 @@ public class McpJsonRpcServer
             },
             new
             {
+                name = "dotnet-get-data-flow",
+                description = ToolDescriptions.GetDataFlow,
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        file = new { type = "string", description = "File path to analyze" },
+                        startLine = new { type = "number", description = "Start line of region (1-based)" },
+                        startColumn = new { type = "number", description = "Start column of region (1-based)" },
+                        endLine = new { type = "number", description = "End line of region (1-based)" },
+                        endColumn = new { type = "number", description = "End column of region (1-based)" },
+                        includeControlFlow = new { type = "boolean", description = "Include control flow analysis (default: true)" },
+                        workspacePath = new { type = "string", description = "Optional workspace path" }
+                    },
+                    required = new[] { "file", "startLine", "startColumn", "endLine", "endColumn" }
+                }
+            },
+            new
+            {
                 name = "dotnet-fsharp-projects",
                 description = "Get information about F# projects in the workspace (detected but not loaded by MSBuild)",
                 inputSchema = new
@@ -821,6 +841,10 @@ public class McpJsonRpcServer
                 
             case "dotnet-get-statement-context":
                 result = await GetStatementContextAsync(toolCallParams.Arguments);
+                break;
+                
+            case "dotnet-get-data-flow":
+                result = await GetDataFlowAsync(toolCallParams.Arguments);
                 break;
                 
             case "dotnet-fsharp-projects":
@@ -3185,6 +3209,67 @@ public class McpJsonRpcServer
         {
             _logger.LogError(ex, "Failed to get statement context");
             return CreateErrorResponse($"Error getting statement context: {ex.Message}");
+        }
+    }
+    
+    private async Task<object> GetDataFlowAsync(JsonElement? args)
+    {
+        if (args == null)
+            return CreateErrorResponse("No arguments provided");
+            
+        try
+        {
+            // Extract required parameters
+            if (!args.Value.TryGetProperty("file", out var fileElement))
+                return CreateErrorResponse("File path is required");
+                
+            var filePath = fileElement.GetString();
+            if (string.IsNullOrEmpty(filePath))
+                return CreateErrorResponse("File path cannot be empty");
+                
+            if (!args.Value.TryGetProperty("startLine", out var startLineElement))
+                return CreateErrorResponse("Start line is required");
+            var startLine = startLineElement.GetInt32();
+            
+            if (!args.Value.TryGetProperty("startColumn", out var startColumnElement))
+                return CreateErrorResponse("Start column is required");
+            var startColumn = startColumnElement.GetInt32();
+            
+            if (!args.Value.TryGetProperty("endLine", out var endLineElement))
+                return CreateErrorResponse("End line is required");
+            var endLine = endLineElement.GetInt32();
+            
+            if (!args.Value.TryGetProperty("endColumn", out var endColumnElement))
+                return CreateErrorResponse("End column is required");
+            var endColumn = endColumnElement.GetInt32();
+            
+            // Optional parameters
+            var includeControlFlow = true;
+            if (args.Value.TryGetProperty("includeControlFlow", out var cfElement))
+                includeControlFlow = cfElement.GetBoolean();
+                
+            string? workspaceId = args.Value.TryGetProperty("workspacePath", out var wsPath) ? wsPath.GetString() : null;
+            
+            // Call the workspace manager
+            var result = await _workspaceManager.GetDataFlowAnalysisAsync(
+                filePath, startLine, startColumn, endLine, endColumn, includeControlFlow, workspaceId);
+            
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true })
+                    }
+                }
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get data flow analysis");
+            return CreateErrorResponse($"Error getting data flow analysis: {ex.Message}");
         }
     }
     

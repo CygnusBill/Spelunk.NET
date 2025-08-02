@@ -682,6 +682,41 @@ public static class RoslynTools
         }
     }
 
+    [McpServerTool(Name = "dotnet-get-data-flow"), Description(ToolDescriptions.GetDataFlow)]
+    public static async Task<string> DotnetGetDataFlow(
+        [Description("File path to analyze")] string file,
+        [Description("Start line of region (1-based)")] int startLine,
+        [Description("Start column of region (1-based)")] int startColumn,
+        [Description("End line of region (1-based)")] int endLine,
+        [Description("End column of region (1-based)")] int endColumn,
+        [Description("Include control flow analysis (default: true)")] bool includeControlFlow = true,
+        [Description("Optional workspace path")] string? workspacePath = null)
+    {
+        if (_workspaceManager == null)
+        {
+            throw new InvalidOperationException("RoslynTools not initialized");
+        }
+
+        try
+        {
+            // Validate path is allowed
+            if (!IsPathAllowed(file))
+            {
+                throw new UnauthorizedAccessException($"Access to path '{file}' is not allowed");
+            }
+            
+            var result = await _workspaceManager.GetDataFlowAnalysisAsync(
+                file, startLine, startColumn, endLine, endColumn, includeControlFlow, workspacePath);
+            
+            return JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to get data flow analysis");
+            throw new InvalidOperationException($"Failed to get data flow analysis: {ex.Message}", ex);
+        }
+    }
+
     private static bool IsPathAllowed(string path)
     {
         var normalizedPath = Path.GetFullPath(path);

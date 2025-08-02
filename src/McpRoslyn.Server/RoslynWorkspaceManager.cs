@@ -3717,6 +3717,410 @@ public class RoslynWorkspaceManager : IDisposable
         };
     }
     
+    public async Task<DataFlowResult> GetDataFlowAnalysisAsync(string filePath, int startLine, int startColumn, int endLine, int endColumn, bool includeControlFlow, string? workspaceId)
+    {
+        var result = new DataFlowResult();
+        
+        try
+        {
+            var workspacesToSearch = GetWorkspacesToSearch(workspaceId);
+            if (!workspacesToSearch.Any())
+                throw new InvalidOperationException("No workspace loaded");
+            
+            var workspace = workspacesToSearch.First();
+            var solution = workspace.CurrentSolution;
+            var document = GetDocumentByPath(solution, filePath);
+            
+            if (document == null)
+                throw new InvalidOperationException($"File not found: {filePath}");
+                
+            var syntaxTree = await document.GetSyntaxTreeAsync();
+            if (syntaxTree == null)
+                throw new InvalidOperationException("Could not parse syntax tree");
+                
+            var semanticModel = await document.GetSemanticModelAsync();
+            if (semanticModel == null)
+                throw new InvalidOperationException("Could not get semantic model");
+                
+            var sourceText = await document.GetTextAsync();
+            
+            // Convert line/column to text positions
+            var startPosition = sourceText.Lines.GetPosition(new LinePosition(startLine - 1, startColumn - 1));
+            var endPosition = sourceText.Lines.GetPosition(new LinePosition(endLine - 1, endColumn - 1));
+            var span = TextSpan.FromBounds(startPosition, endPosition);
+            
+            // Get the region code
+            result.Region = new RegionInfo
+            {
+                File = filePath,
+                StartLine = startLine,
+                StartColumn = startColumn,
+                EndLine = endLine,
+                EndColumn = endColumn,
+                Code = sourceText.GetSubText(span).ToString()
+            };
+            
+            // Find statements in the region
+            var root = await syntaxTree.GetRootAsync();
+            var nodesInSpan = root.DescendantNodes(span)
+                .Where(n => span.Contains(n.Span))
+                .ToList();
+                
+            // Get the first and last statement nodes
+            var statements = nodesInSpan
+                .Where(n => n is CS.StatementSyntax || n is VB.StatementSyntax)
+                .ToList();
+                
+            if (!statements.Any())
+            {
+                // Try to find the containing statement
+                var nodeAtStart = root.FindToken(startPosition).Parent;
+                while (nodeAtStart != null && !(nodeAtStart is CS.StatementSyntax || nodeAtStart is VB.StatementSyntax))
+                {
+                    nodeAtStart = nodeAtStart.Parent;
+                }
+                if (nodeAtStart != null)
+                    statements.Add(nodeAtStart);
+            }
+            
+            if (!statements.Any())
+                throw new InvalidOperationException("No statements found in the specified region");
+                
+            // Perform data flow analysis
+            var firstStatement = statements.First();
+            var lastStatement = statements.Last();
+            
+            DataFlowAnalysis? dataFlow = null;
+            if (firstStatement == lastStatement)
+            {
+                dataFlow = semanticModel.AnalyzeDataFlow(firstStatement);
+            }
+            else
+            {
+                dataFlow = semanticModel.AnalyzeDataFlow(firstStatement, lastStatement);
+            }
+            
+            if (dataFlow != null && dataFlow.Succeeded)
+            {
+                result.DataFlow = new DataFlowInfo
+                {
+                    DataFlowsIn = dataFlow.DataFlowsIn.Select(s => s.Name).ToList(),
+                    DataFlowsOut = dataFlow.DataFlowsOut.Select(s => s.Name).ToList(),
+                    AlwaysAssigned = dataFlow.AlwaysAssigned.Select(s => s.Name).ToList(),
+                    ReadInside = dataFlow.ReadInside.Select(s => s.Name).ToList(),
+                    WrittenInside = dataFlow.WrittenInside.Select(s => s.Name).ToList(),
+                    ReadOutside = dataFlow.ReadOutside.Select(s => s.Name).ToList(),
+                    WrittenOutside = dataFlow.WrittenOutside.Select(s => s.Name).ToList(),
+                    Captured = dataFlow.Captured.Select(s => s.Name).ToList(),
+                    CapturedInside = dataFlow.CapturedInside.Select(s => s.Name).ToList(),
+                    UnsafeAddressTaken = dataFlow.UnsafeAddressTaken.Select(s => s.Name).ToList()
+                };
+                
+                // Analyze individual variables
+                foreach (var variable in dataFlow.VariablesDeclared.Union(dataFlow.DataFlowsIn))
+                {
+                    var varFlow = AnalyzeVariableFlow(variable, statements, semanticModel, sourceText);
+                    result.VariableFlows.Add(varFlow);
+                }
+                
+                // Analyze dependencies
+                result.Dependencies = AnalyzeDependencies(dataFlow, statements, semanticModel);
+                
+                // Generate warnings
+                result.Warnings = GenerateDataFlowWarnings(dataFlow, statements, semanticModel);
+            }
+            
+            // Control flow analysis
+            if (includeControlFlow)
+            {
+                result.ControlFlow = AnalyzeControlFlow(statements, semanticModel);
+            }
+        }
+        catch (Exception ex)
+        {
+            // Return partial result with error
+            result.Warnings.Add(new DataFlowWarning
+            {
+                Type = "AnalysisError",
+                Message = ex.Message,
+                Variable = "",
+                Location = $"{startLine}:{startColumn}"
+            });
+        }
+        
+        return result;
+    }
+    
+    private VariableFlowInfo AnalyzeVariableFlow(ISymbol variable, List<SyntaxNode> statements, SemanticModel semanticModel, SourceText sourceText)
+    {
+        var flow = new VariableFlowInfo
+        {
+            Name = variable.Name,
+            Type = variable switch
+            {
+                ILocalSymbol local => local.Type.ToDisplayString(),
+                IParameterSymbol param => param.Type.ToDisplayString(),
+                IFieldSymbol field => field.Type.ToDisplayString(),
+                _ => "unknown"
+            }
+        };
+        
+        // Find declaration location
+        if (variable.Locations.Any())
+        {
+            var location = variable.Locations.First();
+            if (location.IsInSource)
+            {
+                var lineSpan = location.GetLineSpan();
+                flow.DeclaredAt = $"{lineSpan.StartLinePosition.Line + 1}:{lineSpan.StartLinePosition.Character + 1}";
+            }
+        }
+        
+        // Find read and write locations
+        foreach (var statement in statements)
+        {
+            var identifiers = statement.DescendantNodes()
+                .Where(n => n is CS.IdentifierNameSyntax || n is VB.IdentifierNameSyntax);
+                
+            foreach (var identifier in identifiers)
+            {
+                var symbol = semanticModel.GetSymbolInfo(identifier).Symbol;
+                if (symbol?.Equals(variable) == true)
+                {
+                    var lineSpan = sourceText.Lines.GetLinePositionSpan(identifier.Span);
+                    var location = $"{lineSpan.Start.Line + 1}:{lineSpan.Start.Character + 1}";
+                    
+                    // Check if it's a write
+                    if (IsWriteContext(identifier))
+                    {
+                        flow.WriteLocations.Add(location);
+                    }
+                    else
+                    {
+                        flow.ReadLocations.Add(location);
+                    }
+                }
+            }
+        }
+        
+        return flow;
+    }
+    
+    private bool IsWriteContext(SyntaxNode identifier)
+    {
+        var parent = identifier.Parent;
+        
+        // C# cases
+        if (identifier.Language == LanguageNames.CSharp)
+        {
+            // Assignment target
+            if (parent is CS.AssignmentExpressionSyntax assignment && assignment.Left == identifier)
+                return true;
+                
+            // Variable declarator
+            if (parent is CS.VariableDeclaratorSyntax)
+                return true;
+                
+            // Out or ref parameter
+            if (parent is CS.ArgumentSyntax arg && 
+                (arg.RefKindKeyword.IsKind(SyntaxKind.OutKeyword) || arg.RefKindKeyword.IsKind(SyntaxKind.RefKeyword)))
+                return true;
+                
+            // Increment/decrement
+            if (parent is CS.PostfixUnaryExpressionSyntax || parent is CS.PrefixUnaryExpressionSyntax)
+                return true;
+        }
+        // VB cases
+        else if (identifier.Language == LanguageNames.VisualBasic)
+        {
+            // Assignment target
+            if (parent is VB.AssignmentStatementSyntax assignment && assignment.Left == identifier)
+                return true;
+                
+            // Variable declarator
+            if (parent is VB.VariableDeclaratorSyntax)
+                return true;
+        }
+        
+        return false;
+    }
+    
+    private List<DependencyInfo> AnalyzeDependencies(DataFlowAnalysis dataFlow, List<SyntaxNode> statements, SemanticModel semanticModel)
+    {
+        var dependencies = new List<DependencyInfo>();
+        
+        // For each variable written inside, find what it depends on
+        foreach (var written in dataFlow.WrittenInside)
+        {
+            var dep = new DependencyInfo
+            {
+                Variable = written.Name,
+                DependsOn = new List<string>()
+            };
+            
+            // Find assignments to this variable
+            foreach (var statement in statements)
+            {
+                if (statement is CS.LocalDeclarationStatementSyntax localDecl)
+                {
+                    foreach (var variable in localDecl.Declaration.Variables)
+                    {
+                        if (variable.Identifier.Text == written.Name && variable.Initializer != null)
+                        {
+                            // Find symbols referenced in the initializer
+                            var referencedSymbols = variable.Initializer.Value.DescendantNodes()
+                                .Where(n => n is CS.IdentifierNameSyntax)
+                                .Select(n => semanticModel.GetSymbolInfo(n).Symbol)
+                                .Where(s => s != null && dataFlow.DataFlowsIn.Contains(s))
+                                .Select(s => s!.Name)
+                                .Distinct();
+                                
+                            dep.DependsOn.AddRange(referencedSymbols);
+                            dep.Reason = "Initialization";
+                        }
+                    }
+                }
+                else if (statement is CS.ExpressionStatementSyntax exprStmt &&
+                         exprStmt.Expression is CS.AssignmentExpressionSyntax assignment)
+                {
+                    if (assignment.Left is CS.IdentifierNameSyntax id && id.Identifier.Text == written.Name)
+                    {
+                        // Find symbols referenced in the right side
+                        var referencedSymbols = assignment.Right.DescendantNodes()
+                            .Where(n => n is CS.IdentifierNameSyntax)
+                            .Select(n => semanticModel.GetSymbolInfo(n).Symbol)
+                            .Where(s => s != null)
+                            .Select(s => s!.Name)
+                            .Distinct();
+                            
+                        dep.DependsOn.AddRange(referencedSymbols);
+                        dep.Reason = "Assignment";
+                    }
+                }
+            }
+            
+            if (dep.DependsOn.Any())
+                dependencies.Add(dep);
+        }
+        
+        return dependencies;
+    }
+    
+    private List<DataFlowWarning> GenerateDataFlowWarnings(DataFlowAnalysis dataFlow, List<SyntaxNode> statements, SemanticModel semanticModel)
+    {
+        var warnings = new List<DataFlowWarning>();
+        
+        // Check for unused variables
+        foreach (var declared in dataFlow.VariablesDeclared)
+        {
+            if (!dataFlow.ReadInside.Contains(declared) && !dataFlow.DataFlowsOut.Contains(declared))
+            {
+                warnings.Add(new DataFlowWarning
+                {
+                    Type = "UnusedVariable",
+                    Message = $"Variable '{declared.Name}' is declared but never used",
+                    Variable = declared.Name,
+                    Location = GetSymbolLocation(declared)
+                });
+            }
+        }
+        
+        // Check for uninitialized variables
+        foreach (var read in dataFlow.ReadInside)
+        {
+            if (!dataFlow.DataFlowsIn.Contains(read) && !dataFlow.WrittenInside.Contains(read))
+            {
+                warnings.Add(new DataFlowWarning
+                {
+                    Type = "UninitializedRead",
+                    Message = $"Variable '{read.Name}' may be used before being initialized",
+                    Variable = read.Name,
+                    Location = GetSymbolLocation(read)
+                });
+            }
+        }
+        
+        // Check for variables that flow out but might not be assigned
+        foreach (var flowOut in dataFlow.DataFlowsOut)
+        {
+            if (!dataFlow.AlwaysAssigned.Contains(flowOut))
+            {
+                warnings.Add(new DataFlowWarning
+                {
+                    Type = "ConditionalAssignment",
+                    Message = $"Variable '{flowOut.Name}' flows out but may not be assigned in all paths",
+                    Variable = flowOut.Name,
+                    Location = ""
+                });
+            }
+        }
+        
+        return warnings;
+    }
+    
+    private string GetSymbolLocation(ISymbol symbol)
+    {
+        if (symbol.Locations.Any())
+        {
+            var location = symbol.Locations.First();
+            if (location.IsInSource)
+            {
+                var lineSpan = location.GetLineSpan();
+                return $"{lineSpan.StartLinePosition.Line + 1}:{lineSpan.StartLinePosition.Character + 1}";
+            }
+        }
+        return "";
+    }
+    
+    private ControlFlowInfo? AnalyzeControlFlow(List<SyntaxNode> statements, SemanticModel semanticModel)
+    {
+        var controlFlow = new ControlFlowInfo();
+        
+        // Count return statements
+        controlFlow.ReturnStatements = statements
+            .SelectMany(s => s.DescendantNodesAndSelf())
+            .Count(n => n is CS.ReturnStatementSyntax || n is VB.ReturnStatementSyntax);
+            
+        // Check for yield statements
+        controlFlow.HasYieldStatements = statements
+            .SelectMany(s => s.DescendantNodesAndSelf())
+            .Any(n => n is CS.YieldStatementSyntax || n.IsKind(SyntaxKind.YieldKeyword));
+            
+        // Analyze exit points
+        foreach (var statement in statements)
+        {
+            var exits = statement.DescendantNodesAndSelf()
+                .Where(n => n is CS.ReturnStatementSyntax || n is CS.ThrowStatementSyntax ||
+                           n is CS.BreakStatementSyntax || n is CS.ContinueStatementSyntax ||
+                           n is VB.ReturnStatementSyntax || n is VB.ThrowStatementSyntax ||
+                           n is VB.ExitStatementSyntax || n is VB.ContinueStatementSyntax);
+                           
+            foreach (var exit in exits)
+            {
+                var exitType = exit.Kind().ToString().Replace("Statement", "").Replace("Syntax", "");
+                controlFlow.ExitPoints.Add(exitType);
+            }
+        }
+        
+        // Simple reachability analysis
+        var lastStatement = statements.LastOrDefault();
+        if (lastStatement != null)
+        {
+            controlFlow.EndPointIsReachable = !IsUnconditionalExit(lastStatement);
+            controlFlow.AlwaysReturns = lastStatement is CS.ReturnStatementSyntax || lastStatement is VB.ReturnStatementSyntax;
+        }
+        
+        controlFlow.StartPointIsReachable = true; // Assume true for now
+        
+        return controlFlow;
+    }
+    
+    private bool IsUnconditionalExit(SyntaxNode node)
+    {
+        return node is CS.ReturnStatementSyntax || node is CS.ThrowStatementSyntax ||
+               node is VB.ReturnStatementSyntax || node is VB.ThrowStatementSyntax;
+    }
+    
     private string GetStatementContext(SyntaxNode statement)
     {
         // Try to find the containing method/property/constructor
@@ -4953,4 +5357,76 @@ public class SuggestionInfo
     public bool CanExtractMethod { get; set; }
     public bool CanInlineVariable { get; set; }
     public List<string> PossibleRefactorings { get; set; } = new();
+}
+
+// Data flow analysis classes
+public class DataFlowResult
+{
+    public RegionInfo Region { get; set; } = new();
+    public DataFlowInfo DataFlow { get; set; } = new();
+    public ControlFlowInfo? ControlFlow { get; set; }
+    public List<VariableFlowInfo> VariableFlows { get; set; } = new();
+    public List<DependencyInfo> Dependencies { get; set; } = new();
+    public List<DataFlowWarning> Warnings { get; set; } = new();
+}
+
+public class RegionInfo
+{
+    public string File { get; set; } = "";
+    public int StartLine { get; set; }
+    public int StartColumn { get; set; }
+    public int EndLine { get; set; }
+    public int EndColumn { get; set; }
+    public string Code { get; set; } = "";
+}
+
+public class DataFlowInfo
+{
+    public List<string> DataFlowsIn { get; set; } = new();
+    public List<string> DataFlowsOut { get; set; } = new();
+    public List<string> AlwaysAssigned { get; set; } = new();
+    public List<string> ReadInside { get; set; } = new();
+    public List<string> WrittenInside { get; set; } = new();
+    public List<string> ReadOutside { get; set; } = new();
+    public List<string> WrittenOutside { get; set; } = new();
+    public List<string> Captured { get; set; } = new();
+    public List<string> CapturedInside { get; set; } = new();
+    public List<string> UnsafeAddressTaken { get; set; } = new();
+}
+
+public class ControlFlowInfo
+{
+    public bool AlwaysReturns { get; set; }
+    public bool EndPointIsReachable { get; set; }
+    public bool StartPointIsReachable { get; set; }
+    public int ReturnStatements { get; set; }
+    public bool HasYieldStatements { get; set; }
+    public List<string> ExitPoints { get; set; } = new();
+}
+
+public class VariableFlowInfo
+{
+    public string Name { get; set; } = "";
+    public string Type { get; set; } = "";
+    public string DeclaredAt { get; set; } = "";
+    public List<string> ReadLocations { get; set; } = new();
+    public List<string> WriteLocations { get; set; } = new();
+    public bool IsDefinitelyAssignedOnEntry { get; set; }
+    public bool IsDefinitelyAssignedOnExit { get; set; }
+    public bool MayBeUnassigned { get; set; }
+}
+
+public class DependencyInfo
+{
+    public string Variable { get; set; } = "";
+    public List<string> DependsOn { get; set; } = new();
+    public string Reason { get; set; } = "";
+}
+
+public class DataFlowWarning
+{
+    public string Type { get; set; } = "";
+    public string Message { get; set; } = "";
+    public string Variable { get; set; } = "";
+    public string Location { get; set; } = "";
 }
