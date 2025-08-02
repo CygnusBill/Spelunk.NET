@@ -58,10 +58,12 @@ RoslynPath provides stable code references that survive edits:
 
 **Purpose**: Load a C# project or solution into the workspace for analysis and manipulation.
 
+**⚠️ Important**: Only full (absolute) paths are supported. Relative paths like `./project.csproj` or `../solution.sln` will not work because the server needs to resolve project references and dependencies correctly.
+
 **Input Format**:
 ```json
 {
-  "path": "/path/to/project.csproj",  // Required: .sln or .csproj file
+  "path": "/path/to/project.csproj",  // Required: FULL PATH to .sln or .csproj file (relative paths not supported)
   "workspaceId": "custom-id"          // Optional: auto-generated if not provided
 }
 ```

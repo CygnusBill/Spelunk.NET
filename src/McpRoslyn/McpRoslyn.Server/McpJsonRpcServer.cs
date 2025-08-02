@@ -171,7 +171,7 @@ public class McpJsonRpcServer
                     type = "object",
                     properties = new
                     {
-                        path = new { type = "string", description = "Path to .sln or .csproj file" },
+                        path = new { type = "string", description = "Full path to .sln or .csproj file (relative paths are not supported)" },
                         workspaceId = new { type = "string", description = "Optional workspace ID (auto-generated if not provided)" }
                     },
                     required = new[] { "path" }
@@ -433,13 +433,13 @@ public class McpJsonRpcServer
             new
             {
                 name = "dotnet-find-statements",
-                description = "Find statements in code matching a pattern. Returns statement IDs for use with other operations. Uses Roslyn's syntax tree to enumerate all statements.",
+                description = "Find statements in code matching a pattern. Supports text search, regex, and RoslynPath (XPath-style queries for C# AST). Returns statement IDs for use with other operations.",
                 inputSchema = new
                 {
                     type = "object",
                     properties = new
                     {
-                        pattern = new { type = "string", description = "Text or regex pattern to match in statements" },
+                        pattern = new { type = "string", description = "Text, regex, or RoslynPath pattern to match in statements. RoslynPath allows XPath-style queries like '//method[Get*]//statement[@type=ThrowStatement]'" },
                         scope = new 
                         { 
                             type = "object", 
@@ -451,7 +451,7 @@ public class McpJsonRpcServer
                                 methodName = new { type = "string", description = "Method name to search within" }
                             }
                         },
-                        patternType = new { type = "string", description = "Pattern type: 'text' (default) or 'regex'", @enum = new[] { "text", "regex" } },
+                        patternType = new { type = "string", description = "Pattern type: 'text' (default), 'regex', or 'roslynpath' for XPath-style queries", @enum = new[] { "text", "regex", "roslynpath" } },
                         includeNestedStatements = new { type = "boolean", description = "Include statements inside blocks (if/while/for bodies)" },
                         groupRelated = new { type = "boolean", description = "Group statements that share data flow or are in sequence" },
                         workspacePath = new { type = "string", description = "Optional workspace path to search in" }
@@ -757,36 +757,65 @@ public class McpJsonRpcServer
     
     private async Task<object> AnalyzeSyntaxAsync(JsonElement? args)
     {
-        var filePath = args?.GetProperty("filePath").GetString() ?? "unknown";
+        if (args == null)
+            return CreateErrorResponse("No arguments provided");
+            
+        var filePath = args.Value.GetProperty("filePath").GetString();
+        if (string.IsNullOrEmpty(filePath))
+            return CreateErrorResponse("File path is required");
+            
+        var workspaceId = args.Value.TryGetProperty("workspaceId", out var wsId) ? wsId.GetString() : null;
+        var includeTrivia = args.Value.TryGetProperty("includeTrivia", out var trivia) ? trivia.GetBoolean() : false;
         
-        return new
+        try
         {
-            content = new[]
-            {
-                new
-                {
-                    type = "text",
-                    text = $"Syntax analysis for {filePath} is not yet implemented"
-                }
-            }
-        };
+            return await _workspaceManager.AnalyzeSyntaxTreeAsync(filePath, includeTrivia, workspaceId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error analyzing syntax");
+            return CreateErrorResponse($"Error analyzing syntax: {ex.Message}");
+        }
     }
     
     private async Task<object> GetSymbolsAsync(JsonElement? args)
     {
-        var filePath = args?.GetProperty("filePath").GetString() ?? "unknown";
+        if (args == null)
+            return CreateErrorResponse("No arguments provided");
+            
+        var filePath = args.Value.GetProperty("filePath").GetString();
+        if (string.IsNullOrEmpty(filePath))
+            return CreateErrorResponse("File path is required");
+            
+        var workspaceId = args.Value.TryGetProperty("workspaceId", out var wsId) ? wsId.GetString() : null;
+        var symbolName = args.Value.TryGetProperty("symbolName", out var sym) ? sym.GetString() : null;
+        var hasPosition = args.Value.TryGetProperty("position", out var pos);
         
-        return new
+        try
         {
-            content = new[]
+            if (!string.IsNullOrEmpty(symbolName))
             {
-                new
-                {
-                    type = "text",
-                    text = $"Symbol retrieval for {filePath} is not yet implemented"
-                }
+                // Use RoslynPath to find symbols by name
+                return await _workspaceManager.GetSymbolsByNameAsync(filePath, symbolName, workspaceId);
             }
-        };
+            else if (hasPosition)
+            {
+                // Get symbol at specific position
+                var line = pos.GetProperty("line").GetInt32();
+                var column = pos.GetProperty("column").GetInt32();
+                return await _workspaceManager.GetSymbolAtPositionAsync(filePath, line, column, workspaceId);
+            }
+            else
+            {
+                // List all symbols in the file
+                return await _workspaceManager.GetAllSymbolsAsync(filePath, workspaceId);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving symbols");
+            return CreateErrorResponse($"Error retrieving symbols: {ex.Message}");
+        }
     }
     
     private async Task<object> GetWorkspaceStatusAsync(JsonElement? args)
@@ -795,6 +824,9 @@ public class McpJsonRpcServer
         
         // Get detailed status from Roslyn workspace manager
         var roslynStatus = _workspaceManager.GetStatus();
+        
+        // Synchronize local workspace tracking with RoslynWorkspaceManager
+        SynchronizeWorkspaceTracking(roslynStatus);
         
         if (!string.IsNullOrEmpty(workspaceId))
         {
@@ -830,17 +862,7 @@ public class McpJsonRpcServer
             }
             else
             {
-                return new
-                {
-                    content = new[]
-                    {
-                        new
-                        {
-                            type = "text",
-                            text = $"Workspace '{workspaceId}' not found"
-                        }
-                    }
-                };
+                return _workspaceManager.CreateErrorResponseWithReloadInstructions("Workspace not found", workspaceId);
             }
         }
         
@@ -956,12 +978,15 @@ public class McpJsonRpcServer
         // Load workspace using Roslyn
         _logger.LogInformation("Loading workspace {Id} from {Path} using Roslyn", workspaceId, path);
         
-        var (success, message, workspace) = await _workspaceManager.LoadWorkspaceAsync(fullPath);
+        var (success, message, workspace, actualWorkspaceId) = await _workspaceManager.LoadWorkspaceAsync(fullPath, workspaceId);
         
         if (!success || workspace == null)
         {
             throw new InvalidOperationException($"Failed to load workspace: {message}");
         }
+        
+        // Use the actual workspace ID returned by the manager
+        workspaceId = actualWorkspaceId;
         
         // Count projects in the workspace
         var projectCount = workspace.CurrentSolution.Projects.Count();
@@ -980,6 +1005,21 @@ public class McpJsonRpcServer
         _logger.LogInformation("Loaded workspace {Id} from {Path} with {Count} projects", workspaceId, path, projectCount);
         
         return workspaceInfo;
+    }
+    
+    private object CreateErrorResponse(string message)
+    {
+        return new
+        {
+            content = new[]
+            {
+                new
+                {
+                    type = "text",
+                    text = $"Error: {message}"
+                }
+            }
+        };
     }
     
     private bool IsPathAllowed(string path)
@@ -2945,6 +2985,42 @@ public class McpJsonRpcServer
                     }
                 }
             };
+        }
+    }
+    
+    /// <summary>
+    /// Synchronize local workspace tracking with RoslynWorkspaceManager
+    /// This ensures consistency when workspaces are automatically cleaned up
+    /// </summary>
+    private void SynchronizeWorkspaceTracking(dynamic roslynStatus)
+    {
+        try
+        {
+            // Get the list of currently loaded workspace IDs from RoslynWorkspaceManager
+            var activeWorkspaceIds = new HashSet<string>();
+            
+            if (roslynStatus.Workspaces != null)
+            {
+                foreach (var workspace in roslynStatus.Workspaces)
+                {
+                    if (workspace != null && workspace.id != null)
+                    {
+                        activeWorkspaceIds.Add((string)workspace.id);
+                    }
+                }
+            }
+            
+            // Remove any workspaces from local tracking that are no longer active
+            var toRemove = _workspaces.Keys.Where(id => !activeWorkspaceIds.Contains(id)).ToList();
+            foreach (var id in toRemove)
+            {
+                _workspaces.Remove(id);
+                _logger.LogInformation("Removed workspace {Id} from local tracking (cleaned up by RoslynWorkspaceManager)", id);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to synchronize workspace tracking");
         }
     }
 }

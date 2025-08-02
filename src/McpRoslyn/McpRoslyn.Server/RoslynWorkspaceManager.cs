@@ -11,22 +11,28 @@ using Microsoft.Extensions.Logging;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using McpRoslyn.Server.RoslynPath;
+using McpRoslyn.Server.LanguageHandlers;
 
 namespace McpRoslyn.Server;
 
-public class RoslynWorkspaceManager
+public class RoslynWorkspaceManager : IDisposable
 {
     private readonly ILogger<RoslynWorkspaceManager> _logger;
-    private readonly Dictionary<string, Workspace> _workspaces = new();
+    private readonly Dictionary<string, WorkspaceEntry> _workspaces = new();
+    private readonly Dictionary<string, string> _workspaceHistory = new(); // ID -> Path mapping for recently cleaned workspaces
     private readonly MarkerManager _markerManager = new();
+    private readonly Timer _cleanupTimer;
+    private readonly TimeSpan _workspaceTimeout = TimeSpan.FromMinutes(15);
+    private readonly TimeSpan _historyTimeout = TimeSpan.FromHours(1);
     private static bool _msBuildRegistered = false;
+    private bool _disposed = false;
     
     public RoslynWorkspaceManager(ILogger<RoslynWorkspaceManager> logger)
     {
         _logger = logger;
         
         // Register MSBuild once per process
-        if (!_msBuildRegistered)
+        if (!MSBuildLocator.IsRegistered && !_msBuildRegistered)
         {
             try
             {
@@ -39,44 +45,69 @@ public class RoslynWorkspaceManager
                 _logger.LogError(ex, "Failed to register MSBuild");
             }
         }
+        else if (MSBuildLocator.IsRegistered)
+        {
+            _logger.LogInformation("MSBuild already registered, skipping registration");
+        }
+        
+        // Start cleanup timer (runs every 15 minutes for debugging, should be 5 minutes for production)
+        _cleanupTimer = new Timer(CleanupStaleWorkspaces, null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(15));
     }
     
-    public async Task<(bool success, string message, Workspace? workspace)> LoadWorkspaceAsync(string path)
+    public async Task<(bool success, string message, Workspace? workspace, string workspaceId)> LoadWorkspaceAsync(string path, string? workspaceId = null)
     {
         try
         {
             _logger.LogInformation("Loading workspace from: {Path}", path);
             
-            // Check if already loaded
-            if (_workspaces.TryGetValue(path, out var existingWorkspace))
+            // Generate workspace ID if not provided
+            if (string.IsNullOrEmpty(workspaceId))
             {
-                return (true, "Workspace already loaded", existingWorkspace);
+                var fileName = Path.GetFileNameWithoutExtension(path);
+                var hash = path.GetHashCode().ToString("x8");
+                workspaceId = $"{fileName}_{hash}";
             }
             
-            // Determine workspace type
+            // Check if already loaded by ID
+            if (_workspaces.TryGetValue(workspaceId, out var existingEntry))
+            {
+                existingEntry.Touch(); // Update access time
+                return (true, "Workspace already loaded", existingEntry.Workspace, workspaceId);
+            }
+            
+            // Check if path is already loaded under different ID (shouldn't happen but be safe)
+            var existingByPath = _workspaces.Values.FirstOrDefault(e => e.Path == path);
+            if (existingByPath != null)
+            {
+                existingByPath.Touch();
+                var existingId = _workspaces.FirstOrDefault(kvp => kvp.Value == existingByPath).Key;
+                return (true, $"Workspace already loaded with ID: {existingId}", existingByPath.Workspace, existingId);
+            }
+            
+            // Determine workspace type and load
             if (path.EndsWith(".sln", StringComparison.OrdinalIgnoreCase))
             {
-                return await LoadSolutionAsync(path);
+                return await LoadSolutionAsync(path, workspaceId);
             }
             else if (path.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase) || 
                      path.EndsWith(".vbproj", StringComparison.OrdinalIgnoreCase) ||
                      path.EndsWith(".fsproj", StringComparison.OrdinalIgnoreCase))
             {
-                return await LoadProjectAsync(path);
+                return await LoadProjectAsync(path, workspaceId);
             }
             else
             {
-                return (false, "Unsupported file type. Please provide a .sln or project file.", null);
+                return (false, "Unsupported file type. Please provide a .sln or project file.", null, workspaceId);
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to load workspace");
-            return (false, $"Failed to load workspace: {ex.Message}", null);
+            return (false, $"Failed to load workspace: {ex.Message}", null, workspaceId ?? "");
         }
     }
     
-    private async Task<(bool success, string message, Workspace? workspace)> LoadSolutionAsync(string solutionPath)
+    private async Task<(bool success, string message, Workspace? workspace, string workspaceId)> LoadSolutionAsync(string solutionPath, string workspaceId)
     {
         var workspace = MSBuildWorkspace.Create();
         
@@ -86,15 +117,23 @@ public class RoslynWorkspaceManager
         };
         
         var solution = await workspace.OpenSolutionAsync(solutionPath);
-        _workspaces[solutionPath] = workspace;
+        
+        // Create workspace entry
+        var entry = new WorkspaceEntry
+        {
+            Workspace = workspace,
+            Path = solutionPath
+        };
+        
+        _workspaces[workspaceId] = entry;
         
         var projectCount = solution.Projects.Count();
-        _logger.LogInformation("Loaded solution with {Count} projects", projectCount);
+        _logger.LogInformation("Loaded solution with {Count} projects, ID: {WorkspaceId}", projectCount, workspaceId);
         
-        return (true, $"Solution loaded successfully with {projectCount} projects", workspace);
+        return (true, $"Solution loaded successfully with {projectCount} projects", workspace, workspaceId);
     }
     
-    private async Task<(bool success, string message, Workspace? workspace)> LoadProjectAsync(string projectPath)
+    private async Task<(bool success, string message, Workspace? workspace, string workspaceId)> LoadProjectAsync(string projectPath, string workspaceId)
     {
         var workspace = MSBuildWorkspace.Create();
         
@@ -104,20 +143,30 @@ public class RoslynWorkspaceManager
         };
         
         var project = await workspace.OpenProjectAsync(projectPath);
-        _workspaces[projectPath] = workspace;
         
-        _logger.LogInformation("Loaded project: {Name}", project.Name);
+        // Create workspace entry
+        var entry = new WorkspaceEntry
+        {
+            Workspace = workspace,
+            Path = projectPath
+        };
         
-        return (true, $"Project '{project.Name}' loaded successfully", workspace);
+        _workspaces[workspaceId] = entry;
+        
+        _logger.LogInformation("Loaded project: {Name}, ID: {WorkspaceId}", project.Name, workspaceId);
+        
+        return (true, $"Project '{project.Name}' loaded successfully", workspace, workspaceId);
     }
     
     public WorkspaceStatus GetStatus()
     {
         var statuses = new List<object>();
         
-        foreach (var (path, workspace) in _workspaces)
+        foreach (var (workspaceId, entry) in _workspaces)
         {
-            var solution = workspace.CurrentSolution;
+            entry.Touch(); // Update access time when status is checked
+            
+            var solution = entry.Workspace.CurrentSolution;
             var projects = solution.Projects.Select(p => new
             {
                 name = p.Name,
@@ -128,7 +177,10 @@ public class RoslynWorkspaceManager
             
             statuses.Add(new
             {
-                path,
+                id = workspaceId,
+                path = entry.Path,
+                loadedAt = entry.LoadedAt,
+                lastAccessTime = entry.LastAccessTime,
                 projectCount = projects.Count,
                 projects
             });
@@ -144,12 +196,32 @@ public class RoslynWorkspaceManager
     
     public IEnumerable<Workspace> GetLoadedWorkspaces()
     {
-        return _workspaces.Values;
+        // Update access time for all workspaces when accessed
+        foreach (var entry in _workspaces.Values)
+        {
+            entry.Touch();
+        }
+        return _workspaces.Values.Select(e => e.Workspace);
     }
     
-    public Workspace? GetWorkspace(string path)
+    public Workspace? GetWorkspace(string workspaceId)
     {
-        return _workspaces.TryGetValue(path, out var workspace) ? workspace : null;
+        if (_workspaces.TryGetValue(workspaceId, out var entry))
+        {
+            entry.Touch(); // Update access time
+            return entry.Workspace;
+        }
+        return null;
+    }
+    
+    public WorkspaceEntry? GetWorkspaceEntry(string workspaceId)
+    {
+        if (_workspaces.TryGetValue(workspaceId, out var entry))
+        {
+            entry.Touch();
+            return entry;
+        }
+        return null;
     }
     
     public async Task<List<ClassSearchResult>> FindClassesAsync(string pattern, string? workspacePath = null)
@@ -173,7 +245,7 @@ public class RoslynWorkspaceManager
         }
         else
         {
-            workspacesToSearch.AddRange(_workspaces.Values);
+            workspacesToSearch.AddRange(_workspaces.Values.Select(entry => entry.Workspace));
         }
         
         // Search each workspace
@@ -454,18 +526,18 @@ public class RoslynWorkspaceManager
         return new Regex(regexPattern, RegexOptions.IgnoreCase);
     }
     
-    private List<Workspace> GetWorkspacesToSearch(string? workspacePath)
+    private List<Workspace> GetWorkspacesToSearch(string? workspaceId)
     {
         var workspacesToSearch = new List<Workspace>();
-        if (!string.IsNullOrEmpty(workspacePath))
+        if (!string.IsNullOrEmpty(workspaceId))
         {
-            var workspace = GetWorkspace(workspacePath);
+            var workspace = GetWorkspace(workspaceId);
             if (workspace != null)
                 workspacesToSearch.Add(workspace);
         }
         else
         {
-            workspacesToSearch.AddRange(_workspaces.Values);
+            workspacesToSearch.AddRange(_workspaces.Values.Select(e => e.Workspace));
         }
         return workspacesToSearch;
     }
@@ -930,12 +1002,12 @@ public class RoslynWorkspaceManager
             Workspace? targetWorkspace = null;
             foreach (var ws in _workspaces.Values)
             {
-                var doc = ws.CurrentSolution.Projects
+                var doc = ws.Workspace.CurrentSolution.Projects
                     .SelectMany(p => p.Documents)
                     .FirstOrDefault(d => d.FilePath == filePath);
                 if (doc != null)
                 {
-                    targetWorkspace = ws;
+                    targetWorkspace = ws.Workspace;
                     break;
                 }
             }
@@ -2914,6 +2986,475 @@ public class RoslynWorkspaceManager
         }
         
         return parent?.GetType().Name.Replace("Syntax", "") ?? "Unknown";
+    }
+    
+    private Document? GetDocumentByPath(Solution solution, string filePath)
+    {
+        var normalizedPath = Path.GetFullPath(filePath);
+        return solution.Projects
+            .SelectMany(p => p.Documents)
+            .FirstOrDefault(d => string.Equals(Path.GetFullPath(d.FilePath ?? ""), normalizedPath, StringComparison.OrdinalIgnoreCase));
+    }
+    
+    private object CreateErrorResponse(string message)
+    {
+        return new
+        {
+            content = new[]
+            {
+                new
+                {
+                    type = "text",
+                    text = $"Error: {message}"
+                }
+            }
+        };
+    }
+    
+    public async Task<object> AnalyzeSyntaxTreeAsync(string filePath, bool includeTrivia, string? workspaceId)
+    {
+        var workspacesToSearch = GetWorkspacesToSearch(workspaceId);
+        if (!workspacesToSearch.Any())
+            return CreateErrorResponseWithReloadInstructions("No workspace loaded", workspaceId);
+        
+        var workspace = workspacesToSearch.First();
+        var solution = workspace.CurrentSolution;
+        var document = GetDocumentByPath(solution, filePath);
+        
+        if (document == null)
+            return CreateErrorResponse($"File not found: {filePath}");
+            
+        var syntaxTree = await document.GetSyntaxTreeAsync();
+        if (syntaxTree == null)
+            return CreateErrorResponse("Could not parse syntax tree");
+            
+        var root = await syntaxTree.GetRootAsync();
+        var analysis = AnalyzeNode(root, includeTrivia, 0);
+        
+        return new
+        {
+            content = new[]
+            {
+                new
+                {
+                    type = "text",
+                    text = JsonSerializer.Serialize(new
+                    {
+                        filePath = filePath,
+                        language = root.Language,
+                        syntaxTree = analysis
+                    }, new JsonSerializerOptions { WriteIndented = true })
+                }
+            }
+        };
+    }
+    
+    private object AnalyzeNode(SyntaxNode node, bool includeTrivia, int depth)
+    {
+        var nodeInfo = new Dictionary<string, object>
+        {
+            ["kind"] = node.Kind().ToString(),
+            ["type"] = node.GetType().Name,
+            ["span"] = $"{node.Span.Start}-{node.Span.End}",
+            ["text"] = node.Span.Length < 100 ? node.ToString() : node.ToString().Substring(0, 100) + "..."
+        };
+        
+        // Add location info
+        if (node.SyntaxTree != null)
+        {
+            var lineSpan = node.SyntaxTree.GetLineSpan(node.Span);
+            nodeInfo["location"] = $"{lineSpan.StartLinePosition.Line + 1}:{lineSpan.StartLinePosition.Character + 1}";
+        }
+        
+        // Add specific node properties
+        switch (node)
+        {
+            case ClassDeclarationSyntax cls:
+                nodeInfo["name"] = cls.Identifier.Text;
+                nodeInfo["modifiers"] = cls.Modifiers.ToString();
+                break;
+            case MethodDeclarationSyntax method:
+                nodeInfo["name"] = method.Identifier.Text;
+                nodeInfo["returnType"] = method.ReturnType.ToString();
+                nodeInfo["modifiers"] = method.Modifiers.ToString();
+                break;
+            case PropertyDeclarationSyntax prop:
+                nodeInfo["name"] = prop.Identifier.Text;
+                nodeInfo["type"] = prop.Type.ToString();
+                nodeInfo["modifiers"] = prop.Modifiers.ToString();
+                break;
+            case VariableDeclaratorSyntax var:
+                nodeInfo["name"] = var.Identifier.Text;
+                break;
+            case ParameterSyntax param:
+                nodeInfo["name"] = param.Identifier.Text;
+                nodeInfo["type"] = param.Type?.ToString() ?? "var";
+                break;
+        }
+        
+        // Add trivia if requested
+        if (includeTrivia)
+        {
+            var leadingTrivia = node.GetLeadingTrivia().Select(t => new { kind = t.Kind().ToString(), text = t.ToString() }).ToList();
+            var trailingTrivia = node.GetTrailingTrivia().Select(t => new { kind = t.Kind().ToString(), text = t.ToString() }).ToList();
+            
+            if (leadingTrivia.Any())
+                nodeInfo["leadingTrivia"] = leadingTrivia;
+            if (trailingTrivia.Any())
+                nodeInfo["trailingTrivia"] = trailingTrivia;
+        }
+        
+        // Add children (limit depth to avoid huge output)
+        if (depth < 5)
+        {
+            var children = node.ChildNodes().Select(child => AnalyzeNode(child, includeTrivia, depth + 1)).ToList();
+            if (children.Any())
+                nodeInfo["children"] = children;
+        }
+        else if (node.ChildNodes().Any())
+        {
+            nodeInfo["childCount"] = node.ChildNodes().Count();
+            nodeInfo["truncated"] = true;
+        }
+        
+        return nodeInfo;
+    }
+    
+    public async Task<object> GetSymbolsByNameAsync(string filePath, string symbolName, string? workspaceId)
+    {
+        var workspacesToSearch = GetWorkspacesToSearch(workspaceId);
+        if (!workspacesToSearch.Any())
+            return CreateErrorResponseWithReloadInstructions("No workspace loaded", workspaceId);
+        
+        var workspace = workspacesToSearch.First();
+        var solution = workspace.CurrentSolution;
+        var document = GetDocumentByPath(solution, filePath);
+        
+        if (document == null)
+            return CreateErrorResponse($"File not found: {filePath}");
+            
+        var syntaxTree = await document.GetSyntaxTreeAsync();
+        if (syntaxTree == null)
+            return CreateErrorResponse("Could not parse syntax tree");
+            
+        var root = await syntaxTree.GetRootAsync();
+        var semanticModel = await document.GetSemanticModelAsync();
+        if (semanticModel == null)
+            return CreateErrorResponse("Could not get semantic model");
+            
+        // Use RoslynPath to find symbols
+        var roslynPath = $"//*[@name='{symbolName}']";
+        var nodes = RoslynPath.RoslynPath.Find(syntaxTree, roslynPath, semanticModel);
+        
+        var symbols = new List<object>();
+        foreach (var node in nodes)
+        {
+            var symbol = semanticModel.GetDeclaredSymbol(node) ?? semanticModel.GetSymbolInfo(node).Symbol;
+            if (symbol != null)
+            {
+                symbols.Add(FormatSymbolInfo(symbol, node, syntaxTree));
+            }
+        }
+        
+        return new
+        {
+            content = new[]
+            {
+                new
+                {
+                    type = "text",
+                    text = symbols.Count > 0 
+                        ? $"Found {symbols.Count} symbols matching '{symbolName}':\n\n" + 
+                          string.Join("\n\n", symbols.Select(s => JsonSerializer.Serialize(s, new JsonSerializerOptions { WriteIndented = true })))
+                        : $"No symbols found matching '{symbolName}'"
+                }
+            }
+        };
+    }
+    
+    public async Task<object> GetSymbolAtPositionAsync(string filePath, int line, int column, string? workspaceId)
+    {
+        var workspacesToSearch = GetWorkspacesToSearch(workspaceId);
+        if (!workspacesToSearch.Any())
+            return CreateErrorResponseWithReloadInstructions("No workspace loaded", workspaceId);
+        
+        var workspace = workspacesToSearch.First();
+        var solution = workspace.CurrentSolution;
+        var document = GetDocumentByPath(solution, filePath);
+        
+        if (document == null)
+            return CreateErrorResponse($"File not found: {filePath}");
+            
+        var syntaxTree = await document.GetSyntaxTreeAsync();
+        if (syntaxTree == null)
+            return CreateErrorResponse("Could not parse syntax tree");
+            
+        var sourceText = await document.GetTextAsync();
+        var position = sourceText.Lines.GetPosition(new LinePosition(line - 1, column - 1));
+        
+        var root = await syntaxTree.GetRootAsync();
+        var node = root.FindToken(position).Parent;
+        
+        if (node == null)
+            return CreateErrorResponse($"No symbol at position {line}:{column}");
+            
+        var semanticModel = await document.GetSemanticModelAsync();
+        if (semanticModel == null)
+            return CreateErrorResponse("Could not get semantic model");
+            
+        var symbolInfo = semanticModel.GetSymbolInfo(node);
+        var symbol = symbolInfo.Symbol ?? semanticModel.GetDeclaredSymbol(node);
+        
+        if (symbol == null)
+            return CreateErrorResponse($"No symbol information at position {line}:{column}");
+            
+        var info = FormatSymbolInfo(symbol, node, syntaxTree);
+        
+        return new
+        {
+            content = new[]
+            {
+                new
+                {
+                    type = "text",
+                    text = JsonSerializer.Serialize(info, new JsonSerializerOptions { WriteIndented = true })
+                }
+            }
+        };
+    }
+    
+    public async Task<object> GetAllSymbolsAsync(string filePath, string? workspaceId)
+    {
+        var workspacesToSearch = GetWorkspacesToSearch(workspaceId);
+        if (!workspacesToSearch.Any())
+            return CreateErrorResponseWithReloadInstructions("No workspace loaded", workspaceId);
+        
+        var workspace = workspacesToSearch.First();
+        var solution = workspace.CurrentSolution;
+        var document = GetDocumentByPath(solution, filePath);
+        
+        if (document == null)
+            return CreateErrorResponse($"File not found: {filePath}");
+            
+        var syntaxTree = await document.GetSyntaxTreeAsync();
+        if (syntaxTree == null)
+            return CreateErrorResponse("Could not parse syntax tree");
+            
+        var root = await syntaxTree.GetRootAsync();
+        var semanticModel = await document.GetSemanticModelAsync();
+        if (semanticModel == null)
+            return CreateErrorResponse("Could not get semantic model");
+            
+        // Find all declaration nodes
+        var declarations = root.DescendantNodes()
+            .Where(n => n is TypeDeclarationSyntax || 
+                       n is MethodDeclarationSyntax || 
+                       n is PropertyDeclarationSyntax || 
+                       n is FieldDeclarationSyntax ||
+                       n is EventDeclarationSyntax ||
+                       n is ConstructorDeclarationSyntax ||
+                       n is VariableDeclaratorSyntax);
+                       
+        var symbols = new List<object>();
+        foreach (var node in declarations)
+        {
+            var symbol = semanticModel.GetDeclaredSymbol(node);
+            if (symbol != null)
+            {
+                symbols.Add(FormatSymbolInfo(symbol, node, syntaxTree));
+            }
+        }
+        
+        return new
+        {
+            content = new[]
+            {
+                new
+                {
+                    type = "text",
+                    text = $"Found {symbols.Count} symbols in {filePath}:\n\n" + 
+                          string.Join("\n\n", symbols.Select(s => JsonSerializer.Serialize(s, new JsonSerializerOptions { WriteIndented = true })))
+                }
+            }
+        };
+    }
+    
+    private object FormatSymbolInfo(ISymbol symbol, SyntaxNode node, SyntaxTree syntaxTree)
+    {
+        var lineSpan = syntaxTree.GetLineSpan(node.Span);
+        var location = $"{syntaxTree.FilePath}:{lineSpan.StartLinePosition.Line + 1}:{lineSpan.StartLinePosition.Character + 1}";
+        
+        return new
+        {
+            name = symbol.Name,
+            kind = symbol.Kind.ToString(),
+            type = symbol.GetType().Name.Replace("Symbol", ""),
+            containingType = symbol.ContainingType?.ToDisplayString(),
+            containingNamespace = symbol.ContainingNamespace?.ToDisplayString(),
+            location = location,
+            accessibility = symbol.DeclaredAccessibility.ToString(),
+            isStatic = symbol.IsStatic,
+            isAbstract = symbol.IsAbstract,
+            isVirtual = symbol.IsVirtual,
+            isOverride = symbol.IsOverride,
+            documentation = GetDocumentationComment(symbol),
+            signature = GetSymbolSignature(symbol)
+        };
+    }
+    
+    private string? GetDocumentationComment(ISymbol symbol)
+    {
+        var xml = symbol.GetDocumentationCommentXml();
+        if (string.IsNullOrWhiteSpace(xml))
+            return null;
+            
+        // Simple extraction of summary tag
+        var start = xml.IndexOf("<summary>");
+        var end = xml.IndexOf("</summary>");
+        if (start >= 0 && end > start)
+        {
+            var summary = xml.Substring(start + 9, end - start - 9).Trim();
+            // Remove extra whitespace and newlines
+            summary = System.Text.RegularExpressions.Regex.Replace(summary, @"\s+", " ");
+            return summary;
+        }
+        
+        return null;
+    }
+    
+    private string GetSymbolSignature(ISymbol symbol)
+    {
+        switch (symbol)
+        {
+            case IMethodSymbol method:
+                return method.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
+            case IPropertySymbol property:
+                return $"{property.Type.ToDisplayString()} {property.Name}";
+            case IFieldSymbol field:
+                return $"{field.Type.ToDisplayString()} {field.Name}";
+            case ITypeSymbol type:
+                return type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
+            default:
+                return symbol.ToDisplayString();
+        }
+    }
+    
+    /// <summary>
+    /// Cleanup timer callback that removes stale workspaces
+    /// </summary>
+    private void CleanupStaleWorkspaces(object? state)
+    {
+        if (_disposed) return;
+        
+        var now = DateTime.UtcNow;
+        var staleWorkspaces = _workspaces
+            .Where(kvp => kvp.Value.IsStale(_workspaceTimeout))
+            .ToList();
+            
+        foreach (var (workspaceId, entry) in staleWorkspaces)
+        {
+            try
+            {
+                _logger.LogInformation("Cleaning up stale workspace: {WorkspaceId} (last accessed: {LastAccess})", 
+                    workspaceId, entry.LastAccessTime);
+                
+                // Store in history for helpful error messages
+                _workspaceHistory[workspaceId] = entry.Path;
+                
+                // Dispose the workspace
+                entry.Workspace.Dispose();
+                
+                // Remove from active workspaces
+                _workspaces.Remove(workspaceId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error cleaning up workspace {WorkspaceId}", workspaceId);
+            }
+        }
+        
+        // Clean up old history entries (older than 1 hour)
+        var staleHistory = _workspaceHistory
+            .Where(_ => now - DateTime.UtcNow > _historyTimeout) // This is a simple cleanup, could be more sophisticated
+            .ToList();
+            
+        foreach (var (workspaceId, _) in staleHistory)
+        {
+            _workspaceHistory.Remove(workspaceId);
+        }
+        
+        if (staleWorkspaces.Any())
+        {
+            _logger.LogInformation("Cleaned up {Count} stale workspaces", staleWorkspaces.Count);
+        }
+    }
+    
+    /// <summary>
+    /// Create improved error response with reload instructions
+    /// </summary>
+    public object CreateErrorResponseWithReloadInstructions(string message, string? workspaceId = null)
+    {
+        var errorMessage = $"Error: {message}";
+        
+        if (!string.IsNullOrEmpty(workspaceId) && _workspaceHistory.TryGetValue(workspaceId, out var path))
+        {
+            errorMessage += $"\n\nWorkspace '{workspaceId}' was previously loaded but has been unloaded due to inactivity.";
+            errorMessage += $"\nTo reload it, use: dotnet-load-workspace with path: {path}";
+        }
+        else if (!_workspaces.Any())
+        {
+            errorMessage += "\n\nNo workspaces are currently loaded.";
+            errorMessage += "\nPlease load a workspace first using: dotnet-load-workspace";
+        }
+        
+        errorMessage += "\n\nTo see available workspaces, use: dotnet-workspace-status";
+        
+        return new
+        {
+            content = new[]
+            {
+                new
+                {
+                    type = "text",
+                    text = errorMessage
+                }
+            }
+        };
+    }
+    
+    /// <summary>
+    /// Dispose resources
+    /// </summary>
+    public void Dispose()
+    {
+        if (_disposed) return;
+        
+        _disposed = true;
+        
+        try
+        {
+            _cleanupTimer?.Dispose();
+            
+            // Dispose all workspaces
+            foreach (var entry in _workspaces.Values)
+            {
+                try
+                {
+                    entry.Workspace.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error disposing workspace");
+                }
+            }
+            
+            _workspaces.Clear();
+            _workspaceHistory.Clear();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during RoslynWorkspaceManager disposal");
+        }
     }
 }
 
