@@ -181,7 +181,7 @@ public class McpJsonRpcServer
             new
             {
                 name = "dotnet-load-workspace",
-                description = "Load a .NET solution or project into the workspace",
+                description = ToolDescriptions.LoadWorkspace,
                 inputSchema = new
                 {
                     type = "object",
@@ -196,7 +196,7 @@ public class McpJsonRpcServer
             new
             {
                 name = "dotnet-analyze-syntax",
-                description = "Analyzes the syntax tree of a C# or VB.NET file",
+                description = ToolDescriptions.AnalyzeSyntax,
                 inputSchema = new
                 {
                     type = "object",
@@ -212,7 +212,7 @@ public class McpJsonRpcServer
             new
             {
                 name = "dotnet-get-symbols",
-                description = "Retrieves symbol information from code",
+                description = ToolDescriptions.GetSymbols,
                 inputSchema = new
                 {
                     type = "object",
@@ -237,7 +237,7 @@ public class McpJsonRpcServer
             new
             {
                 name = "dotnet-workspace-status",
-                description = "Get loading progress and workspace info",
+                description = ToolDescriptions.WorkspaceStatus,
                 inputSchema = new
                 {
                     type = "object",
@@ -250,7 +250,7 @@ public class McpJsonRpcServer
             new
             {
                 name = "dotnet-find-class",
-                description = "Find classes, interfaces, structs, or enums by name pattern (supports * and ? wildcards)",
+                description = ToolDescriptions.FindClass,
                 inputSchema = new
                 {
                     type = "object",
@@ -265,7 +265,7 @@ public class McpJsonRpcServer
             new
             {
                 name = "dotnet-find-method",
-                description = "Find methods by name pattern with optional class pattern filter (supports * and ? wildcards)",
+                description = ToolDescriptions.FindMethod,
                 inputSchema = new
                 {
                     type = "object",
@@ -281,7 +281,7 @@ public class McpJsonRpcServer
             new
             {
                 name = "dotnet-find-property",
-                description = "Find properties and fields by name pattern with optional class pattern filter (supports * and ? wildcards)",
+                description = ToolDescriptions.FindProperty,
                 inputSchema = new
                 {
                     type = "object",
@@ -297,7 +297,7 @@ public class McpJsonRpcServer
             new
             {
                 name = "dotnet-find-method-calls",
-                description = "Find all methods called by a specific method (call tree analysis)",
+                description = ToolDescriptions.FindMethodCalls,
                 inputSchema = new
                 {
                     type = "object",
@@ -313,7 +313,7 @@ public class McpJsonRpcServer
             new
             {
                 name = "dotnet-find-method-callers",
-                description = "Find all methods that call a specific method (caller tree analysis)",
+                description = ToolDescriptions.FindMethodCallers,
                 inputSchema = new
                 {
                     type = "object",
@@ -329,7 +329,7 @@ public class McpJsonRpcServer
             new
             {
                 name = "dotnet-find-references",
-                description = "Find all references to a type, method, property, or field",
+                description = ToolDescriptions.FindReferences,
                 inputSchema = new
                 {
                     type = "object",
@@ -346,7 +346,7 @@ public class McpJsonRpcServer
             new
             {
                 name = "dotnet-find-implementations",
-                description = "Find all implementations of an interface or abstract class",
+                description = ToolDescriptions.FindImplementations,
                 inputSchema = new
                 {
                     type = "object",
@@ -361,7 +361,7 @@ public class McpJsonRpcServer
             new
             {
                 name = "dotnet-find-overrides",
-                description = "Find all overrides of a virtual or abstract method",
+                description = ToolDescriptions.FindOverrides,
                 inputSchema = new
                 {
                     type = "object",
@@ -377,7 +377,7 @@ public class McpJsonRpcServer
             new
             {
                 name = "dotnet-find-derived-types",
-                description = "Find all types that derive from a base class",
+                description = ToolDescriptions.FindDerivedTypes,
                 inputSchema = new
                 {
                     type = "object",
@@ -392,7 +392,7 @@ public class McpJsonRpcServer
             new
             {
                 name = "dotnet-rename-symbol",
-                description = "Rename a symbol (type, method, property, field) and update all references",
+                description = ToolDescriptions.RenameSymbol,
                 inputSchema = new
                 {
                     type = "object",
@@ -411,7 +411,7 @@ public class McpJsonRpcServer
             new
             {
                 name = "dotnet-edit-code",
-                description = "Perform surgical code edits using Roslyn. Operations: add-method, add-property, make-async, add-parameter, wrap-try-catch",
+                description = ToolDescriptions.EditCode,
                 inputSchema = new
                 {
                     type = "object",
@@ -431,7 +431,7 @@ public class McpJsonRpcServer
             new
             {
                 name = "dotnet-fix-pattern",
-                description = "Find code matching a pattern and transform it to a new pattern",
+                description = ToolDescriptions.FixPattern,
                 inputSchema = new
                 {
                     type = "object",
@@ -449,7 +449,7 @@ public class McpJsonRpcServer
             new
             {
                 name = "dotnet-find-statements",
-                description = "Find statements in code matching a pattern. Supports text search, regex, and RoslynPath (XPath-style queries for C# AST). Returns statement IDs for use with other operations.",
+                description = ToolDescriptions.FindStatements,
                 inputSchema = new
                 {
                     type = "object",
@@ -478,7 +478,7 @@ public class McpJsonRpcServer
             new
             {
                 name = "dotnet-replace-statement",
-                description = "Replace a statement with new code. The statement is identified by its location from find-statements. Preserves indentation and formatting context.",
+                description = ToolDescriptions.ReplaceStatement,
                 inputSchema = new
                 {
                     type = "object",
@@ -507,7 +507,7 @@ public class McpJsonRpcServer
             new
             {
                 name = "dotnet-insert-statement",
-                description = "Insert a new statement before or after an existing statement. The reference statement is identified by its location from find-statements. Preserves indentation and formatting context.",
+                description = ToolDescriptions.InsertStatement,
                 inputSchema = new
                 {
                     type = "object",
@@ -535,7 +535,7 @@ public class McpJsonRpcServer
             new
             {
                 name = "dotnet-remove-statement",
-                description = "Remove a statement from the code. The statement is identified by its location from find-statements. Can preserve comments attached to the statement.",
+                description = ToolDescriptions.RemoveStatement,
                 inputSchema = new
                 {
                     type = "object",
@@ -562,7 +562,7 @@ public class McpJsonRpcServer
             new
             {
                 name = "dotnet-mark-statement",
-                description = "Mark a statement with an ephemeral marker for later reference. Markers are session-scoped and not persisted.",
+                description = ToolDescriptions.MarkStatement,
                 inputSchema = new
                 {
                     type = "object",
@@ -589,7 +589,7 @@ public class McpJsonRpcServer
             new
             {
                 name = "dotnet-find-marked-statements",
-                description = "Find all marked statements or specific markers. Returns current locations which may have changed due to edits.",
+                description = ToolDescriptions.FindMarkedStatements,
                 inputSchema = new
                 {
                     type = "object",
@@ -603,7 +603,7 @@ public class McpJsonRpcServer
             new
             {
                 name = "dotnet-unmark-statement",
-                description = "Remove a specific marker from a statement.",
+                description = ToolDescriptions.UnmarkStatement,
                 inputSchema = new
                 {
                     type = "object",
@@ -617,7 +617,7 @@ public class McpJsonRpcServer
             new
             {
                 name = "dotnet-clear-markers",
-                description = "Clear all markers from the current session.",
+                description = ToolDescriptions.ClearMarkers,
                 inputSchema = new
                 {
                     type = "object",

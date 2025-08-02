@@ -4,7 +4,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using McpRoslyn.Server.Configuration;
-using McpRoslyn.Server.FSharp;
+// using McpRoslyn.Server.FSharp; // Disabled for diagnostic PoC
 
 namespace McpRoslyn.Server;
 
@@ -69,7 +69,7 @@ class Program
                 
                 // Register services
                 services.AddSingleton<RoslynWorkspaceManager>();
-                services.AddSingleton<FSharpWorkspaceManager>();
+                // services.AddSingleton<FSharpWorkspaceManager>(); // Disabled for PoC
                 services.AddSingleton<McpJsonRpcServer>();
                 services.AddHostedService<McpRoslynHostedService>();
             })

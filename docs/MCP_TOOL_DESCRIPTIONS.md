@@ -118,8 +118,16 @@ The SSE server uses attribute-based tool definitions in `RoslynTools.cs`. Here a
    - SSE Server: Uses `.WithToolsFromAssembly()` to auto-discover tools via reflection
 
 3. **Descriptions**:
-   - Both servers provide the same functional descriptions
+   - Both servers now use the centralized `ToolDescriptions` class defined in `McpRoslyn.Server/ToolDescriptions.cs`
+   - This ensures consistency and prevents duplication bugs
    - STDIO server descriptions are what agents see when using the primary server
+
+## Implementation Note
+
+As of the latest update, all tool descriptions have been centralized in the `ToolDescriptions` static class:
+- Located at: `src/McpRoslyn/McpRoslyn.Server/ToolDescriptions.cs`
+- Both STDIO and SSE servers reference this shared source
+- Future tool additions should update the centralized class
 
 ## Notes
 

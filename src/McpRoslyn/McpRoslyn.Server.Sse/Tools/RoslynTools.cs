@@ -28,7 +28,7 @@ public static class RoslynTools
         _workspaceManager = new RoslynWorkspaceManager(workspaceLogger);
     }
 
-    [McpServerTool(Name = "dotnet-load-workspace"), Description("Load a .NET solution or project into the workspace")]
+    [McpServerTool(Name = "dotnet-load-workspace"), Description(ToolDescriptions.LoadWorkspace)]
     public static async Task<string> DotnetLoadWorkspace(
         [Description("Full path to the solution (.sln) or project file (relative paths are not supported)")] string path,
         [Description("Optional workspace ID")] string? workspaceId = null)
@@ -67,7 +67,7 @@ public static class RoslynTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-workspace-status"), Description("Get the status of loaded workspaces")]
+    [McpServerTool(Name = "dotnet-workspace-status"), Description(ToolDescriptions.WorkspaceStatus)]
     public static string DotnetWorkspaceStatus(
         [Description("Optional workspace ID to get specific status")] string? workspaceId = null)
     {
@@ -80,7 +80,7 @@ public static class RoslynTools
         return JsonSerializer.Serialize(status, new JsonSerializerOptions { WriteIndented = true });
     }
 
-    [McpServerTool(Name = "dotnet-analyze-syntax"), Description("Analyze the syntax tree of a C# file")]
+    [McpServerTool(Name = "dotnet-analyze-syntax"), Description(ToolDescriptions.AnalyzeSyntax)]
     public static async Task<string> DotnetAnalyzeSyntax(
         [Description("Path to the source file")] string filePath,
         [Description("Workspace ID for context")] string? workspaceId = null)
@@ -102,7 +102,7 @@ public static class RoslynTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-get-symbols"), Description("Get symbol information from code")]
+    [McpServerTool(Name = "dotnet-get-symbols"), Description(ToolDescriptions.GetSymbols)]
     public static async Task<string> DotnetGetSymbols(
         [Description("Path to the source file")] string filePath,
         [Description("Workspace ID for context")] string? workspaceId = null,
@@ -134,7 +134,7 @@ public static class RoslynTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-find-class"), Description("Find classes in the workspace")]
+    [McpServerTool(Name = "dotnet-find-class"), Description(ToolDescriptions.FindClass)]
     public static async Task<string> DotnetFindClass(
         [Description("Pattern to match class names (supports wildcards like User*)")] string pattern,
         [Description("Workspace ID for context")] string? workspaceId = null)
@@ -156,7 +156,7 @@ public static class RoslynTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-find-method"), Description("Find methods in the workspace")]
+    [McpServerTool(Name = "dotnet-find-method"), Description(ToolDescriptions.FindMethod)]
     public static async Task<string> DotnetFindMethod(
         [Description("Pattern to match method names (supports wildcards like Get*)")] string methodPattern,
         [Description("Optional pattern to match class names")] string? classPattern = null,
@@ -179,7 +179,7 @@ public static class RoslynTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-find-property"), Description("Find properties in the workspace")]
+    [McpServerTool(Name = "dotnet-find-property"), Description(ToolDescriptions.FindProperty)]
     public static async Task<string> DotnetFindProperty(
         [Description("Pattern to match property names (supports wildcards like Name*)")] string propertyPattern,
         [Description("Optional pattern to match class names")] string? classPattern = null,
@@ -202,7 +202,7 @@ public static class RoslynTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-find-method-calls"), Description("Find calls to a specific method")]
+    [McpServerTool(Name = "dotnet-find-method-calls"), Description(ToolDescriptions.FindMethodCalls)]
     public static async Task<string> DotnetFindMethodCalls(
         [Description("Method name to find calls to")] string methodName,
         [Description("Optional class name that contains the method")] string? className = null,
@@ -225,7 +225,7 @@ public static class RoslynTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-find-method-callers"), Description("Find what methods call a specific method")]
+    [McpServerTool(Name = "dotnet-find-method-callers"), Description(ToolDescriptions.FindMethodCallers)]
     public static async Task<string> DotnetFindMethodCallers(
         [Description("Method name to find callers of")] string methodName,
         [Description("Optional class name that contains the method")] string? className = null,
@@ -248,7 +248,7 @@ public static class RoslynTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-find-references"), Description("Find all references to a symbol")]
+    [McpServerTool(Name = "dotnet-find-references"), Description(ToolDescriptions.FindReferences)]
     public static async Task<string> DotnetFindReferences(
         [Description("Symbol name to find references to")] string symbolName,
         [Description("Type of symbol (class, method, property, field, etc.)")] string? symbolType = null,
@@ -272,7 +272,7 @@ public static class RoslynTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-find-implementations"), Description("Find implementations of an interface")]
+    [McpServerTool(Name = "dotnet-find-implementations"), Description(ToolDescriptions.FindImplementations)]
     public static async Task<string> DotnetFindImplementations(
         [Description("Interface name to find implementations of")] string interfaceName,
         [Description("Workspace ID for context")] string? workspaceId = null)
@@ -294,7 +294,7 @@ public static class RoslynTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-find-overrides"), Description("Find overrides of a virtual/abstract method")]
+    [McpServerTool(Name = "dotnet-find-overrides"), Description(ToolDescriptions.FindOverrides)]
     public static async Task<string> DotnetFindOverrides(
         [Description("Method name to find overrides of")] string methodName,
         [Description("Class name that contains the base method")] string className,
@@ -317,7 +317,7 @@ public static class RoslynTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-find-derived-types"), Description("Find types that derive from a base class")]
+    [McpServerTool(Name = "dotnet-find-derived-types"), Description(ToolDescriptions.FindDerivedTypes)]
     public static async Task<string> DotnetFindDerivedTypes(
         [Description("Base class name to find derived types of")] string baseClassName,
         [Description("Workspace ID for context")] string? workspaceId = null)
@@ -339,7 +339,7 @@ public static class RoslynTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-rename-symbol"), Description("Rename a symbol throughout the workspace")]
+    [McpServerTool(Name = "dotnet-rename-symbol"), Description(ToolDescriptions.RenameSymbol)]
     public static async Task<string> DotnetRenameSymbol(
         [Description("Current name of the symbol")] string oldName,
         [Description("New name for the symbol")] string newName,
@@ -365,7 +365,7 @@ public static class RoslynTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-edit-code"), Description("Add, modify, or remove code in a class")]
+    [McpServerTool(Name = "dotnet-edit-code"), Description(ToolDescriptions.EditCode)]
     public static async Task<string> DotnetEditCode(
         [Description("File path to edit")] string file,
         [Description("Operation: add-method, modify-method, remove-method, add-property, etc.")] string operation,
@@ -399,7 +399,7 @@ public static class RoslynTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-fix-pattern"), Description("Find and replace code patterns")]
+    [McpServerTool(Name = "dotnet-fix-pattern"), Description(ToolDescriptions.FixPattern)]
     public static async Task<string> DotnetFixPattern(
         [Description("Pattern to find (supports regex)")] string findPattern,
         [Description("Replacement pattern")] string replacePattern,
@@ -424,7 +424,7 @@ public static class RoslynTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-find-statements"), Description("Find statements in code using text, regex, or RoslynPath queries")]
+    [McpServerTool(Name = "dotnet-find-statements"), Description(ToolDescriptions.FindStatements)]
     public static async Task<string> DotnetFindStatements(
         [Description("Text, regex, or RoslynPath pattern to match in statements. RoslynPath allows XPath-style queries like '//method[Get*]//statement[@type=ThrowStatement]'")] string pattern,
         [Description("Pattern type: 'text' (default), 'regex', or 'roslynpath' for XPath-style queries")] string patternType = "text",
@@ -457,7 +457,7 @@ public static class RoslynTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-replace-statement"), Description("Replace a specific statement with new code")]
+    [McpServerTool(Name = "dotnet-replace-statement"), Description(ToolDescriptions.ReplaceStatement)]
     public static async Task<string> DotnetReplaceStatement(
         [Description("File path containing the statement")] string filePath,
         [Description("Line number (1-based)")] int line,
@@ -483,7 +483,7 @@ public static class RoslynTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-insert-statement"), Description("Insert a new statement before or after an existing statement")]
+    [McpServerTool(Name = "dotnet-insert-statement"), Description(ToolDescriptions.InsertStatement)]
     public static async Task<string> DotnetInsertStatement(
         [Description("Position: 'before' or 'after'")] string position,
         [Description("File path containing the reference statement")] string filePath,
@@ -509,7 +509,7 @@ public static class RoslynTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-remove-statement"), Description("Remove a specific statement")]
+    [McpServerTool(Name = "dotnet-remove-statement"), Description(ToolDescriptions.RemoveStatement)]
     public static async Task<string> DotnetRemoveStatement(
         [Description("File path containing the statement")] string filePath,
         [Description("Line number (1-based)")] int line,
@@ -534,7 +534,7 @@ public static class RoslynTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-mark-statement"), Description("Mark a statement with an ephemeral marker for tracking")]
+    [McpServerTool(Name = "dotnet-mark-statement"), Description(ToolDescriptions.MarkStatement)]
     public static async Task<string> DotnetMarkStatement(
         [Description("File path containing the statement")] string filePath,
         [Description("Line number (1-based)")] int line,
@@ -559,7 +559,7 @@ public static class RoslynTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-find-marked-statements"), Description("Find statements with specific markers")]
+    [McpServerTool(Name = "dotnet-find-marked-statements"), Description(ToolDescriptions.FindMarkedStatements)]
     public static async Task<string> DotnetFindMarkedStatements(
         [Description("Marker ID to search for (optional - finds all if not specified)")] string? markerId = null,
         [Description("Optional file path to search in")] string? filePath = null)
@@ -581,7 +581,7 @@ public static class RoslynTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-unmark-statement"), Description("Remove a marker from statements")]
+    [McpServerTool(Name = "dotnet-unmark-statement"), Description(ToolDescriptions.UnmarkStatement)]
     public static async Task<string> DotnetUnmarkStatement(
         [Description("Marker ID to remove")] string markerId)
     {
@@ -602,7 +602,7 @@ public static class RoslynTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-clear-markers"), Description("Clear all ephemeral markers")]
+    [McpServerTool(Name = "dotnet-clear-markers"), Description(ToolDescriptions.ClearMarkers)]
     public static async Task<string> DotnetClearMarkers()
     {
         if (_workspaceManager == null)
