@@ -610,6 +610,16 @@ public class RoslynWorkspaceManager : IDisposable
         return new Regex(regexPattern, RegexOptions.IgnoreCase);
     }
     
+    private bool IsVariableDeclarator(SyntaxNode node, string language)
+    {
+        return language switch
+        {
+            LanguageNames.CSharp => node is CS.VariableDeclaratorSyntax,
+            LanguageNames.VisualBasic => node is VB.ModifiedIdentifierSyntax,
+            _ => false
+        };
+    }
+    
     private List<Workspace> GetWorkspacesToSearch(string? workspaceId)
     {
         var workspacesToSearch = new List<Workspace>();
@@ -1918,7 +1928,13 @@ public class RoslynWorkspaceManager : IDisposable
     
     private async Task FindMethodCallPatterns(SyntaxNode root, SemanticModel semanticModel, SourceText sourceText, string filePath, string findPattern, string replacePattern, List<PatternFix> fixes)
     {
-        var invocations = root.DescendantNodes().OfType<CS.InvocationExpressionSyntax>();
+        // Find invocations based on language
+        var invocations = root.Language switch
+        {
+            LanguageNames.CSharp => root.DescendantNodes().OfType<CS.InvocationExpressionSyntax>().Cast<SyntaxNode>(),
+            LanguageNames.VisualBasic => root.DescendantNodes().OfType<VB.InvocationExpressionSyntax>().Cast<SyntaxNode>(),
+            _ => Enumerable.Empty<SyntaxNode>()
+        };
         
         foreach (var invocation in invocations)
         {
@@ -3249,6 +3265,7 @@ public class RoslynWorkspaceManager : IDisposable
         // Add specific node properties
         switch (node)
         {
+            // C# nodes
             case CS.ClassDeclarationSyntax cls:
                 nodeInfo["name"] = cls.Identifier.Text;
                 nodeInfo["modifiers"] = cls.Modifiers.ToString();
@@ -3269,6 +3286,33 @@ public class RoslynWorkspaceManager : IDisposable
             case CS.ParameterSyntax param:
                 nodeInfo["name"] = param.Identifier.Text;
                 nodeInfo["type"] = param.Type?.ToString() ?? "var";
+                break;
+                
+            // VB.NET nodes
+            case VB.ClassBlockSyntax vbCls:
+                nodeInfo["name"] = vbCls.ClassStatement.Identifier.Text;
+                nodeInfo["modifiers"] = vbCls.ClassStatement.Modifiers.ToString();
+                break;
+            case VB.MethodBlockSyntax vbMethod:
+                nodeInfo["name"] = vbMethod.SubOrFunctionStatement.Identifier.Text;
+                if (vbMethod.SubOrFunctionStatement is VB.MethodStatementSyntax methodStmt && 
+                    methodStmt.AsClause is VB.SimpleAsClauseSyntax simpleAs)
+                    nodeInfo["returnType"] = simpleAs.Type.ToString();
+                nodeInfo["modifiers"] = vbMethod.SubOrFunctionStatement.Modifiers.ToString();
+                break;
+            case VB.PropertyBlockSyntax vbProp:
+                nodeInfo["name"] = vbProp.PropertyStatement.Identifier.Text;
+                if (vbProp.PropertyStatement.AsClause is VB.SimpleAsClauseSyntax propAs)
+                    nodeInfo["type"] = propAs.Type.ToString();
+                nodeInfo["modifiers"] = vbProp.PropertyStatement.Modifiers.ToString();
+                break;
+            case VB.ModifiedIdentifierSyntax vbVar:
+                nodeInfo["name"] = vbVar.Identifier.Text;
+                break;
+            case VB.ParameterSyntax vbParam:
+                nodeInfo["name"] = vbParam.Identifier.Identifier.Text;
+                if (vbParam.AsClause is VB.SimpleAsClauseSyntax paramAs)
+                    nodeInfo["type"] = paramAs.Type.ToString();
                 break;
         }
         
@@ -3425,15 +3469,24 @@ public class RoslynWorkspaceManager : IDisposable
         if (semanticModel == null)
             return CreateErrorResponse("Could not get semantic model");
             
-        // Find all declaration nodes
+        // Get language handler
+        var language = LanguageDetector.GetLanguageFromDocument(document);
+        var handler = LanguageHandlerFactory.GetHandler(language);
+        
+        if (handler == null)
+        {
+            return CreateErrorResponse($"No language handler found for {language}");
+        }
+        
+        // Find all declaration nodes using language handler
         var declarations = root.DescendantNodes()
-            .Where(n => n is CS.TypeDeclarationSyntax || 
-                       n is CS.MethodDeclarationSyntax || 
-                       n is CS.PropertyDeclarationSyntax || 
-                       n is CS.FieldDeclarationSyntax ||
-                       n is CS.EventDeclarationSyntax ||
-                       n is CS.ConstructorDeclarationSyntax ||
-                       n is CS.VariableDeclaratorSyntax);
+            .Where(n => handler.IsTypeDeclaration(n) || 
+                       handler.IsMethodDeclaration(n) || 
+                       handler.IsPropertyDeclaration(n) || 
+                       handler.IsFieldDeclaration(n) ||
+                       handler.IsEventDeclaration(n) ||
+                       handler.IsConstructor(n) ||
+                       IsVariableDeclarator(n, language));
                        
         var symbols = new List<object>();
         foreach (var node in declarations)
