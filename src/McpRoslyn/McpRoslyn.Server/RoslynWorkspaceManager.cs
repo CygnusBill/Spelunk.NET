@@ -14,6 +14,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using McpRoslyn.Server.RoslynPath;
 using McpRoslyn.Server.LanguageHandlers;
+using McpRoslyn.Server.FSharp;
 
 namespace McpRoslyn.Server;
 
@@ -23,6 +24,7 @@ public class RoslynWorkspaceManager : IDisposable
     private readonly Dictionary<string, WorkspaceEntry> _workspaces = new();
     private readonly Dictionary<string, string> _workspaceHistory = new(); // ID -> Path mapping for recently cleaned workspaces
     private readonly MarkerManager _markerManager = new();
+    private readonly FSharpProjectTracker _fsharpTracker = new();
     private readonly Timer _cleanupTimer;
     private readonly TimeSpan _workspaceTimeout = TimeSpan.FromMinutes(15);
     private readonly TimeSpan _historyTimeout = TimeSpan.FromHours(1);
@@ -116,6 +118,22 @@ public class RoslynWorkspaceManager : IDisposable
         workspace.WorkspaceFailed += (sender, args) =>
         {
             _logger.LogWarning("Workspace diagnostic: {Kind} - {Message}", args.Diagnostic.Kind, args.Diagnostic.Message);
+            
+            // Detect F# project loading failures
+            if (args.Diagnostic.Message.Contains(".fsproj", StringComparison.OrdinalIgnoreCase) &&
+                (args.Diagnostic.Message.Contains("Could not load project", StringComparison.OrdinalIgnoreCase) ||
+                 args.Diagnostic.Message.Contains("not supported", StringComparison.OrdinalIgnoreCase)))
+            {
+                // Extract project path from the diagnostic message
+                var match = Regex.Match(args.Diagnostic.Message, @"'([^']+\.fsproj)'");
+                if (match.Success)
+                {
+                    var projectPath = match.Groups[1].Value;
+                    var projectName = Path.GetFileNameWithoutExtension(projectPath);
+                    _fsharpTracker.AddSkippedProject(projectPath, projectName, workspaceId);
+                    _logger.LogInformation("Detected F# project: {Path}", projectPath);
+                }
+            }
         };
         
         var solution = await workspace.OpenSolutionAsync(solutionPath);
@@ -142,6 +160,22 @@ public class RoslynWorkspaceManager : IDisposable
         workspace.WorkspaceFailed += (sender, args) =>
         {
             _logger.LogWarning("Workspace diagnostic: {Kind} - {Message}", args.Diagnostic.Kind, args.Diagnostic.Message);
+            
+            // Detect F# project loading failures
+            if (args.Diagnostic.Message.Contains(".fsproj", StringComparison.OrdinalIgnoreCase) &&
+                (args.Diagnostic.Message.Contains("Could not load project", StringComparison.OrdinalIgnoreCase) ||
+                 args.Diagnostic.Message.Contains("not supported", StringComparison.OrdinalIgnoreCase)))
+            {
+                // Extract project path from the diagnostic message
+                var match = Regex.Match(args.Diagnostic.Message, @"'([^']+\.fsproj)'");
+                if (match.Success)
+                {
+                    var projectPath = match.Groups[1].Value;
+                    var projectName = Path.GetFileNameWithoutExtension(projectPath);
+                    _fsharpTracker.AddSkippedProject(projectPath, projectName, workspaceId);
+                    _logger.LogInformation("Detected F# project: {Path}", projectPath);
+                }
+            }
         };
         
         var project = await workspace.OpenProjectAsync(projectPath);
@@ -158,6 +192,16 @@ public class RoslynWorkspaceManager : IDisposable
         _logger.LogInformation("Loaded project: {Name}, ID: {WorkspaceId}", project.Name, workspaceId);
         
         return (true, $"Project '{project.Name}' loaded successfully", workspace, workspaceId);
+    }
+    
+    public IReadOnlyList<FSharpProjectInfo> GetFSharpProjects(string? workspaceId = null)
+    {
+        return _fsharpTracker.GetAllProjects(workspaceId);
+    }
+    
+    public IReadOnlyList<FSharpProjectInfo> GetSkippedFSharpProjects(string? workspaceId = null)
+    {
+        return _fsharpTracker.GetSkippedProjects(workspaceId);
     }
     
     public WorkspaceStatus GetStatus()
@@ -177,6 +221,8 @@ public class RoslynWorkspaceManager : IDisposable
                 hasCompilationErrors = false // Will be implemented later
             }).ToList();
             
+            var fsharpProjects = _fsharpTracker.GetAllProjects(workspaceId);
+            
             statuses.Add(new
             {
                 id = workspaceId,
@@ -184,7 +230,14 @@ public class RoslynWorkspaceManager : IDisposable
                 loadedAt = entry.LoadedAt,
                 lastAccessTime = entry.LastAccessTime,
                 projectCount = projects.Count,
-                projects
+                projects,
+                fsharpProjects = fsharpProjects.Select(fp => new
+                {
+                    path = fp.ProjectPath,
+                    name = fp.ProjectName,
+                    isLoaded = fp.IsLoaded,
+                    loadError = fp.LoadError
+                }).ToList()
             });
         }
         
@@ -3844,6 +3897,7 @@ public class RoslynWorkspaceManager : IDisposable
             
             _workspaces.Clear();
             _workspaceHistory.Clear();
+            _fsharpTracker.Clear();
         }
         catch (Exception ex)
         {

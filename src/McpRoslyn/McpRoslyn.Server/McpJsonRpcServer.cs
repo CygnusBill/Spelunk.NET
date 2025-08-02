@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using McpRoslyn.Server.Configuration;
+using McpRoslyn.Server.FSharp;
 
 namespace McpRoslyn.Server;
 
@@ -12,16 +13,19 @@ public class McpJsonRpcServer
     private readonly JsonSerializerOptions _jsonOptions;
     private List<string> _allowedPaths;
     private readonly RoslynWorkspaceManager _workspaceManager;
+    private readonly FSharpWorkspaceManager? _fsharpWorkspaceManager;
     private string? _initialWorkspace;
     private readonly object _configLock = new();
     
     public McpJsonRpcServer(
         ILogger<McpJsonRpcServer> logger,
         IOptions<McpRoslynOptions> options,
-        RoslynWorkspaceManager workspaceManager)
+        RoslynWorkspaceManager workspaceManager,
+        FSharpWorkspaceManager? fsharpWorkspaceManager = null)
     {
         _logger = logger;
         _workspaceManager = workspaceManager;
+        _fsharpWorkspaceManager = fsharpWorkspaceManager;
         
         var optionsValue = options.Value;
         _allowedPaths = new List<string>(optionsValue.AllowedPaths);
@@ -618,6 +622,49 @@ public class McpJsonRpcServer
                     type = "object",
                     properties = new { }
                 }
+            },
+            new
+            {
+                name = "dotnet-fsharp-projects",
+                description = "Get information about F# projects in the workspace (detected but not loaded by MSBuild)",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        workspaceId = new { type = "string", description = "Optional workspace ID to filter by" },
+                        includeLoaded = new { type = "boolean", description = "Include successfully loaded F# projects (default: false)" }
+                    }
+                }
+            },
+            new
+            {
+                name = "dotnet-load-fsharp-project",
+                description = "Load an F# project using FSharp.Compiler.Service (separate from MSBuild workspaces)",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        projectPath = new { type = "string", description = "Path to the .fsproj file to load" }
+                    },
+                    required = new[] { "projectPath" }
+                }
+            },
+            new
+            {
+                name = "dotnet-fsharp-find-symbols",
+                description = "Find symbols in F# code using FSharpPath queries",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        filePath = new { type = "string", description = "Path to the F# source file" },
+                        query = new { type = "string", description = "FSharpPath query (e.g., '//function[startsWith(name, \"process\")]')" }
+                    },
+                    required = new[] { "filePath", "query" }
+                }
             }
         };
         
@@ -743,6 +790,18 @@ public class McpJsonRpcServer
                 
             case "dotnet-clear-markers":
                 result = await ClearMarkersAsync(toolCallParams.Arguments);
+                break;
+                
+            case "dotnet-fsharp-projects":
+                result = await GetFSharpProjectsAsync(toolCallParams.Arguments);
+                break;
+                
+            case "dotnet-load-fsharp-project":
+                result = await LoadFSharpProjectAsync(toolCallParams.Arguments);
+                break;
+                
+            case "dotnet-fsharp-find-symbols":
+                result = await FindFSharpSymbolsAsync(toolCallParams.Arguments);
                 break;
                 
             default:
@@ -3035,6 +3094,246 @@ public class McpJsonRpcServer
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to synchronize workspace tracking");
+        }
+    }
+    
+    private async Task<object> GetFSharpProjectsAsync(JsonElement? args)
+    {
+        try
+        {
+            var workspaceId = args?.TryGetProperty("workspaceId", out var wsId) == true ? wsId.GetString() : null;
+            var includeLoaded = args?.TryGetProperty("includeLoaded", out var incLoaded) == true ? incLoaded.GetBoolean() : false;
+            
+            var projects = includeLoaded 
+                ? _workspaceManager.GetFSharpProjects(workspaceId)
+                : _workspaceManager.GetSkippedFSharpProjects(workspaceId);
+            
+            var response = new System.Text.StringBuilder();
+            response.AppendLine($"F# Projects{(includeLoaded ? "" : " (Skipped)")}: {projects.Count}");
+            response.AppendLine();
+            
+            foreach (var project in projects)
+            {
+                response.AppendLine($"Project: {project.ProjectName}");
+                response.AppendLine($"  Path: {project.ProjectPath}");
+                response.AppendLine($"  Workspace: {project.WorkspaceId}");
+                response.AppendLine($"  Status: {(project.IsLoaded ? "Loaded" : "Not Loaded")}");
+                if (!string.IsNullOrEmpty(project.LoadError))
+                {
+                    response.AppendLine($"  Error: {project.LoadError}");
+                }
+                response.AppendLine($"  Detected: {project.DetectedAt:yyyy-MM-dd HH:mm:ss}");
+                response.AppendLine();
+            }
+            
+            if (projects.Count == 0)
+            {
+                response.AppendLine("No F# projects found.");
+                response.AppendLine();
+            }
+            
+            response.AppendLine("Note: F# projects are not fully supported by MSBuildWorkspace.");
+            response.AppendLine("To work with F# projects, use FSharp.Compiler.Service directly.");
+            
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = response.ToString()
+                    }
+                }
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get F# project information");
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = $"Error getting F# project information: {ex.Message}"
+                    }
+                }
+            };
+        }
+    }
+    
+    private async Task<object> LoadFSharpProjectAsync(JsonElement? args)
+    {
+        try
+        {
+            if (_fsharpWorkspaceManager == null)
+            {
+                return new
+                {
+                    content = new[]
+                    {
+                        new
+                        {
+                            type = "text",
+                            text = "F# support is not configured. FSharpWorkspaceManager is not available."
+                        }
+                    }
+                };
+            }
+            
+            var projectPath = args?.GetProperty("projectPath").GetString();
+            if (string.IsNullOrEmpty(projectPath))
+            {
+                throw new ArgumentException("projectPath is required");
+            }
+            
+            // Validate path
+            ValidatePath(projectPath);
+            
+            var projectInfo = await _fsharpWorkspaceManager.LoadProjectAsync(projectPath);
+            
+            var response = new System.Text.StringBuilder();
+            response.AppendLine($"F# Project: {projectInfo.ProjectName}");
+            response.AppendLine($"Path: {projectInfo.ProjectPath}");
+            response.AppendLine($"Status: {(projectInfo.IsLoaded ? "Loaded successfully" : "Failed to load")}");
+            
+            if (!string.IsNullOrEmpty(projectInfo.LoadError))
+            {
+                response.AppendLine($"Error: {projectInfo.LoadError}");
+            }
+            else if (projectInfo.IsLoaded)
+            {
+                response.AppendLine($"Source Files: {projectInfo.SourceFiles.Count}");
+                foreach (var sourceFile in projectInfo.SourceFiles.Take(10))
+                {
+                    response.AppendLine($"  - {Path.GetFileName(sourceFile)}");
+                }
+                if (projectInfo.SourceFiles.Count > 10)
+                {
+                    response.AppendLine($"  ... and {projectInfo.SourceFiles.Count - 10} more");
+                }
+                
+                response.AppendLine($"References: {projectInfo.References.Count}");
+            }
+            
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = response.ToString()
+                    }
+                }
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error loading F# project");
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = $"Error loading F# project: {ex.Message}"
+                    }
+                }
+            };
+        }
+    }
+    
+    private async Task<object> FindFSharpSymbolsAsync(JsonElement? args)
+    {
+        try
+        {
+            if (_fsharpWorkspaceManager == null)
+            {
+                return new
+                {
+                    content = new[]
+                    {
+                        new
+                        {
+                            type = "text",
+                            text = "F# support is not configured. FSharpWorkspaceManager is not available."
+                        }
+                    }
+                };
+            }
+            
+            var filePath = args?.GetProperty("filePath").GetString();
+            var query = args?.GetProperty("query").GetString();
+            
+            if (string.IsNullOrEmpty(filePath))
+            {
+                throw new ArgumentException("filePath is required");
+            }
+            if (string.IsNullOrEmpty(query))
+            {
+                throw new ArgumentException("query is required");
+            }
+            
+            // Validate path
+            ValidatePath(filePath);
+            
+            var symbols = await _fsharpWorkspaceManager.FindSymbolsAsync(filePath, query);
+            
+            var response = new System.Text.StringBuilder();
+            response.AppendLine($"F# Symbols found with query '{query}': {symbols.Count()}");
+            response.AppendLine();
+            
+            foreach (var symbol in symbols)
+            {
+                response.AppendLine($"Symbol: {symbol.Name}");
+                response.AppendLine($"  Type: {symbol.NodeType}");
+                response.AppendLine($"  File: {Path.GetFileName(symbol.FilePath)}");
+                response.AppendLine($"  Access: {symbol.Accessibility}");
+                
+                if (symbol.IsAsync) response.AppendLine("  - Async");
+                if (symbol.IsStatic) response.AppendLine("  - Static");
+                if (symbol.IsMutable) response.AppendLine("  - Mutable");
+                if (symbol.IsRecursive) response.AppendLine("  - Recursive");
+                if (symbol.IsInline) response.AppendLine("  - Inline");
+                
+                response.AppendLine();
+            }
+            
+            if (!symbols.Any())
+            {
+                response.AppendLine("No symbols found matching the query.");
+            }
+            
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = response.ToString()
+                    }
+                }
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error finding F# symbols");
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = $"Error finding F# symbols: {ex.Message}"
+                    }
+                }
+            };
         }
     }
 }
