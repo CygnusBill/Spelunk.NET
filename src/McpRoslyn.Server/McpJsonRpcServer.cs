@@ -626,6 +626,32 @@ public class McpJsonRpcServer
             },
             new
             {
+                name = "dotnet-get-statement-context",
+                description = ToolDescriptions.GetStatementContext,
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        statementId = new { type = "string", description = "Statement ID from find-statements (e.g., 'stmt-123')" },
+                        location = new 
+                        { 
+                            type = "object", 
+                            description = "Alternative to statementId - direct location",
+                            properties = new
+                            {
+                                file = new { type = "string", description = "File path" },
+                                line = new { type = "number", description = "Line number (1-based)" },
+                                column = new { type = "number", description = "Column number (1-based)" }
+                            },
+                            required = new[] { "file", "line", "column" }
+                        },
+                        workspacePath = new { type = "string", description = "Optional workspace path" }
+                    }
+                }
+            },
+            new
+            {
                 name = "dotnet-fsharp-projects",
                 description = "Get information about F# projects in the workspace (detected but not loaded by MSBuild)",
                 inputSchema = new
@@ -791,6 +817,10 @@ public class McpJsonRpcServer
                 
             case "dotnet-clear-markers":
                 result = await ClearMarkersAsync(toolCallParams.Arguments);
+                break;
+                
+            case "dotnet-get-statement-context":
+                result = await GetStatementContextAsync(toolCallParams.Arguments);
                 break;
                 
             case "dotnet-fsharp-projects":
@@ -3085,6 +3115,76 @@ public class McpJsonRpcServer
                     }
                 }
             };
+        }
+    }
+    
+    private async Task<object> GetStatementContextAsync(JsonElement? args)
+    {
+        if (args == null)
+            return CreateErrorResponse("No arguments provided");
+            
+        try
+        {
+            // Get location either from statementId or direct location
+            string? filePath = null;
+            int line = 0;
+            int column = 0;
+            string? workspaceId = args.Value.TryGetProperty("workspacePath", out var wsPath) ? wsPath.GetString() : null;
+            
+            if (args.Value.TryGetProperty("statementId", out var idElement))
+            {
+                var statementId = idElement.GetString();
+                if (string.IsNullOrEmpty(statementId))
+                    return CreateErrorResponse("Statement ID is empty");
+                    
+                // Look up the statement by ID
+                var (node, statementFilePath, statementWorkspaceId) = _workspaceManager.GetStatementById(statementId);
+                if (node == null || string.IsNullOrEmpty(statementFilePath))
+                {
+                    return CreateErrorResponse($"Statement with ID '{statementId}' not found");
+                }
+                
+                filePath = statementFilePath;
+                workspaceId = statementWorkspaceId;
+                
+                // Get line and column from the node
+                var syntaxTree = node.SyntaxTree;
+                var lineSpan = syntaxTree.GetLineSpan(node.Span);
+                line = lineSpan.StartLinePosition.Line + 1;
+                column = lineSpan.StartLinePosition.Character + 1;
+            }
+            else if (args.Value.TryGetProperty("location", out var locElement))
+            {
+                filePath = locElement.GetProperty("file").GetString();
+                line = locElement.GetProperty("line").GetInt32();
+                column = locElement.GetProperty("column").GetInt32();
+            }
+            else
+            {
+                return CreateErrorResponse("Either statementId or location is required");
+            }
+            
+            if (string.IsNullOrEmpty(filePath))
+                return CreateErrorResponse("File path is required");
+                
+            var result = await _workspaceManager.GetStatementContextAsync(filePath, line, column, workspaceId);
+            
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true })
+                    }
+                }
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get statement context");
+            return CreateErrorResponse($"Error getting statement context: {ex.Message}");
         }
     }
     

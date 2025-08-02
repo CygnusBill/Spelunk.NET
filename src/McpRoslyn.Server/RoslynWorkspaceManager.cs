@@ -3374,6 +3374,349 @@ public class RoslynWorkspaceManager : IDisposable
         return result;
     }
     
+    public async Task<StatementContextResult> GetStatementContextAsync(string filePath, int line, int column, string? workspaceId)
+    {
+        var result = new StatementContextResult();
+        
+        try
+        {
+            var workspacesToSearch = GetWorkspacesToSearch(workspaceId);
+            if (!workspacesToSearch.Any())
+                throw new InvalidOperationException("No workspace loaded");
+            
+            var workspace = workspacesToSearch.First();
+            var solution = workspace.CurrentSolution;
+            var document = GetDocumentByPath(solution, filePath);
+            
+            if (document == null)
+                throw new InvalidOperationException($"File not found: {filePath}");
+                
+            var syntaxTree = await document.GetSyntaxTreeAsync();
+            if (syntaxTree == null)
+                throw new InvalidOperationException("Could not parse syntax tree");
+                
+            var semanticModel = await document.GetSemanticModelAsync();
+            if (semanticModel == null)
+                throw new InvalidOperationException("Could not get semantic model");
+                
+            var sourceText = await document.GetTextAsync();
+            var position = sourceText.Lines.GetPosition(new LinePosition(line - 1, column - 1));
+            
+            var root = await syntaxTree.GetRootAsync();
+            var node = root.FindToken(position).Parent;
+            
+            // Find the statement node
+            var statement = node;
+            while (statement != null && !(statement is CS.StatementSyntax || statement is VB.StatementSyntax))
+            {
+                statement = statement.Parent;
+            }
+            if (statement == null)
+                throw new InvalidOperationException($"No statement at position {line}:{column}");
+                
+            // Fill in statement info
+            var lineSpan = syntaxTree.GetLineSpan(statement.Span);
+            result.Statement = new StatementContextInfo
+            {
+                Id = $"stmt-{Guid.NewGuid():N}",
+                Code = statement.ToString(),
+                Kind = statement.Kind().ToString(),
+                Location = new RoslynWorkspaceManager.LocationInfo
+                {
+                    File = filePath,
+                    Line = lineSpan.StartLinePosition.Line + 1,
+                    Column = lineSpan.StartLinePosition.Character + 1,
+                    EndLine = lineSpan.EndLinePosition.Line + 1,
+                    EndColumn = lineSpan.EndLinePosition.Character + 1
+                }
+            };
+            
+            // Gather semantic information
+            result.SemanticInfo = GatherSemanticInfo(statement, semanticModel);
+            
+            // Gather context information
+            result.Context = GatherContextInfo(statement, semanticModel, position);
+            
+            // Get diagnostics for this statement
+            result.Diagnostics = GatherDiagnostics(statement, semanticModel);
+            
+            // Generate suggestions
+            result.Suggestions = GenerateSuggestions(statement, semanticModel);
+        }
+        catch (Exception ex)
+        {
+            // Return partial result with error info
+            result.Diagnostics.Add(new RoslynWorkspaceManager.DiagnosticInfo
+            {
+                Id = "CONTEXT_ERROR",
+                Severity = "Error",
+                Message = ex.Message,
+                Location = null
+            });
+        }
+        
+        return result;
+    }
+    
+    private SemanticContextInfo GatherSemanticInfo(SyntaxNode statement, SemanticModel semanticModel)
+    {
+        var info = new SemanticContextInfo();
+        
+        // Get all identifier nodes in the statement
+        var identifiers = statement.DescendantNodes()
+            .Where(n => n is CS.IdentifierNameSyntax || n is VB.IdentifierNameSyntax);
+            
+        foreach (var identifier in identifiers)
+        {
+            var symbolInfo = semanticModel.GetSymbolInfo(identifier);
+            var symbol = symbolInfo.Symbol;
+            
+            if (symbol != null)
+            {
+                var symInfo = new SemanticSymbolInfo
+                {
+                    Name = symbol.Name,
+                    Kind = symbol.Kind.ToString(),
+                    Type = symbol.GetType().Name.Replace("Symbol", ""),
+                    ContainingType = symbol.ContainingType?.ToDisplayString()
+                };
+                
+                // Check if this is a declaration
+                var declaredSymbol = semanticModel.GetDeclaredSymbol(identifier.Parent);
+                symInfo.IsDeclared = declaredSymbol != null;
+                
+                // Add type information for variables
+                if (symbol is ILocalSymbol localSymbol)
+                {
+                    symInfo.Type = localSymbol.Type.ToDisplayString();
+                    symInfo.IsImplicitlyTyped = localSymbol.Type.TypeKind == TypeKind.Error || localSymbol.Type.Name == "var";
+                }
+                else if (symbol is IFieldSymbol fieldSymbol)
+                {
+                    symInfo.Type = fieldSymbol.Type.ToDisplayString();
+                }
+                else if (symbol is IPropertySymbol propertySymbol)
+                {
+                    symInfo.Type = propertySymbol.Type.ToDisplayString();
+                }
+                else if (symbol is IMethodSymbol methodSymbol)
+                {
+                    symInfo.ReturnType = methodSymbol.ReturnType.ToDisplayString();
+                    symInfo.Parameters = methodSymbol.Parameters.Select(p => new ParameterInfo
+                    {
+                        Name = p.Name,
+                        Type = p.Type.ToDisplayString()
+                    }).ToList();
+                }
+                
+                // Add declaration location if not declared here
+                if (!symInfo.IsDeclared && symbol.Locations.Any())
+                {
+                    var location = symbol.Locations.First();
+                    if (location.IsInSource)
+                    {
+                        var locLineSpan = location.GetLineSpan();
+                        symInfo.DeclarationLocation = new RoslynWorkspaceManager.LocationInfo
+                        {
+                            File = locLineSpan.Path,
+                            Line = locLineSpan.StartLinePosition.Line + 1,
+                            Column = locLineSpan.StartLinePosition.Character + 1
+                        };
+                    }
+                }
+                
+                // Avoid duplicates
+                if (!info.Symbols.Any(s => s.Name == symInfo.Name && s.Kind == symInfo.Kind))
+                {
+                    info.Symbols.Add(symInfo);
+                }
+            }
+        }
+        
+        // Get type information for expressions
+        var expressions = statement.DescendantNodes()
+            .Where(n => n is CS.ExpressionSyntax || n is VB.ExpressionSyntax)
+            .Take(1); // Just the main expression
+            
+        foreach (var expr in expressions)
+        {
+            var typeInfo = semanticModel.GetTypeInfo(expr);
+            if (typeInfo.Type != null)
+            {
+                info.TypeInfo = new SemanticTypeInfo
+                {
+                    ExpressionType = typeInfo.Type.ToDisplayString(),
+                    ConvertedType = typeInfo.ConvertedType?.ToDisplayString() ?? typeInfo.Type.ToDisplayString(),
+                    IsImplicitConversion = typeInfo.Type != typeInfo.ConvertedType
+                };
+                break;
+            }
+        }
+        
+        // Simple data flow analysis
+        var dataFlow = semanticModel.AnalyzeDataFlow(statement);
+        if (dataFlow.Succeeded)
+        {
+            info.DataFlow.VariablesRead = dataFlow.ReadInside.Select(s => s.Name).ToList();
+            info.DataFlow.VariablesDeclared = dataFlow.VariablesDeclared.Select(s => s.Name).ToList();
+            info.DataFlow.VariablesWritten = dataFlow.WrittenInside.Select(s => s.Name).ToList();
+        }
+        
+        return info;
+    }
+    
+    private ContextInfo GatherContextInfo(SyntaxNode statement, SemanticModel semanticModel, int position)
+    {
+        var context = new ContextInfo();
+        
+        // Find enclosing method/property/constructor
+        var enclosingMember = statement.Ancestors()
+            .FirstOrDefault(n => n is CS.MethodDeclarationSyntax || n is CS.PropertyDeclarationSyntax ||
+                                n is CS.ConstructorDeclarationSyntax || n is VB.MethodStatementSyntax ||
+                                n is VB.PropertyStatementSyntax || n is VB.SubNewStatementSyntax);
+                                
+        if (enclosingMember != null)
+        {
+            var symbol = semanticModel.GetDeclaredSymbol(enclosingMember);
+            if (symbol != null)
+            {
+                context.EnclosingSymbol = new EnclosingSymbolInfo
+                {
+                    Name = symbol.Name,
+                    Kind = symbol.Kind.ToString(),
+                    ContainingType = symbol.ContainingType?.ToDisplayString()
+                };
+            }
+        }
+        
+        // Find enclosing block
+        var enclosingBlock = statement.Parent;
+        if (enclosingBlock is CS.BlockSyntax csBlock)
+        {
+            var statements = csBlock.Statements;
+            var index = statements.IndexOf((CS.StatementSyntax)statement);
+            context.EnclosingBlock = new EnclosingBlockInfo
+            {
+                Kind = "Block",
+                StatementCount = statements.Count,
+                CurrentIndex = index
+            };
+        }
+        else if (enclosingBlock is VB.MethodBlockBaseSyntax vbBlock)
+        {
+            var statements = vbBlock.Statements;
+            var index = statements.IndexOf((VB.StatementSyntax)statement);
+            context.EnclosingBlock = new EnclosingBlockInfo
+            {
+                Kind = "MethodBlock",
+                StatementCount = statements.Count,
+                CurrentIndex = index
+            };
+        }
+        
+        // Get available symbols in scope
+        var symbols = semanticModel.LookupSymbols(position);
+        context.AvailableSymbols = symbols
+            .Where(s => s.Kind == SymbolKind.Local || s.Kind == SymbolKind.Parameter ||
+                       s.Kind == SymbolKind.Field || s.Kind == SymbolKind.Property)
+            .Take(20) // Limit to avoid too much data
+            .Select(s => new AvailableSymbolInfo
+            {
+                Name = s.Name,
+                Kind = s.Kind.ToString(),
+                Type = GetSymbolType(s)
+            })
+            .ToList();
+            
+        // Get using directives
+        var compilation = semanticModel.Compilation;
+        var tree = statement.SyntaxTree;
+        var root = tree.GetRoot();
+        
+        if (root is CS.CompilationUnitSyntax csRoot)
+        {
+            context.Usings = csRoot.Usings.Select(u => u.Name?.ToString() ?? "").Where(u => !string.IsNullOrEmpty(u)).ToList();
+        }
+        else if (root is VB.CompilationUnitSyntax vbRoot)
+        {
+            context.Usings = vbRoot.Imports.Select(i => i.ImportsClauses.FirstOrDefault()?.ToString() ?? "").Where(u => !string.IsNullOrEmpty(u)).ToList();
+        }
+        
+        return context;
+    }
+    
+    private List<RoslynWorkspaceManager.DiagnosticInfo> GatherDiagnostics(SyntaxNode statement, SemanticModel semanticModel)
+    {
+        var diagnostics = semanticModel.GetDiagnostics(statement.Span);
+        
+        return diagnostics.Select(d => new RoslynWorkspaceManager.DiagnosticInfo
+        {
+            Id = d.Id,
+            Severity = d.Severity.ToString(),
+            Message = d.GetMessage(),
+            Location = new RoslynWorkspaceManager.LocationInfo
+            {
+                File = d.Location.GetLineSpan().Path,
+                Line = d.Location.GetLineSpan().StartLinePosition.Line + 1,
+                Column = d.Location.GetLineSpan().StartLinePosition.Character + 1,
+                EndLine = d.Location.GetLineSpan().EndLinePosition.Line + 1,
+                EndColumn = d.Location.GetLineSpan().EndLinePosition.Character + 1
+            }
+        }).ToList();
+    }
+    
+    private SuggestionInfo GenerateSuggestions(SyntaxNode statement, SemanticModel semanticModel)
+    {
+        var suggestions = new SuggestionInfo();
+        
+        // Check if can extract method (has multiple statements or complex logic)
+        suggestions.CanExtractMethod = statement.DescendantNodes().Count() > 5;
+        
+        // Check if can inline variable (simple assignment)
+        if (statement is CS.LocalDeclarationStatementSyntax localDecl)
+        {
+            var variable = localDecl.Declaration.Variables.FirstOrDefault();
+            if (variable?.Initializer != null)
+            {
+                // Check if variable is used only once
+                var symbol = semanticModel.GetDeclaredSymbol(variable);
+                if (symbol != null)
+                {
+                    var references = statement.Parent.DescendantNodes()
+                        .Where(n => semanticModel.GetSymbolInfo(n).Symbol?.Equals(symbol) == true)
+                        .Count();
+                    suggestions.CanInlineVariable = references <= 2; // Declaration + 1 use
+                }
+            }
+        }
+        
+        // Add possible refactorings
+        suggestions.PossibleRefactorings.Add("Extract Method");
+        
+        if (suggestions.CanInlineVariable)
+            suggestions.PossibleRefactorings.Add("Inline Variable");
+            
+        if (statement.DescendantNodes().Any(n => n is CS.InvocationExpressionSyntax || n is VB.InvocationExpressionSyntax))
+            suggestions.PossibleRefactorings.Add("Extract Local Function");
+            
+        if (statement is CS.IfStatementSyntax || statement is VB.IfStatementSyntax)
+            suggestions.PossibleRefactorings.Add("Invert If");
+            
+        return suggestions;
+    }
+    
+    private string GetSymbolType(ISymbol symbol)
+    {
+        return symbol switch
+        {
+            ILocalSymbol local => local.Type.ToDisplayString(),
+            IParameterSymbol param => param.Type.ToDisplayString(),
+            IFieldSymbol field => field.Type.ToDisplayString(),
+            IPropertySymbol prop => prop.Type.ToDisplayString(),
+            _ => "unknown"
+        };
+    }
+    
     private string GetStatementContext(SyntaxNode statement)
     {
         // Try to find the containing method/property/constructor
@@ -4502,4 +4845,112 @@ public class ClearMarkersResult
     public string? Error { get; set; }
     public string? Message { get; set; }
     public int ClearedCount { get; set; }
+}
+
+// Statement context classes
+public class StatementContextResult
+{
+    public StatementContextInfo Statement { get; set; } = new();
+    public SemanticContextInfo SemanticInfo { get; set; } = new();
+    public ContextInfo Context { get; set; } = new();
+    public List<RoslynWorkspaceManager.DiagnosticInfo> Diagnostics { get; set; } = new();
+    public SuggestionInfo Suggestions { get; set; } = new();
+}
+
+public class StatementContextInfo
+{
+    public string Id { get; set; } = "";
+    public string Code { get; set; } = "";
+    public string Kind { get; set; } = "";
+    public RoslynWorkspaceManager.LocationInfo Location { get; set; } = new();
+}
+
+public class SemanticContextInfo
+{
+    public List<SemanticSymbolInfo> Symbols { get; set; } = new();
+    public SemanticTypeInfo? TypeInfo { get; set; }
+    public SimpleDataFlowInfo DataFlow { get; set; } = new();
+}
+
+public class SemanticSymbolInfo
+{
+    public string Name { get; set; } = "";
+    public string Kind { get; set; } = "";
+    public string Type { get; set; } = "";
+    public bool IsDeclared { get; set; }
+    public bool IsImplicitlyTyped { get; set; }
+    public RoslynWorkspaceManager.LocationInfo? DeclarationLocation { get; set; }
+    public string? ContainingType { get; set; }
+    public string? ReturnType { get; set; }
+    public List<ParameterInfo>? Parameters { get; set; }
+}
+
+public class ParameterInfo
+{
+    public string Name { get; set; } = "";
+    public string Type { get; set; } = "";
+}
+
+public class SemanticTypeInfo
+{
+    public string ExpressionType { get; set; } = "";
+    public string ConvertedType { get; set; } = "";
+    public bool IsImplicitConversion { get; set; }
+}
+
+public class SimpleDataFlowInfo
+{
+    public List<string> VariablesRead { get; set; } = new();
+    public List<string> VariablesDeclared { get; set; } = new();
+    public List<string> VariablesWritten { get; set; } = new();
+}
+
+public class ContextInfo
+{
+    public EnclosingSymbolInfo? EnclosingSymbol { get; set; }
+    public EnclosingBlockInfo? EnclosingBlock { get; set; }
+    public List<AvailableSymbolInfo> AvailableSymbols { get; set; } = new();
+    public List<string> Usings { get; set; } = new();
+}
+
+public class EnclosingSymbolInfo
+{
+    public string Name { get; set; } = "";
+    public string Kind { get; set; } = "";
+    public string? ContainingType { get; set; }
+}
+
+public class EnclosingBlockInfo
+{
+    public string Kind { get; set; } = "";
+    public int StatementCount { get; set; }
+    public int CurrentIndex { get; set; }
+}
+
+public class AvailableSymbolInfo
+{
+    public string Name { get; set; } = "";
+    public string Kind { get; set; } = "";
+    public string Type { get; set; } = "";
+}
+
+public class DiagnosticInfo
+{
+    public string Id { get; set; } = "";
+    public string Severity { get; set; } = "";
+    public string Message { get; set; } = "";
+    public SpanInfo Location { get; set; } = new();
+}
+
+public class SpanInfo
+{
+    public int Start { get; set; }
+    public int End { get; set; }
+}
+
+public class SuggestionInfo
+{
+    public bool CanExtractMethod { get; set; }
+    public bool CanInlineVariable { get; set; }
+    public List<string> PossibleRefactorings { get; set; } = new();
 }

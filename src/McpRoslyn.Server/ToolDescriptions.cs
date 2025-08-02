@@ -54,6 +54,8 @@ public static class ToolDescriptions
     
     public const string ClearMarkers = "Clear all markers in the current session.";
     
+    public const string GetStatementContext = "Get comprehensive semantic context for a statement including symbols, types, diagnostics, and basic data flow";
+    
     public const string GetDiagnostics = "Get compilation diagnostics (errors, warnings, info) from the workspace";
     
     public const string FSharpProjects = "Get information about F# projects in the workspace (detected but not loaded by MSBuild)";

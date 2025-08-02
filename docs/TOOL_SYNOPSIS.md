@@ -897,6 +897,111 @@ Cleared 3 marker(s)
 
 **Use Case**: Reset marker state, clean up after complex refactoring
 
+#### `dotnet-get-statement-context`
+**MCP Description**: "Get comprehensive semantic context for a statement including symbols, types, diagnostics, and basic data flow"
+
+**Purpose**: Provides deep semantic information about a statement for AI agents to understand code context hierarchically.
+
+**Input Format**:
+```json
+{
+  "statementId": "stmt-abc123",       // Option 1: Use statement ID from find-statements
+  
+  // Option 2: Use direct location
+  "file": "/path/to/file.cs",         // File path
+  "line": 15,                         // Line number (1-based)
+  "column": 9,                        // Column number (1-based)
+  
+  "workspacePath": "/path/to/search"  // Optional
+}
+```
+
+**Output Format**:
+```json
+{
+  "statement": {
+    "id": "stmt-abc123",
+    "code": "var user = await GetUserAsync(userId);",
+    "kind": "LocalDeclarationStatement",
+    "location": {
+      "file": "/path/to/file.cs",
+      "line": 15,
+      "column": 9,
+      "endLine": 15,
+      "endColumn": 47
+    }
+  },
+  "semanticInfo": {
+    "symbols": [
+      {
+        "name": "user",
+        "kind": "Local",
+        "type": "User",
+        "isDeclared": true,
+        "isImplicitlyTyped": true
+      },
+      {
+        "name": "GetUserAsync",
+        "kind": "Method",
+        "type": "Method",
+        "containingType": "UserService",
+        "returnType": "Task<User>",
+        "parameters": [
+          { "name": "userId", "type": "int" }
+        ],
+        "declarationLocation": {
+          "file": "/path/src/UserService.cs",
+          "line": 42,
+          "column": 12
+        }
+      }
+    ],
+    "typeInfo": {
+      "expressionType": "Task<User>",
+      "convertedType": "Task<User>",
+      "isImplicitConversion": false
+    },
+    "dataFlow": {
+      "variablesRead": ["userId"],
+      "variablesDeclared": ["user"],
+      "variablesWritten": ["user"]
+    }
+  },
+  "context": {
+    "enclosingSymbol": {
+      "name": "ProcessUserRequest",
+      "kind": "Method",
+      "containingType": "UserController"
+    },
+    "enclosingBlock": {
+      "kind": "Block",
+      "statementCount": 5,
+      "currentIndex": 2
+    },
+    "availableSymbols": [
+      { "name": "userId", "kind": "Parameter", "type": "int" },
+      { "name": "_logger", "kind": "Field", "type": "ILogger" }
+    ],
+    "usings": [
+      "System",
+      "System.Threading.Tasks",
+      "MyApp.Models"
+    ]
+  },
+  "diagnostics": [],
+  "suggestions": {
+    "canExtractMethod": true,
+    "canInlineVariable": false,
+    "possibleRefactorings": [
+      "Extract Method",
+      "Add Null Check"
+    ]
+  }
+}
+```
+
+**Use Case**: Hierarchical context walking for AI agents, semantic-aware code modification, diagnostic-driven fixes
+
 ### 6. Code Modification Tools
 
 #### `dotnet-rename-symbol`

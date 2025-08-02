@@ -622,6 +622,66 @@ public static class RoslynTools
         }
     }
 
+    [McpServerTool(Name = "dotnet-get-statement-context"), Description(ToolDescriptions.GetStatementContext)]
+    public static async Task<string> DotnetGetStatementContext(
+        [Description("Statement ID from find-statements (e.g., 'stmt-123')")] string? statementId = null,
+        [Description("File path (alternative to statementId)")] string? file = null,
+        [Description("Line number (1-based, used with file)")] int? line = null,
+        [Description("Column number (1-based, used with file)")] int? column = null,
+        [Description("Optional workspace path")] string? workspacePath = null)
+    {
+        if (_workspaceManager == null)
+        {
+            throw new InvalidOperationException("RoslynTools not initialized");
+        }
+
+        try
+        {
+            // Validate input
+            if (!string.IsNullOrEmpty(statementId))
+            {
+                // Look up by statement ID
+                var (node, filePath, workspaceId) = _workspaceManager.GetStatementById(statementId);
+                if (node == null || string.IsNullOrEmpty(filePath))
+                {
+                    throw new ArgumentException($"Statement with ID '{statementId}' not found");
+                }
+                
+                var syntaxTree = node.SyntaxTree;
+                var lineSpan = syntaxTree.GetLineSpan(node.Span);
+                var result = await _workspaceManager.GetStatementContextAsync(
+                    filePath, 
+                    lineSpan.StartLinePosition.Line + 1, 
+                    lineSpan.StartLinePosition.Character + 1, 
+                    workspaceId);
+                
+                return JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
+            }
+            else if (!string.IsNullOrEmpty(file) && line.HasValue && column.HasValue)
+            {
+                // Direct location
+                if (IsPathAllowed(file))
+                {
+                    var result = await _workspaceManager.GetStatementContextAsync(file, line.Value, column.Value, workspacePath);
+                    return JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
+                }
+                else
+                {
+                    throw new UnauthorizedAccessException($"Access to path '{file}' is not allowed");
+                }
+            }
+            else
+            {
+                throw new ArgumentException("Either statementId or (file, line, column) must be provided");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to get statement context");
+            throw new InvalidOperationException($"Failed to get statement context: {ex.Message}", ex);
+        }
+    }
+
     private static bool IsPathAllowed(string path)
     {
         var normalizedPath = Path.GetFullPath(path);
