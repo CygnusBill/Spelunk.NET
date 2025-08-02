@@ -2176,6 +2176,14 @@ public class RoslynWorkspaceManager : IDisposable
         if (semanticModel == null) return;
         
         var sourceText = await document.GetTextAsync();
+        var language = LanguageDetector.GetLanguageFromDocument(document);
+        var handler = LanguageHandlerFactory.GetHandler(language);
+        
+        if (handler == null)
+        {
+            _logger.LogWarning($"No language handler available for {language}");
+            return;
+        }
         
         // Handle RoslynPath pattern type
         if (patternType.ToLower() == "roslynpath")
@@ -2188,27 +2196,25 @@ public class RoslynWorkspaceManager : IDisposable
                 // Use RoslynPath to find nodes
                 var matchingNodes = RoslynPath.RoslynPath.Find(syntaxTree, pattern, semanticModel);
                 
-                // Filter to only statements if the path doesn't specifically target statements
-                var statements = matchingNodes
-                    .Where(n => n is CS.StatementSyntax)
-                    .Cast<CS.StatementSyntax>();
+                // Filter to only statements
+                var statements = matchingNodes.Where(n => handler.IsStatement(n));
                 
                 // Apply scope filter if specified
                 if (scope?.ContainsKey("className") == true || scope?.ContainsKey("methodName") == true)
                 {
-                    statements = statements.Where(stmt => IsInScope(stmt, scope));
+                    statements = statements.Where(stmt => IsInScope(stmt, scope, language));
                 }
                 
                 // Filter nested statements if requested
                 if (!includeNestedStatements)
                 {
-                    statements = statements.Where(stmt => !IsNestedStatement(stmt));
+                    statements = statements.Where(stmt => !IsNestedStatement(stmt, language));
                 }
                 
                 foreach (var statement in statements)
                 {
                     await AddStatementToResult(statement, sourceText, semanticModel, 
-                        document.FilePath ?? "", result, statementIdCounter);
+                        document.FilePath ?? "", result, statementIdCounter, language);
                 }
             }
             catch (Exception ex)
@@ -2222,21 +2228,20 @@ public class RoslynWorkspaceManager : IDisposable
         // Handle text and regex pattern types
         if (patternType.ToLower() != "roslynpath")
         {
-            // Get all statements using Roslyn's built-in traversal
+            // Get all statements using language handler
             var statements = root.DescendantNodes()
-                .Where(n => n is CS.StatementSyntax)
-                .Cast<CS.StatementSyntax>();
+                .Where(n => handler.IsStatement(n));
             
             // Filter by scope if specified
             if (scope?.ContainsKey("className") == true || scope?.ContainsKey("methodName") == true)
             {
-                statements = statements.Where(stmt => IsInScope(stmt, scope));
+                statements = statements.Where(stmt => IsInScope(stmt, scope, language));
             }
             
             // Filter nested statements if requested
             if (!includeNestedStatements)
             {
-                statements = statements.Where(stmt => !IsNestedStatement(stmt));
+                statements = statements.Where(stmt => !IsNestedStatement(stmt, language));
             }
             
             foreach (var statement in statements)
@@ -2253,23 +2258,27 @@ public class RoslynWorkspaceManager : IDisposable
                 if (matches)
                 {
                     await AddStatementToResult(statement, sourceText, semanticModel, 
-                        document.FilePath ?? "", result, statementIdCounter);
+                        document.FilePath ?? "", result, statementIdCounter, language);
                 }
             }
         }
     }
     
     private async Task AddStatementToResult(
-        CS.StatementSyntax statement,
+        SyntaxNode statement,
         SourceText sourceText,
         SemanticModel semanticModel,
         string filePath,
         FindStatementsResult result,
-        StatementIdCounter statementIdCounter)
+        StatementIdCounter statementIdCounter,
+        string language)
     {
+        var handler = LanguageHandlerFactory.GetHandler(language);
+        if (handler == null) return;
+        
         var lineSpan = sourceText.Lines.GetLinePositionSpan(statement.Span);
-        var containingMethod = statement.Ancestors().OfType<CS.MethodDeclarationSyntax>().FirstOrDefault();
-        var containingClass = statement.Ancestors().OfType<CS.TypeDeclarationSyntax>().FirstOrDefault();
+        var containingMethod = statement.Ancestors().FirstOrDefault(n => handler.IsMethodDeclaration(n));
+        var containingClass = statement.Ancestors().FirstOrDefault(n => handler.IsTypeDeclaration(n));
         
         var statementId = $"stmt-{++statementIdCounter.Value}";
         
@@ -2284,8 +2293,8 @@ public class RoslynWorkspaceManager : IDisposable
                 Line = lineSpan.Start.Line + 1,
                 Column = lineSpan.Start.Character + 1
             },
-            ContainingMethod = containingMethod?.Identifier.Text ?? "",
-            ContainingClass = containingClass?.Identifier.Text ?? "",
+            ContainingMethod = containingMethod != null ? handler.GetMethodDeclarationName(containingMethod) ?? "" : "",
+            ContainingClass = containingClass != null ? handler.GetTypeDeclarationName(containingClass) ?? "" : "",
             SyntaxTag = $"syntax-{statementIdCounter.Value}"
         };
         
@@ -2301,35 +2310,66 @@ public class RoslynWorkspaceManager : IDisposable
         result.Statements.Add(statementInfo);
     }
     
-    private bool IsInScope(CS.StatementSyntax statement, Dictionary<string, string> scope)
+    private bool IsInScope(SyntaxNode statement, Dictionary<string, string> scope, string language)
     {
+        var handler = LanguageHandlerFactory.GetHandler(language);
+        if (handler == null) return false;
+        
         if (scope.ContainsKey("methodName"))
         {
-            var method = statement.Ancestors().OfType<CS.MethodDeclarationSyntax>().FirstOrDefault();
-            if (method?.Identifier.Text != scope["methodName"])
+            var method = statement.Ancestors().FirstOrDefault(n => handler.IsMethodDeclaration(n));
+            if (method != null)
+            {
+                var methodName = handler.GetMethodDeclarationName(method);
+                if (methodName != scope["methodName"])
+                    return false;
+            }
+            else
+            {
                 return false;
+            }
         }
         
         if (scope.ContainsKey("className"))
         {
-            var type = statement.Ancestors().OfType<CS.TypeDeclarationSyntax>().FirstOrDefault();
-            if (type?.Identifier.Text != scope["className"])
+            var type = statement.Ancestors().FirstOrDefault(n => handler.IsTypeDeclaration(n));
+            if (type != null)
+            {
+                var typeName = handler.GetTypeDeclarationName(type);
+                if (typeName != scope["className"])
+                    return false;
+            }
+            else
+            {
                 return false;
+            }
         }
         
         return true;
     }
     
-    private bool IsNestedStatement(CS.StatementSyntax statement)
+    private bool IsNestedStatement(SyntaxNode statement, string language)
     {
+        var handler = LanguageHandlerFactory.GetHandler(language);
+        if (handler == null) return false;
+        
         // Check if this statement is inside another statement (like inside if/while/for body)
         var parent = statement.Parent;
         while (parent != null)
         {
-            if (parent is CS.BlockSyntax block && block.Parent is CS.StatementSyntax)
-                return true;
-            if (parent is CS.StatementSyntax && !(parent is CS.BlockSyntax))
-                return true;
+            if (language == LanguageNames.CSharp)
+            {
+                if (parent is CS.BlockSyntax block && handler.IsStatement(block.Parent))
+                    return true;
+                if (handler.IsStatement(parent) && !(parent is CS.BlockSyntax))
+                    return true;
+            }
+            else if (language == LanguageNames.VisualBasic)
+            {
+                // In VB.NET, statements can be nested in different ways
+                if (handler.IsStatement(parent) && parent != statement)
+                    return true;
+            }
             parent = parent.Parent;
         }
         return false;
@@ -2378,6 +2418,15 @@ public class RoslynWorkspaceManager : IDisposable
             }
             
             var sourceText = await targetDocument.GetTextAsync();
+            var language = LanguageDetector.GetLanguageFromDocument(targetDocument);
+            var handler = LanguageHandlerFactory.GetHandler(language);
+            
+            if (handler == null)
+            {
+                result.Success = false;
+                result.Error = $"No language handler available for {language}";
+                return result;
+            }
             
             // Find the statement at the specified location
             var position = sourceText.Lines.GetPosition(new LinePosition(line - 1, column - 1));
@@ -2385,8 +2434,7 @@ public class RoslynWorkspaceManager : IDisposable
             
             // Find the containing statement
             var statement = token.Parent?.AncestorsAndSelf()
-                .OfType<CS.StatementSyntax>()
-                .FirstOrDefault();
+                .FirstOrDefault(n => handler.IsStatement(n));
                 
             if (statement == null)
             {
@@ -2396,7 +2444,7 @@ public class RoslynWorkspaceManager : IDisposable
             }
             
             // Parse the new statement
-            var newStatementSyntax = SyntaxFactory.ParseStatement(newStatement);
+            var newStatementSyntax = handler.ParseStatement(newStatement);
             if (newStatementSyntax.ContainsDiagnostics)
             {
                 result.Success = false;
@@ -2415,7 +2463,9 @@ public class RoslynWorkspaceManager : IDisposable
             {
                 // At least preserve indentation
                 var leadingWhitespace = statement.GetLeadingTrivia()
-                    .Where(t => t.IsKind(SyntaxKind.WhitespaceTrivia))
+                    .Where(t => t.IsKind(language == LanguageNames.CSharp ? 
+                        SyntaxKind.WhitespaceTrivia : 
+                        Microsoft.CodeAnalysis.VisualBasic.SyntaxKind.WhitespaceTrivia))
                     .LastOrDefault();
                 if (leadingWhitespace != default)
                 {
@@ -2424,7 +2474,9 @@ public class RoslynWorkspaceManager : IDisposable
                 
                 // Preserve line ending
                 var trailingTrivia = statement.GetTrailingTrivia()
-                    .Where(t => t.IsKind(SyntaxKind.EndOfLineTrivia))
+                    .Where(t => t.IsKind(language == LanguageNames.CSharp ? 
+                        SyntaxKind.EndOfLineTrivia : 
+                        Microsoft.CodeAnalysis.VisualBasic.SyntaxKind.EndOfLineTrivia))
                     .LastOrDefault();
                 if (trailingTrivia != default)
                 {
@@ -2531,6 +2583,15 @@ public class RoslynWorkspaceManager : IDisposable
             }
             
             var sourceText = await targetDocument.GetTextAsync();
+            var language = LanguageDetector.GetLanguageFromDocument(targetDocument);
+            var handler = LanguageHandlerFactory.GetHandler(language);
+            
+            if (handler == null)
+            {
+                result.Success = false;
+                result.Error = $"No language handler available for {language}";
+                return result;
+            }
             
             // Find the reference statement at the specified location
             var pos = sourceText.Lines.GetPosition(new LinePosition(line - 1, column - 1));
@@ -2538,8 +2599,7 @@ public class RoslynWorkspaceManager : IDisposable
             
             // Find the containing statement
             var referenceStatement = token.Parent?.AncestorsAndSelf()
-                .OfType<CS.StatementSyntax>()
-                .FirstOrDefault();
+                .FirstOrDefault(n => handler.IsStatement(n));
                 
             if (referenceStatement == null)
             {
@@ -2549,7 +2609,7 @@ public class RoslynWorkspaceManager : IDisposable
             }
             
             // Parse the new statement
-            var newStatementSyntax = SyntaxFactory.ParseStatement(statement);
+            var newStatementSyntax = handler.ParseStatement(statement);
             if (newStatementSyntax.ContainsDiagnostics)
             {
                 result.Success = false;
