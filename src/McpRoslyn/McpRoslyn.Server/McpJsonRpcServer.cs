@@ -164,7 +164,7 @@ public class McpJsonRpcServer
         {
             new
             {
-                name = "dotnet/load-workspace",
+                name = "dotnet-load-workspace",
                 description = "Load a .NET solution or project into the workspace",
                 inputSchema = new
                 {
@@ -179,7 +179,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet/analyze-syntax",
+                name = "dotnet-analyze-syntax",
                 description = "Analyzes the syntax tree of a C# or VB.NET file",
                 inputSchema = new
                 {
@@ -195,7 +195,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet/get-symbols",
+                name = "dotnet-get-symbols",
                 description = "Retrieves symbol information from code",
                 inputSchema = new
                 {
@@ -220,7 +220,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet/workspace-status",
+                name = "dotnet-workspace-status",
                 description = "Get loading progress and workspace info",
                 inputSchema = new
                 {
@@ -233,7 +233,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet/find-class",
+                name = "dotnet-find-class",
                 description = "Find classes, interfaces, structs, or enums by name pattern (supports * and ? wildcards)",
                 inputSchema = new
                 {
@@ -248,7 +248,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet/find-method",
+                name = "dotnet-find-method",
                 description = "Find methods by name pattern with optional class pattern filter (supports * and ? wildcards)",
                 inputSchema = new
                 {
@@ -264,7 +264,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet/find-property",
+                name = "dotnet-find-property",
                 description = "Find properties and fields by name pattern with optional class pattern filter (supports * and ? wildcards)",
                 inputSchema = new
                 {
@@ -280,7 +280,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet/find-method-calls",
+                name = "dotnet-find-method-calls",
                 description = "Find all methods called by a specific method (call tree analysis)",
                 inputSchema = new
                 {
@@ -296,7 +296,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet/find-method-callers",
+                name = "dotnet-find-method-callers",
                 description = "Find all methods that call a specific method (caller tree analysis)",
                 inputSchema = new
                 {
@@ -312,7 +312,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet/find-references",
+                name = "dotnet-find-references",
                 description = "Find all references to a type, method, property, or field",
                 inputSchema = new
                 {
@@ -329,7 +329,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet/find-implementations",
+                name = "dotnet-find-implementations",
                 description = "Find all implementations of an interface or abstract class",
                 inputSchema = new
                 {
@@ -344,7 +344,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet/find-overrides",
+                name = "dotnet-find-overrides",
                 description = "Find all overrides of a virtual or abstract method",
                 inputSchema = new
                 {
@@ -360,7 +360,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet/find-derived-types",
+                name = "dotnet-find-derived-types",
                 description = "Find all types that derive from a base class",
                 inputSchema = new
                 {
@@ -375,7 +375,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet/rename-symbol",
+                name = "dotnet-rename-symbol",
                 description = "Rename a symbol (type, method, property, field) and update all references",
                 inputSchema = new
                 {
@@ -394,7 +394,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet/edit-code",
+                name = "dotnet-edit-code",
                 description = "Perform surgical code edits using Roslyn. Operations: add-method, add-property, make-async, add-parameter, wrap-try-catch",
                 inputSchema = new
                 {
@@ -414,7 +414,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet/fix-pattern",
+                name = "dotnet-fix-pattern",
                 description = "Find code matching a pattern and transform it to a new pattern",
                 inputSchema = new
                 {
@@ -432,7 +432,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet/find-statements",
+                name = "dotnet-find-statements",
                 description = "Find statements in code matching a pattern. Returns statement IDs for use with other operations. Uses Roslyn's syntax tree to enumerate all statements.",
                 inputSchema = new
                 {
@@ -461,7 +461,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet/replace-statement",
+                name = "dotnet-replace-statement",
                 description = "Replace a statement with new code. The statement is identified by its location from find-statements. Preserves indentation and formatting context.",
                 inputSchema = new
                 {
@@ -490,7 +490,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet/insert-statement",
+                name = "dotnet-insert-statement",
                 description = "Insert a new statement before or after an existing statement. The reference statement is identified by its location from find-statements. Preserves indentation and formatting context.",
                 inputSchema = new
                 {
@@ -518,7 +518,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet/remove-statement",
+                name = "dotnet-remove-statement",
                 description = "Remove a statement from the code. The statement is identified by its location from find-statements. Can preserve comments attached to the statement.",
                 inputSchema = new
                 {
@@ -545,7 +545,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet/mark-statement",
+                name = "dotnet-mark-statement",
                 description = "Mark a statement with an ephemeral marker for later reference. Markers are session-scoped and not persisted.",
                 inputSchema = new
                 {
@@ -572,7 +572,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet/find-marked-statements",
+                name = "dotnet-find-marked-statements",
                 description = "Find all marked statements or specific markers. Returns current locations which may have changed due to edits.",
                 inputSchema = new
                 {
@@ -586,7 +586,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet/unmark-statement",
+                name = "dotnet-unmark-statement",
                 description = "Remove a specific marker from a statement.",
                 inputSchema = new
                 {
@@ -600,7 +600,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet/clear-markers",
+                name = "dotnet-clear-markers",
                 description = "Clear all markers from the current session.",
                 inputSchema = new
                 {
@@ -638,99 +638,99 @@ public class McpJsonRpcServer
         object result;
         switch (toolCallParams.Name)
         {
-            case "dotnet/load-workspace":
+            case "dotnet-load-workspace":
                 result = await LoadWorkspaceToolAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet/analyze-syntax":
+            case "dotnet-analyze-syntax":
                 result = await AnalyzeSyntaxAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet/get-symbols":
+            case "dotnet-get-symbols":
                 result = await GetSymbolsAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet/workspace-status":
+            case "dotnet-workspace-status":
                 result = await GetWorkspaceStatusAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet/find-class":
+            case "dotnet-find-class":
                 result = await FindClassAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet/find-method":
+            case "dotnet-find-method":
                 result = await FindMethodAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet/find-property":
+            case "dotnet-find-property":
                 result = await FindPropertyAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet/find-method-calls":
+            case "dotnet-find-method-calls":
                 result = await FindMethodCallsAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet/find-method-callers":
+            case "dotnet-find-method-callers":
                 result = await FindMethodCallersAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet/find-references":
+            case "dotnet-find-references":
                 result = await FindReferencesAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet/find-implementations":
+            case "dotnet-find-implementations":
                 result = await FindImplementationsAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet/find-overrides":
+            case "dotnet-find-overrides":
                 result = await FindOverridesAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet/find-derived-types":
+            case "dotnet-find-derived-types":
                 result = await FindDerivedTypesAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet/rename-symbol":
+            case "dotnet-rename-symbol":
                 result = await RenameSymbolAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet/edit-code":
+            case "dotnet-edit-code":
                 result = await EditCodeAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet/fix-pattern":
+            case "dotnet-fix-pattern":
                 result = await FixPatternAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet/find-statements":
+            case "dotnet-find-statements":
                 result = await FindStatementsAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet/replace-statement":
+            case "dotnet-replace-statement":
                 result = await ReplaceStatementAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet/insert-statement":
+            case "dotnet-insert-statement":
                 result = await InsertStatementAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet/remove-statement":
+            case "dotnet-remove-statement":
                 result = await RemoveStatementAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet/mark-statement":
+            case "dotnet-mark-statement":
                 result = await MarkStatementAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet/find-marked-statements":
+            case "dotnet-find-marked-statements":
                 result = await FindMarkedStatementsAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet/unmark-statement":
+            case "dotnet-unmark-statement":
                 result = await UnmarkStatementAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet/clear-markers":
+            case "dotnet-clear-markers":
                 result = await ClearMarkersAsync(toolCallParams.Arguments);
                 break;
                 

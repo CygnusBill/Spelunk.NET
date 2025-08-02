@@ -9,7 +9,7 @@ Provide precise, safe code modifications using Roslyn's syntax tree manipulation
 Edit code by targeting specific syntax nodes with precise selectors.
 
 ```
-dotnet/edit-syntax
+dotnet-edit-syntax
 {
   "file": "path/to/file.cs",
   "edits": [
@@ -39,7 +39,7 @@ dotnet/edit-syntax
 Apply Roslyn code fixes and refactorings (like IDE quick fixes).
 
 ```
-dotnet/apply-code-action
+dotnet-apply-code-action
 {
   "file": "path/to/file.cs",
   "line": 42,
@@ -63,7 +63,7 @@ Available actions:
 Insert code at specific locations using templates.
 
 ```
-dotnet/insert-code
+dotnet-insert-code
 {
   "file": "path/to/file.cs",
   "position": {
@@ -86,7 +86,7 @@ Position options:
 Add/remove attributes and annotations.
 
 ```
-dotnet/modify-attributes
+dotnet-modify-attributes
 {
   "file": "path/to/file.cs",
   "target": {
@@ -105,7 +105,7 @@ dotnet/modify-attributes
 Add, remove, or modify class members.
 
 ```
-dotnet/modify-members
+dotnet-modify-members
 {
   "file": "path/to/file.cs",
   "class": "UserService",
@@ -131,7 +131,7 @@ dotnet/modify-members
 Modify code within method bodies.
 
 ```
-dotnet/edit-statements
+dotnet-edit-statements
 {
   "file": "path/to/file.cs",
   "method": "ProcessData",
@@ -160,7 +160,7 @@ dotnet/edit-statements
 Apply semantic transformations across multiple files.
 
 ```
-dotnet/apply-semantic-patch
+dotnet-apply-semantic-patch
 {
   "pattern": {
     "type": "MethodCall",

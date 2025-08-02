@@ -25,8 +25,8 @@ def test_rename_safety():
     # Start the MCP server
     cmd = [
         "dotnet", "run", 
-        "--project", "/Users/bill/ClaudeDir/McpDotnet/src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj",
-        "--", "--allowed-path", "/Users/bill/ClaudeDir/McpDotnet"
+        "--project", "/Users/bill/Desktop/McpDotnet/src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj",
+        "--", "--allowed-path", "/Users/bill/Desktop/McpDotnet"
     ]
     
     print("Starting MCP server...")
@@ -63,8 +63,8 @@ def test_rename_safety():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet/load-workspace",
-                "arguments": {"path": "/Users/bill/ClaudeDir/McpDotnet/src/McpRoslyn/McpRoslyn.sln"}
+                "name": "dotnet-load-workspace",
+                "arguments": {"path": "/Users/bill/Desktop/McpDotnet/src/McpRoslyn/McpRoslyn.sln"}
             },
             "id": 2
         }
@@ -85,7 +85,7 @@ def test_rename_safety():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet/rename-symbol",
+                "name": "dotnet-rename-symbol",
                 "arguments": {
                     "oldName": "GetUserAsync",
                     "newName": "class",
@@ -107,7 +107,7 @@ def test_rename_safety():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet/rename-symbol",
+                "name": "dotnet-rename-symbol",
                 "arguments": {
                     "oldName": "string",
                     "newName": "MyString",
@@ -128,7 +128,7 @@ def test_rename_safety():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet/rename-symbol",
+                "name": "dotnet-rename-symbol",
                 "arguments": {
                     "oldName": "UserController",
                     "newName": "UserManager",
@@ -149,7 +149,7 @@ def test_rename_safety():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet/rename-symbol",
+                "name": "dotnet-rename-symbol",
                 "arguments": {
                     "oldName": "GetDefaultUserName",
                     "newName": "Name",
@@ -171,7 +171,7 @@ def test_rename_safety():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet/rename-symbol",
+                "name": "dotnet-rename-symbol",
                 "arguments": {
                     "oldName": "GetByIdAsync",
                     "newName": "FetchByIdAsync",
@@ -192,7 +192,7 @@ def test_rename_safety():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet/rename-symbol",
+                "name": "dotnet-rename-symbol",
                 "arguments": {
                     "oldName": "ProcessUser",
                     "newName": "",

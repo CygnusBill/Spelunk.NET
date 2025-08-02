@@ -1,6 +1,6 @@
 # Simple Surgical Edit Tool Design
 
-## `dotnet/edit-code` - Precise code modifications using Roslyn
+## `dotnet-edit-code` - Precise code modifications using Roslyn
 
 ### Basic Operations
 

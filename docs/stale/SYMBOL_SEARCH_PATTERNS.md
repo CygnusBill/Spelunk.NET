@@ -1,7 +1,7 @@
 # Unified Symbol Search Pattern Syntax
 
 ## Overview
-A single `dotnet/find-symbol` tool that uses pattern matching to find any symbol type in the codebase.
+A single `dotnet-find-symbol` tool that uses pattern matching to find any symbol type in the codebase.
 
 ## Pattern Syntax
 

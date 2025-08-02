@@ -37,9 +37,9 @@ def main():
     # Start the server
     server_cmd = [
         "dotnet", "run",
-        "--project", "/Users/bill/ClaudeDir/McpDotnet/src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj",
+        "--project", "/Users/bill/Desktop/McpDotnet/src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj",
         "--",
-        "--allowed-path", "/Users/bill/ClaudeDir/McpDotnet"
+        "--allowed-path", "/Users/bill/Desktop/McpDotnet"
     ]
     
     process = subprocess.Popen(
@@ -72,16 +72,16 @@ def main():
         # Load workspace
         print("\n=== Loading workspace ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet/load-workspace",
+            "name": "dotnet-load-workspace",
             "arguments": {
-                "path": "/Users/bill/ClaudeDir/McpDotnet/test-workspace/TestProject.csproj"
+                "path": "/Users/bill/Desktop/McpDotnet/test-workspace/TestProject.csproj"
             }
         })
         
         # First, find some statements to remove
         print("\n=== Finding Console.WriteLine statements ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet/find-statements",
+            "name": "dotnet-find-statements",
             "arguments": {
                 "pattern": "Console.WriteLine"
             }
@@ -90,10 +90,10 @@ def main():
         # Test 1: Remove a simple statement
         print("\n=== Test 1: Remove a Console.WriteLine statement ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet/remove-statement",
+            "name": "dotnet-remove-statement",
             "arguments": {
                 "location": {
-                    "file": "/Users/bill/ClaudeDir/McpDotnet/test-workspace/Program.cs",
+                    "file": "/Users/bill/Desktop/McpDotnet/test-workspace/Program.cs",
                     "line": 8,
                     "column": 9
                 },
@@ -104,17 +104,17 @@ def main():
         # Test 2: Remove a variable declaration
         print("\n=== Test 2: Remove variable declaration ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet/find-statements",
+            "name": "dotnet-find-statements",
             "arguments": {
                 "pattern": "int x = 10"
             }
         })
         
         response = send_request(process, "tools/call", {
-            "name": "dotnet/remove-statement",
+            "name": "dotnet-remove-statement",
             "arguments": {
                 "location": {
-                    "file": "/Users/bill/ClaudeDir/McpDotnet/test-workspace/Program.cs",
+                    "file": "/Users/bill/Desktop/McpDotnet/test-workspace/Program.cs",
                     "line": 10,
                     "column": 9
                 },
@@ -125,17 +125,17 @@ def main():
         # Test 3: Remove statement with comment
         print("\n=== Test 3: Find and remove return statement ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet/find-statements",
+            "name": "dotnet-find-statements",
             "arguments": {
                 "pattern": "return a + b"
             }
         })
         
         response = send_request(process, "tools/call", {
-            "name": "dotnet/remove-statement",
+            "name": "dotnet-remove-statement",
             "arguments": {
                 "location": {
-                    "file": "/Users/bill/ClaudeDir/McpDotnet/test-workspace/Program.cs",
+                    "file": "/Users/bill/Desktop/McpDotnet/test-workspace/Program.cs",
                     "line": 22,
                     "column": 9
                 },
@@ -146,10 +146,10 @@ def main():
         # Test 4: Remove without preserving comments
         print("\n=== Test 4: Remove statement without preserving comments ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet/remove-statement",
+            "name": "dotnet-remove-statement",
             "arguments": {
                 "location": {
-                    "file": "/Users/bill/ClaudeDir/McpDotnet/test-workspace/Program.cs",
+                    "file": "/Users/bill/Desktop/McpDotnet/test-workspace/Program.cs",
                     "line": 11,
                     "column": 9
                 },
@@ -160,10 +160,10 @@ def main():
         # Test 5: Test error handling - invalid location
         print("\n=== Test 5: Error handling - invalid location ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet/remove-statement",
+            "name": "dotnet-remove-statement",
             "arguments": {
                 "location": {
-                    "file": "/Users/bill/ClaudeDir/McpDotnet/test-workspace/Program.cs",
+                    "file": "/Users/bill/Desktop/McpDotnet/test-workspace/Program.cs",
                     "line": 999,
                     "column": 1
                 }
@@ -173,11 +173,11 @@ def main():
         # Test 6: View the final result
         print("\n=== Test 6: View final file content ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet/find-statements",
+            "name": "dotnet-find-statements",
             "arguments": {
                 "pattern": "Main",
                 "scope": {
-                    "file": "/Users/bill/ClaudeDir/McpDotnet/test-workspace/Program.cs"
+                    "file": "/Users/bill/Desktop/McpDotnet/test-workspace/Program.cs"
                 }
             }
         })

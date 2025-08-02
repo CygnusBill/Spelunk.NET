@@ -29,8 +29,8 @@ def test_edit_code():
     # Start the MCP server
     cmd = [
         "dotnet", "run", 
-        "--project", "/Users/bill/ClaudeDir/McpDotnet/src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj",
-        "--", "--allowed-path", "/Users/bill/ClaudeDir/McpDotnet"
+        "--project", "/Users/bill/Desktop/McpDotnet/src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj",
+        "--", "--allowed-path", "/Users/bill/Desktop/McpDotnet"
     ]
     
     print("Starting MCP server...")
@@ -67,8 +67,8 @@ def test_edit_code():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet/load-workspace",
-                "arguments": {"path": "/Users/bill/ClaudeDir/McpDotnet/src/McpRoslyn/McpRoslyn.sln"}
+                "name": "dotnet-load-workspace",
+                "arguments": {"path": "/Users/bill/Desktop/McpDotnet/src/McpRoslyn/McpRoslyn.sln"}
             },
             "id": 2
         }
@@ -89,9 +89,9 @@ def test_edit_code():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet/edit-code",
+                "name": "dotnet-edit-code",
                 "arguments": {
-                    "file": "/Users/bill/ClaudeDir/McpDotnet/src/McpRoslyn/McpRoslyn.Server/TestClasses.cs",
+                    "file": "/Users/bill/Desktop/McpDotnet/src/McpRoslyn/McpRoslyn.Server/TestClasses.cs",
                     "operation": "add-method",
                     "className": "UserController",
                     "code": """public async Task<bool> ValidateUserAsync(int userId)
@@ -115,9 +115,9 @@ def test_edit_code():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet/edit-code",
+                "name": "dotnet-edit-code",
                 "arguments": {
-                    "file": "/Users/bill/ClaudeDir/McpDotnet/src/McpRoslyn/McpRoslyn.Server/TestClasses.cs",
+                    "file": "/Users/bill/Desktop/McpDotnet/src/McpRoslyn/McpRoslyn.Server/TestClasses.cs",
                     "operation": "add-property",
                     "className": "UserController",
                     "code": "public DateTime LastAccessTime { get; set; } = DateTime.Now;",
@@ -137,9 +137,9 @@ def test_edit_code():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet/edit-code",
+                "name": "dotnet-edit-code",
                 "arguments": {
-                    "file": "/Users/bill/ClaudeDir/McpDotnet/src/McpRoslyn/McpRoslyn.Server/TestClasses.cs",
+                    "file": "/Users/bill/Desktop/McpDotnet/src/McpRoslyn/McpRoslyn.Server/TestClasses.cs",
                     "operation": "make-async",
                     "className": "UserController",
                     "methodName": "GetUser",
@@ -159,9 +159,9 @@ def test_edit_code():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet/edit-code",
+                "name": "dotnet-edit-code",
                 "arguments": {
-                    "file": "/Users/bill/ClaudeDir/McpDotnet/src/McpRoslyn/McpRoslyn.Server/TestClasses.cs",
+                    "file": "/Users/bill/Desktop/McpDotnet/src/McpRoslyn/McpRoslyn.Server/TestClasses.cs",
                     "operation": "make-async",
                     "className": "UserController",
                     "methodName": "GetUserAsync",

@@ -110,7 +110,7 @@ class McpTestClient:
                     self.send_request("tools/list", {})
                 elif command == "status":
                     self.send_request("tools/call", {
-                        "name": "dotnet/workspace-status",
+                        "name": "dotnet-workspace-status",
                         "arguments": {}
                     })
                 elif command == "load":
@@ -118,7 +118,7 @@ class McpTestClient:
                         print("Usage: load <path>")
                         continue
                     self.send_request("tools/call", {
-                        "name": "dotnet/load-workspace",
+                        "name": "dotnet-load-workspace",
                         "arguments": {"path": parts[1]}
                     })
                 elif command == "call":
@@ -156,9 +156,9 @@ def main():
     # Server command - adjust path as needed
     server_cmd = [
         "dotnet", "run",
-        "--project", "/Users/bill/ClaudeDir/McpDotnet/src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj",
+        "--project", "/Users/bill/Desktop/McpDotnet/src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj",
         "--",
-        "--allowed-path", "/Users/bill/ClaudeDir/McpDotnet"
+        "--allowed-path", "/Users/bill/Desktop/McpDotnet"
     ]
     
     client = McpTestClient(server_cmd)

@@ -84,7 +84,7 @@ def run_test(title, pattern, pattern_type="roslynpath", expected_count=None):
         # Load workspace
         print("\n--- Loading workspace ---")
         response = send_request(process, "tools/call", {
-            "name": "dotnet/load-workspace",
+            "name": "dotnet-load-workspace",
             "arguments": {
                 "path": os.path.join(test_workspace, "TestProject.csproj")
             }
@@ -95,7 +95,7 @@ def run_test(title, pattern, pattern_type="roslynpath", expected_count=None):
         # Find statements with RoslynPath
         print(f"\n--- Finding statements with pattern: {pattern} ---")
         response = send_request(process, "tools/call", {
-            "name": "dotnet/find-statements",
+            "name": "dotnet-find-statements",
             "arguments": {
                 "pattern": pattern,
                 "patternType": pattern_type,

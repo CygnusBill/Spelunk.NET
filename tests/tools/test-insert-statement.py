@@ -37,9 +37,9 @@ def main():
     # Start the server
     server_cmd = [
         "dotnet", "run",
-        "--project", "/Users/bill/ClaudeDir/McpDotnet/src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj",
+        "--project", "/Users/bill/Desktop/McpDotnet/src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj",
         "--",
-        "--allowed-path", "/Users/bill/ClaudeDir/McpDotnet"
+        "--allowed-path", "/Users/bill/Desktop/McpDotnet"
     ]
     
     process = subprocess.Popen(
@@ -72,16 +72,16 @@ def main():
         # Load workspace
         print("\n=== Loading workspace ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet/load-workspace",
+            "name": "dotnet-load-workspace",
             "arguments": {
-                "path": "/Users/bill/ClaudeDir/McpDotnet/test-workspace/TestProject.csproj"
+                "path": "/Users/bill/Desktop/McpDotnet/test-workspace/TestProject.csproj"
             }
         })
         
         # First, find a statement to use as reference
         print("\n=== Finding Main method for reference ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet/find-statements",
+            "name": "dotnet-find-statements",
             "arguments": {
                 "pattern": "Console.WriteLine"
             }
@@ -90,11 +90,11 @@ def main():
         # Test 1: Insert before Console.WriteLine
         print("\n=== Test 1: Insert before first Console.WriteLine ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet/insert-statement",
+            "name": "dotnet-insert-statement",
             "arguments": {
                 "position": "before",
                 "location": {
-                    "file": "/Users/bill/ClaudeDir/McpDotnet/test-workspace/Program.cs",
+                    "file": "/Users/bill/Desktop/McpDotnet/test-workspace/Program.cs",
                     "line": 7,
                     "column": 9
                 },
@@ -105,11 +105,11 @@ def main():
         # Test 2: Insert after Console.WriteLine  
         print("\n=== Test 2: Insert after Console.WriteLine ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet/insert-statement",
+            "name": "dotnet-insert-statement",
             "arguments": {
                 "position": "after",
                 "location": {
-                    "file": "/Users/bill/ClaudeDir/McpDotnet/test-workspace/Program.cs",
+                    "file": "/Users/bill/Desktop/McpDotnet/test-workspace/Program.cs",
                     "line": 7,
                     "column": 9
                 },
@@ -120,11 +120,11 @@ def main():
         # Test 3: Insert variable declaration
         print("\n=== Test 3: Insert variable before calculation ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet/insert-statement",
+            "name": "dotnet-insert-statement",
             "arguments": {
                 "position": "before",
                 "location": {
-                    "file": "/Users/bill/ClaudeDir/McpDotnet/test-workspace/Program.cs",
+                    "file": "/Users/bill/Desktop/McpDotnet/test-workspace/Program.cs",
                     "line": 10,
                     "column": 9
                 },
@@ -135,18 +135,18 @@ def main():
         # Test 4: Insert in method body
         print("\n=== Test 4: Insert logging in Add method ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet/find-statements",
+            "name": "dotnet-find-statements",
             "arguments": {
                 "pattern": "return a + b"
             }
         })
         
         response = send_request(process, "tools/call", {
-            "name": "dotnet/insert-statement",
+            "name": "dotnet-insert-statement",
             "arguments": {
                 "position": "before",
                 "location": {
-                    "file": "/Users/bill/ClaudeDir/McpDotnet/test-workspace/Program.cs",
+                    "file": "/Users/bill/Desktop/McpDotnet/test-workspace/Program.cs",
                     "line": 19,
                     "column": 9
                 },
@@ -157,11 +157,11 @@ def main():
         # Test 5: Test error handling - invalid syntax
         print("\n=== Test 5: Error handling - invalid syntax ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet/insert-statement",
+            "name": "dotnet-insert-statement",
             "arguments": {
                 "position": "after",
                 "location": {
-                    "file": "/Users/bill/ClaudeDir/McpDotnet/test-workspace/Program.cs",
+                    "file": "/Users/bill/Desktop/McpDotnet/test-workspace/Program.cs",
                     "line": 7,
                     "column": 9
                 },
@@ -172,11 +172,11 @@ def main():
         # Test 6: Test error handling - invalid position
         print("\n=== Test 6: Error handling - invalid position ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet/insert-statement",
+            "name": "dotnet-insert-statement",
             "arguments": {
                 "position": "middle",  # Invalid position
                 "location": {
-                    "file": "/Users/bill/ClaudeDir/McpDotnet/test-workspace/Program.cs",
+                    "file": "/Users/bill/Desktop/McpDotnet/test-workspace/Program.cs",
                     "line": 7,
                     "column": 9
                 },

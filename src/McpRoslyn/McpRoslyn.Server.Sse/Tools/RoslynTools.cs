@@ -20,7 +20,7 @@ public static class RoslynTools
         _logger = logger;
     }
 
-    [McpServerTool(Name = "dotnet/load-workspace"), Description("Load a .NET solution or project into the workspace")]
+    [McpServerTool(Name = "dotnet-load-workspace"), Description("Load a .NET solution or project into the workspace")]
     public static async Task<string> DotnetLoadWorkspace(
         [Description("Path to the solution (.sln) or project file")] string path,
         [Description("Optional workspace ID")] string? workspaceId = null)
@@ -83,7 +83,7 @@ public static class RoslynTools
         }
     }
 
-    [McpServerTool(Name = "dotnet/workspace-status"), Description("Get the status of loaded workspaces")]
+    [McpServerTool(Name = "dotnet-workspace-status"), Description("Get the status of loaded workspaces")]
     public static string DotnetWorkspaceStatus(
         [Description("Optional workspace ID to get specific status")] string? workspaceId = null)
     {
@@ -137,7 +137,7 @@ public static class RoslynTools
         return JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
     }
 
-    [McpServerTool(Name = "dotnet/analyze-syntax"), Description("Analyze the syntax tree of a C# file")]
+    [McpServerTool(Name = "dotnet-analyze-syntax"), Description("Analyze the syntax tree of a C# file")]
     public static string DotnetAnalyzeSyntax(
         [Description("Path to the source file")] string filePath,
         [Description("Workspace ID for context")] string? workspaceId = null)
@@ -146,7 +146,7 @@ public static class RoslynTools
         return "Syntax analysis not yet implemented";
     }
 
-    [McpServerTool(Name = "dotnet/get-symbols"), Description("Get symbol information from code")]
+    [McpServerTool(Name = "dotnet-get-symbols"), Description("Get symbol information from code")]
     public static string DotnetGetSymbols(
         [Description("Path to the source file")] string filePath,
         [Description("Workspace ID for context")] string? workspaceId = null,

@@ -37,9 +37,9 @@ def main():
     # Start the server
     server_cmd = [
         "dotnet", "run",
-        "--project", "/Users/bill/ClaudeDir/McpDotnet/src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj",
+        "--project", "/Users/bill/Desktop/McpDotnet/src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj",
         "--",
-        "--allowed-path", "/Users/bill/ClaudeDir/McpDotnet"
+        "--allowed-path", "/Users/bill/Desktop/McpDotnet"
     ]
     
     process = subprocess.Popen(
@@ -72,19 +72,19 @@ def main():
         # Load workspace
         print("\n=== Loading workspace ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet/load-workspace",
+            "name": "dotnet-load-workspace",
             "arguments": {
-                "path": "/Users/bill/ClaudeDir/McpDotnet/test-workspace/TestProject.csproj"
+                "path": "/Users/bill/Desktop/McpDotnet/test-workspace/TestProject.csproj"
             }
         })
         
         # Test 1: Mark a statement
         print("\n=== Test 1: Mark a Console.WriteLine statement ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet/mark-statement",
+            "name": "dotnet-mark-statement",
             "arguments": {
                 "location": {
-                    "file": "/Users/bill/ClaudeDir/McpDotnet/test-workspace/Program.cs",
+                    "file": "/Users/bill/Desktop/McpDotnet/test-workspace/Program.cs",
                     "line": 7,
                     "column": 9
                 },
@@ -95,10 +95,10 @@ def main():
         # Test 2: Mark another statement
         print("\n=== Test 2: Mark another statement ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet/mark-statement",
+            "name": "dotnet-mark-statement",
             "arguments": {
                 "location": {
-                    "file": "/Users/bill/ClaudeDir/McpDotnet/test-workspace/Program.cs",
+                    "file": "/Users/bill/Desktop/McpDotnet/test-workspace/Program.cs",
                     "line": 11,
                     "column": 9
                 },
@@ -109,10 +109,10 @@ def main():
         # Test 3: Mark without label
         print("\n=== Test 3: Mark statement without label ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet/mark-statement",
+            "name": "dotnet-mark-statement",
             "arguments": {
                 "location": {
-                    "file": "/Users/bill/ClaudeDir/McpDotnet/test-workspace/Program.cs",
+                    "file": "/Users/bill/Desktop/McpDotnet/test-workspace/Program.cs",
                     "line": 9,
                     "column": 9
                 }
@@ -122,14 +122,14 @@ def main():
         # Test 4: Find all marked statements
         print("\n=== Test 4: Find all marked statements ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet/find-marked-statements",
+            "name": "dotnet-find-marked-statements",
             "arguments": {}
         })
         
         # Test 5: Find specific marker
         print("\n=== Test 5: Find specific marker (mark-1) ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet/find-marked-statements",
+            "name": "dotnet-find-marked-statements",
             "arguments": {
                 "markerId": "mark-1"
             }
@@ -139,10 +139,10 @@ def main():
         print("\n=== Test 6: Replace marked statement and find again ===")
         # First replace the statement
         response = send_request(process, "tools/call", {
-            "name": "dotnet/replace-statement",
+            "name": "dotnet-replace-statement",
             "arguments": {
                 "location": {
-                    "file": "/Users/bill/ClaudeDir/McpDotnet/test-workspace/Program.cs",
+                    "file": "/Users/bill/Desktop/McpDotnet/test-workspace/Program.cs",
                     "line": 7,
                     "column": 9
                 },
@@ -152,14 +152,14 @@ def main():
         
         # Find marked statements again (markers should be preserved on normal edits)
         response = send_request(process, "tools/call", {
-            "name": "dotnet/find-marked-statements",
+            "name": "dotnet-find-marked-statements",
             "arguments": {}
         })
         
         # Test 7: Unmark a statement
         print("\n=== Test 7: Unmark statement (mark-2) ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet/unmark-statement",
+            "name": "dotnet-unmark-statement",
             "arguments": {
                 "markerId": "mark-2"
             }
@@ -168,31 +168,31 @@ def main():
         # Test 8: Find remaining marked statements
         print("\n=== Test 8: Find remaining marked statements ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet/find-marked-statements",
+            "name": "dotnet-find-marked-statements",
             "arguments": {}
         })
         
         # Test 9: Clear all markers
         print("\n=== Test 9: Clear all markers ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet/clear-markers",
+            "name": "dotnet-clear-markers",
             "arguments": {}
         })
         
         # Test 10: Verify all markers cleared
         print("\n=== Test 10: Verify all markers cleared ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet/find-marked-statements",
+            "name": "dotnet-find-marked-statements",
             "arguments": {}
         })
         
         # Test 11: Error handling - mark non-existent location
         print("\n=== Test 11: Error handling - mark non-existent location ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet/mark-statement",
+            "name": "dotnet-mark-statement",
             "arguments": {
                 "location": {
-                    "file": "/Users/bill/ClaudeDir/McpDotnet/test-workspace/Program.cs",
+                    "file": "/Users/bill/Desktop/McpDotnet/test-workspace/Program.cs",
                     "line": 999,
                     "column": 1
                 }
@@ -202,7 +202,7 @@ def main():
         # Test 12: Error handling - unmark non-existent marker
         print("\n=== Test 12: Error handling - unmark non-existent marker ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet/unmark-statement",
+            "name": "dotnet-unmark-statement",
             "arguments": {
                 "markerId": "mark-999"
             }

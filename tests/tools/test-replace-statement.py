@@ -37,9 +37,9 @@ def main():
     # Start the server
     server_cmd = [
         "dotnet", "run",
-        "--project", "/Users/bill/ClaudeDir/McpDotnet/src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj",
+        "--project", "/Users/bill/Desktop/McpDotnet/src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj",
         "--",
-        "--allowed-path", "/Users/bill/ClaudeDir/McpDotnet"
+        "--allowed-path", "/Users/bill/Desktop/McpDotnet"
     ]
     
     process = subprocess.Popen(
@@ -72,16 +72,16 @@ def main():
         # Load workspace
         print("\n=== Loading workspace ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet/load-workspace",
+            "name": "dotnet-load-workspace",
             "arguments": {
-                "path": "/Users/bill/ClaudeDir/McpDotnet/test-workspace/TestProject.csproj"
+                "path": "/Users/bill/Desktop/McpDotnet/test-workspace/TestProject.csproj"
             }
         })
         
         # First, find a statement to replace
         print("\n=== Finding Console.WriteLine statements ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet/find-statements",
+            "name": "dotnet-find-statements",
             "arguments": {
                 "pattern": "Console.WriteLine"
             }
@@ -89,15 +89,15 @@ def main():
         
         # Extract the location from the response
         # The response contains the statement locations - we'll replace the first one
-        # Example location: /Users/bill/ClaudeDir/McpDotnet/test-workspace/Program.cs:7:9
+        # Example location: /Users/bill/Desktop/McpDotnet/test-workspace/Program.cs:7:9
         
         # Test 1: Replace the Hello World statement
         print("\n=== Test 1: Replace Hello World with Hello MCP ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet/replace-statement",
+            "name": "dotnet-replace-statement",
             "arguments": {
                 "location": {
-                    "file": "/Users/bill/ClaudeDir/McpDotnet/test-workspace/Program.cs",
+                    "file": "/Users/bill/Desktop/McpDotnet/test-workspace/Program.cs",
                     "line": 7,
                     "column": 9
                 },
@@ -109,17 +109,17 @@ def main():
         # Test 2: Replace a variable declaration
         print("\n=== Test 2: Find and replace variable declaration ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet/find-statements",
+            "name": "dotnet-find-statements",
             "arguments": {
                 "pattern": "var calculator"
             }
         })
         
         response = send_request(process, "tools/call", {
-            "name": "dotnet/replace-statement",
+            "name": "dotnet-replace-statement",
             "arguments": {
                 "location": {
-                    "file": "/Users/bill/ClaudeDir/McpDotnet/test-workspace/Program.cs",
+                    "file": "/Users/bill/Desktop/McpDotnet/test-workspace/Program.cs",
                     "line": 9,
                     "column": 9
                 },
@@ -131,17 +131,17 @@ def main():
         # Test 3: Replace method call with more complex statement
         print("\n=== Test 3: Replace method call ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet/find-statements",
+            "name": "dotnet-find-statements",
             "arguments": {
                 "pattern": "calculator.Add"
             }
         })
         
         response = send_request(process, "tools/call", {
-            "name": "dotnet/replace-statement",
+            "name": "dotnet-replace-statement",
             "arguments": {
                 "location": {
-                    "file": "/Users/bill/ClaudeDir/McpDotnet/test-workspace/Program.cs",
+                    "file": "/Users/bill/Desktop/McpDotnet/test-workspace/Program.cs",
                     "line": 10,
                     "column": 9
                 },
@@ -154,10 +154,10 @@ def main():
         # Test 4: Test error handling - invalid syntax
         print("\n=== Test 4: Error handling - invalid syntax ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet/replace-statement",
+            "name": "dotnet-replace-statement",
             "arguments": {
                 "location": {
-                    "file": "/Users/bill/ClaudeDir/McpDotnet/test-workspace/Program.cs",
+                    "file": "/Users/bill/Desktop/McpDotnet/test-workspace/Program.cs",
                     "line": 7,
                     "column": 9
                 },
@@ -169,7 +169,7 @@ def main():
         # Test 5: Test with statement ID error message
         print("\n=== Test 5: Test with statement ID (should show error) ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet/replace-statement",
+            "name": "dotnet-replace-statement",
             "arguments": {
                 "statementId": "stmt-1",
                 "newStatement": 'Console.WriteLine("Test");'

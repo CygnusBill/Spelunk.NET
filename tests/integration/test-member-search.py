@@ -31,8 +31,8 @@ def test_member_search():
     # Start the MCP server
     cmd = [
         "dotnet", "run", 
-        "--project", "/Users/bill/ClaudeDir/McpDotnet/src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj",
-        "--", "--allowed-path", "/Users/bill/ClaudeDir/McpDotnet"
+        "--project", "/Users/bill/Desktop/McpDotnet/src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj",
+        "--", "--allowed-path", "/Users/bill/Desktop/McpDotnet"
     ]
     
     print("Starting MCP server...")
@@ -69,8 +69,8 @@ def test_member_search():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet/load-workspace",
-                "arguments": {"path": "/Users/bill/ClaudeDir/McpDotnet/src/McpRoslyn/McpRoslyn.sln"}
+                "name": "dotnet-load-workspace",
+                "arguments": {"path": "/Users/bill/Desktop/McpDotnet/src/McpRoslyn/McpRoslyn.sln"}
             },
             "id": 2
         }
@@ -102,7 +102,7 @@ def test_member_search():
                 "jsonrpc": "2.0",
                 "method": "tools/call",
                 "params": {
-                    "name": "dotnet/find-method",
+                    "name": "dotnet-find-method",
                     "arguments": test
                 },
                 "id": id_counter
@@ -133,7 +133,7 @@ def test_member_search():
                 "jsonrpc": "2.0",
                 "method": "tools/call",
                 "params": {
-                    "name": "dotnet/find-property",
+                    "name": "dotnet-find-property",
                     "arguments": test
                 },
                 "id": id_counter

@@ -30,8 +30,8 @@ def test_at_keywords():
     # Start the MCP server
     cmd = [
         "dotnet", "run", 
-        "--project", "/Users/bill/ClaudeDir/McpDotnet/src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj",
-        "--", "--allowed-path", "/Users/bill/ClaudeDir/McpDotnet"
+        "--project", "/Users/bill/Desktop/McpDotnet/src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj",
+        "--", "--allowed-path", "/Users/bill/Desktop/McpDotnet"
     ]
     
     print("Starting MCP server...")
@@ -73,8 +73,8 @@ def test_at_keywords():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet/load-workspace",
-                "arguments": {"path": "/Users/bill/ClaudeDir/McpDotnet/src/McpRoslyn/McpRoslyn.sln"}
+                "name": "dotnet-load-workspace",
+                "arguments": {"path": "/Users/bill/Desktop/McpDotnet/src/McpRoslyn/McpRoslyn.sln"}
             },
             "id": 2
         }
@@ -94,7 +94,7 @@ def test_at_keywords():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet/rename-symbol",
+                "name": "dotnet-rename-symbol",
                 "arguments": {
                     "oldName": "GetUserAsync",
                     "newName": "class",
@@ -115,7 +115,7 @@ def test_at_keywords():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet/rename-symbol",
+                "name": "dotnet-rename-symbol",
                 "arguments": {
                     "oldName": "GetUserAsync",
                     "newName": "@class",
@@ -136,7 +136,7 @@ def test_at_keywords():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet/rename-symbol",
+                "name": "dotnet-rename-symbol",
                 "arguments": {
                     "oldName": "GetUserAsync",
                     "newName": "123abc",
@@ -157,7 +157,7 @@ def test_at_keywords():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet/rename-symbol",
+                "name": "dotnet-rename-symbol",
                 "arguments": {
                     "oldName": "GetUserAsync",
                     "newName": "_myMethod",
@@ -178,7 +178,7 @@ def test_at_keywords():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet/rename-symbol",
+                "name": "dotnet-rename-symbol",
                 "arguments": {
                     "oldName": "GetUserAsync",
                     "newName": "@",

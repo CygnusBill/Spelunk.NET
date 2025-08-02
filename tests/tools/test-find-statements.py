@@ -37,9 +37,9 @@ def main():
     # Start the server
     server_cmd = [
         "dotnet", "run",
-        "--project", "/Users/bill/ClaudeDir/McpDotnet/src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj",
+        "--project", "/Users/bill/Desktop/McpDotnet/src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj",
         "--",
-        "--allowed-path", "/Users/bill/ClaudeDir/McpDotnet"
+        "--allowed-path", "/Users/bill/Desktop/McpDotnet"
     ]
     
     process = subprocess.Popen(
@@ -72,16 +72,16 @@ def main():
         # Load workspace
         print("\n=== Loading workspace ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet/load-workspace",
+            "name": "dotnet-load-workspace",
             "arguments": {
-                "path": "/Users/bill/ClaudeDir/McpDotnet/test-workspace/TestProject.csproj"
+                "path": "/Users/bill/Desktop/McpDotnet/test-workspace/TestProject.csproj"
             }
         })
         
         # Test 1: Find Console.WriteLine statements
         print("\n=== Test 1: Find Console.WriteLine statements ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet/find-statements",
+            "name": "dotnet-find-statements",
             "arguments": {
                 "pattern": "Console.WriteLine"
             }
@@ -90,7 +90,7 @@ def main():
         # Test 2: Find statements in specific method
         print("\n=== Test 2: Find statements in Main method ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet/find-statements",
+            "name": "dotnet-find-statements",
             "arguments": {
                 "pattern": "",
                 "scope": {
@@ -102,7 +102,7 @@ def main():
         # Test 3: Find variable declarations
         print("\n=== Test 3: Find variable declarations (var keyword) ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet/find-statements",
+            "name": "dotnet-find-statements",
             "arguments": {
                 "pattern": "var ",
                 "patternType": "text"
@@ -112,7 +112,7 @@ def main():
         # Test 4: Find if statements using regex
         print("\n=== Test 4: Find if statements using regex ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet/find-statements",
+            "name": "dotnet-find-statements",
             "arguments": {
                 "pattern": "^\\s*if\\s*\\(",
                 "patternType": "regex"
@@ -122,7 +122,7 @@ def main():
         # Test 5: Find nested statements
         print("\n=== Test 5: Find statements including nested ones ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet/find-statements",
+            "name": "dotnet-find-statements",
             "arguments": {
                 "pattern": ".",
                 "patternType": "regex",

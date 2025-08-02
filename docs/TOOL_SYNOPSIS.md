@@ -53,7 +53,7 @@ RoslynPath provides stable code references that survive edits:
 
 ### 1. Workspace Management
 
-#### `dotnet/load-workspace`
+#### `dotnet-load-workspace`
 **MCP Description**: "Load a .NET solution or project into the workspace"
 
 **Purpose**: Load a C# project or solution into the workspace for analysis and manipulation.
@@ -80,7 +80,7 @@ RoslynPath provides stable code references that survive edits:
 
 **Use Case**: Must be called before any other operations to establish the working context
 
-#### `dotnet/workspace-status`
+#### `dotnet-workspace-status`
 **MCP Description**: "Get loading progress and workspace info"
 
 **Purpose**: Get detailed status of loaded workspaces including project information.
@@ -115,7 +115,7 @@ RoslynPath provides stable code references that survive edits:
 
 ### 2. Code Discovery Tools (Read-Only)
 
-#### `dotnet/find-class`
+#### `dotnet-find-class`
 **MCP Description**: "Find classes, interfaces, structs, or enums by name pattern (supports * and ? wildcards)"
 
 **Purpose**: Find type definitions by name pattern using wildcards.
@@ -151,7 +151,7 @@ Found 3 type(s) matching '*Controller':
 
 **Use Case**: Discover classes matching naming conventions, find all implementations of a pattern
 
-#### `dotnet/find-method`
+#### `dotnet-find-method`
 **MCP Description**: "Find methods by name pattern with optional class pattern filter (supports * and ? wildcards)"
 
 **Purpose**: Find methods by name pattern with optional class filtering.
@@ -182,7 +182,7 @@ Found 5 method(s) matching 'Get*':
 
 **Use Case**: Locate methods for analysis, find all async methods, discover API endpoints
 
-#### `dotnet/find-property`
+#### `dotnet-find-property`
 **MCP Description**: "Find properties and fields by name pattern with optional class pattern filter (supports * and ? wildcards)"
 
 **Purpose**: Find properties and fields by name pattern.
@@ -214,7 +214,7 @@ Found 4 properties/fields matching 'Is*':
 
 **Use Case**: Find all boolean flags, discover model properties, locate configuration fields
 
-#### `dotnet/find-namespace`
+#### `dotnet-find-namespace`
 **Note**: This tool is not currently implemented in the server.
 
 **Purpose**: Find namespaces by pattern.
@@ -224,7 +224,7 @@ Found 4 properties/fields matching 'Is*':
 
 ### 3. Relationship Analysis Tools
 
-#### `dotnet/find-method-calls`
+#### `dotnet-find-method-calls`
 **MCP Description**: "Find all methods called by a specific method (call tree analysis)"
 
 **Purpose**: Analyze what methods are called BY a specific method (outgoing calls).
@@ -258,7 +258,7 @@ Direct calls (5):
 
 **Use Case**: Understand method dependencies, trace execution flow, identify external dependencies
 
-#### `dotnet/find-method-callers`
+#### `dotnet-find-method-callers`
 **MCP Description**: "Find all methods that call a specific method (caller tree analysis)"
 
 **Purpose**: Find all places that CALL a specific method (incoming calls).
@@ -292,7 +292,7 @@ Found 3 caller(s):
 
 **Use Case**: Impact analysis before changes, understand usage patterns, find all consumers
 
-#### `dotnet/find-references`
+#### `dotnet-find-references`
 **MCP Description**: "Find all references to a type, method, property, or field"
 
 **Purpose**: Find all usages of any symbol across the codebase.
@@ -326,7 +326,7 @@ Found 12 reference(s) to 'User' (type):
 
 **Use Case**: Find all usages before renaming, understand symbol dependencies, locate all consumers
 
-#### `dotnet/find-implementations`
+#### `dotnet-find-implementations`
 **MCP Description**: "Find all implementations of an interface or abstract class"
 
 **Purpose**: Discover all concrete implementations of interfaces or abstract classes.
@@ -362,7 +362,7 @@ Found 3 implementation(s) of 'IUserService':
 
 **Use Case**: Find all implementations for testing, understand service variations, locate mock implementations
 
-#### `dotnet/find-overrides`
+#### `dotnet-find-overrides`
 **MCP Description**: "Find all overrides of a virtual or abstract method"
 
 **Purpose**: Find all methods that override a virtual or abstract method.
@@ -393,7 +393,7 @@ Found 4 override(s) of 'BaseRepository.SaveChanges':
 
 **Use Case**: Understand customization points, track override implementations, ensure consistent behavior
 
-#### `dotnet/find-derived-types`
+#### `dotnet-find-derived-types`
 **MCP Description**: "Find all types that derive from a base class"
 
 **Purpose**: Discover all classes that inherit from a specific base class.
@@ -430,7 +430,7 @@ Found 5 type(s) deriving from 'ControllerBase':
 
 ### 4. Statement-Level Operations
 
-#### `dotnet/find-statements`
+#### `dotnet-find-statements`
 **MCP Description**: "Find statements in code matching a pattern. Returns statement IDs for use with other operations. Uses Roslyn's syntax tree to enumerate all statements."
 
 **Purpose**: Search for statements matching text or regex patterns for analysis or bulk operations.
@@ -486,7 +486,7 @@ Found 3 statement(s) matching 'Console.WriteLine':
 
 **Use Case**: Find patterns for refactoring, locate logging statements, identify async patterns
 
-#### `dotnet/replace-statement`
+#### `dotnet-replace-statement`
 **MCP Description**: "Replace a statement with new code. The statement is identified by its location from find-statements. Preserves indentation and formatting context."
 
 **Purpose**: Replace an entire statement at a specific location.
@@ -537,7 +537,7 @@ After:
 
 **Use Case**: Replace logging methods, update API calls, modernize syntax
 
-#### `dotnet/insert-statement`
+#### `dotnet-insert-statement`
 **MCP Description**: "Insert a new statement before or after an existing statement. The reference statement is identified by its location from find-statements. Preserves indentation and formatting context."
 
 **Purpose**: Add new statements relative to existing code.
@@ -580,7 +580,7 @@ After:
 
 **Use Case**: Add validation, insert logging, add null checks, insert using statements
 
-#### `dotnet/remove-statement`
+#### `dotnet-remove-statement`
 **MCP Description**: "Remove a statement from the code. The statement is identified by its location from find-statements. Can preserve comments attached to the statement."
 
 **Purpose**: Delete statements while optionally preserving their comments.
@@ -624,7 +624,7 @@ After:
 
 ### 5. Ephemeral Marker System
 
-#### `dotnet/mark-statement`
+#### `dotnet-mark-statement`
 **MCP Description**: "Mark a statement with an ephemeral marker for later reference. Markers are session-scoped and not persisted."
 
 **Purpose**: Tag statements with temporary identifiers that survive through code edits.
@@ -654,7 +654,7 @@ Context: Program.Main
 
 **Use Case**: Track statements through multi-step refactoring, maintain references during transformations
 
-#### `dotnet/find-marked-statements`
+#### `dotnet-find-marked-statements`
 **MCP Description**: "Find all or specific marked statements. Returns current locations even if code has been edited."
 
 **Purpose**: Locate previously marked statements, even after code modifications.
@@ -688,7 +688,7 @@ Statement: Console.WriteLine($"Result: {result}");
 
 **Use Case**: Find marked statements after edits, track multiple related statements
 
-#### `dotnet/unmark-statement`
+#### `dotnet-unmark-statement`
 **MCP Description**: "Remove a specific marker by its ID."
 
 **Purpose**: Clean up individual markers when no longer needed.
@@ -709,7 +709,7 @@ Remaining markers: 2
 
 **Use Case**: Remove completed markers, clean up after specific operations
 
-#### `dotnet/clear-markers`
+#### `dotnet-clear-markers`
 **MCP Description**: "Clear all markers in the current session."
 
 **Purpose**: Reset all markers when starting new operations.
@@ -730,7 +730,7 @@ Cleared 3 marker(s)
 
 ### 6. Code Modification Tools
 
-#### `dotnet/rename-symbol`
+#### `dotnet-rename-symbol`
 **MCP Description**: "Rename a symbol (type, method, property, field) and update all references"
 
 **Purpose**: Safely rename any symbol across the entire codebase with all references updated.
@@ -769,7 +769,7 @@ Renamed 'GetUser' to 'GetUserById' in 8 location(s):
 
 **Use Case**: Refactor method names, update property names, rename types consistently
 
-#### `dotnet/edit-code`
+#### `dotnet-edit-code`
 **MCP Description**: "Perform surgical code edits using Roslyn. Operations: add-method, add-property, make-async, add-parameter, wrap-try-catch"
 
 **Purpose**: Perform complex structural edits beyond simple text replacement.
@@ -861,7 +861,7 @@ Preview:
 
 **Use Case**: Add methods/properties, convert to async, add parameters, add error handling
 
-#### `dotnet/fix-pattern`
+#### `dotnet-fix-pattern`
 **MCP Description**: "Find code matching a pattern and transform it to a new pattern"
 
 **Purpose**: Apply pattern-based transformations across the codebase.

@@ -21,8 +21,8 @@ def test_mcp_protocol():
     # Start the MCP server
     cmd = [
         "dotnet", "run", 
-        "--project", "/Users/bill/ClaudeDir/McpDotnet/src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj",
-        "--", "--allowed-path", "/Users/bill/ClaudeDir/McpDotnet"
+        "--project", "/Users/bill/Desktop/McpDotnet/src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj",
+        "--", "--allowed-path", "/Users/bill/Desktop/McpDotnet"
     ]
     
     print("Starting MCP server...")
@@ -68,14 +68,14 @@ def test_mcp_protocol():
         response = send_request(proc, tools_request)
         
         # 3. Load workspace
-        print("\n3. Testing dotnet/load-workspace:")
+        print("\n3. Testing dotnet-load-workspace:")
         load_request = {
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet/load-workspace",
+                "name": "dotnet-load-workspace",
                 "arguments": {
-                    "path": "/Users/bill/ClaudeDir/McpDotnet/src/McpRoslyn/McpRoslyn.sln"
+                    "path": "/Users/bill/Desktop/McpDotnet/src/McpRoslyn/McpRoslyn.sln"
                 }
             },
             "id": 3
@@ -83,12 +83,12 @@ def test_mcp_protocol():
         response = send_request(proc, load_request)
         
         # 4. Get workspace status
-        print("\n4. Testing dotnet/workspace-status:")
+        print("\n4. Testing dotnet-workspace-status:")
         status_request = {
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet/workspace-status",
+                "name": "dotnet-workspace-status",
                 "arguments": {}
             },
             "id": 4
@@ -96,12 +96,12 @@ def test_mcp_protocol():
         response = send_request(proc, status_request)
         
         # 5. Find classes with pattern
-        print("\n5. Testing dotnet/find-class with pattern '*Manager':")
+        print("\n5. Testing dotnet-find-class with pattern '*Manager':")
         find_request = {
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet/find-class",
+                "name": "dotnet-find-class",
                 "arguments": {
                     "pattern": "*Manager"
                 }
@@ -111,12 +111,12 @@ def test_mcp_protocol():
         response = send_request(proc, find_request)
         
         # 6. Find interfaces
-        print("\n6. Testing dotnet/find-class with pattern 'I*':")
+        print("\n6. Testing dotnet-find-class with pattern 'I*':")
         find_request2 = {
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet/find-class",
+                "name": "dotnet-find-class",
                 "arguments": {
                     "pattern": "I*"
                 }

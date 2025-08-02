@@ -30,20 +30,20 @@ ITypeSymbol (User) → All type references, declarations
 
 ### Discovery Tools
 ```yaml
-dotnet/get-semantic-info:
+dotnet-get-semantic-info:
   input: syntaxNodeId
   output: 
     - symbol info (type, name, containing type)
     - type info (compile-time type)
     - data flow info (where value comes from/goes)
 
-dotnet/get-syntax-nodes:
+dotnet-get-syntax-nodes:
   input: symbolId
   output:
     - all syntax nodes referencing this symbol
     - categorized by usage (declaration, read, write)
 
-dotnet/analyze-context:
+dotnet-analyze-context:
   input: nodeId or symbolId
   output:
     - syntactic context (parent statements, containing method)
@@ -52,11 +52,11 @@ dotnet/analyze-context:
 
 ### Navigation Tools
 ```yaml
-dotnet/traverse-syntax:
+dotnet-traverse-syntax:
   input: nodeId, direction (up/down/sibling)
   output: related syntax nodes with their types
 
-dotnet/follow-data-flow:
+dotnet-follow-data-flow:
   input: expressionNodeId
   output: 
     - where the value comes from
@@ -66,13 +66,13 @@ dotnet/follow-data-flow:
 
 ### Modification Tools
 ```yaml
-dotnet/modify-semantic:
+dotnet-modify-semantic:
   operations:
     - add-parameter-to-symbol
     - change-return-type
     - add-attribute-to-symbol
 
-dotnet/modify-syntax:
+dotnet-modify-syntax:
   operations:
     - replace-node
     - insert-before/after
@@ -85,26 +85,26 @@ dotnet/modify-syntax:
 
 ```yaml
 1. Find all User.Name property accesses:
-   → dotnet/find-references symbol="User.Name"
+   → dotnet-find-references symbol="User.Name"
    
 2. For each syntax node:
-   → dotnet/analyze-context nodeId=<node>
+   → dotnet-analyze-context nodeId=<node>
    Returns: "Inside string concatenation, flows to SqlCommand"
    
 3. Navigate to the containing statement:
-   → dotnet/traverse-syntax nodeId=<node> direction="up" until="Statement"
+   → dotnet-traverse-syntax nodeId=<node> direction="up" until="Statement"
    
 4. Analyze the semantic flow:
-   → dotnet/follow-data-flow expressionNodeId=<concat>
+   → dotnet-follow-data-flow expressionNodeId=<concat>
    Returns: "Flows to SqlCommand constructor parameter"
    
 5. Modify using semantic understanding:
-   → dotnet/modify-syntax
+   → dotnet-modify-syntax
      operation: "replace-node"
      node: <concatenation>
      newCode: "@Name"
    
-   → dotnet/modify-syntax  
+   → dotnet-modify-syntax  
      operation: "insert-after"
      afterNode: <SqlCommand creation>
      newCode: "cmd.Parameters.AddWithValue(\"@Name\", user.Name);"

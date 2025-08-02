@@ -16,11 +16,11 @@ Each statement in a C# file will be identified using:
 
 ## Tool Definitions
 
-### 1. dotnet/find-statements
+### 1. dotnet-find-statements
 Find statements matching a pattern within a scope.
 
 ```yaml
-name: dotnet/find-statements
+name: dotnet-find-statements
 description: |
   Find statements in code matching a pattern. Returns statement IDs for use with other operations.
   Patterns can be partial text matches or regex patterns.
@@ -73,11 +73,11 @@ returns:
       groupId: string (if part of a group)
 ```
 
-### 1a. dotnet/find-statements-in-span
+### 1a. dotnet-find-statements-in-span
 Find all statements within a file span.
 
 ```yaml
-name: dotnet/find-statements-in-span
+name: dotnet-find-statements-in-span
 description: |
   Find all statements within a span of lines in a file.
   Useful when working with a specific area of code.
@@ -120,11 +120,11 @@ returns:
       semanticSymbols: []
 ```
 
-### 2. dotnet/replace-statement
+### 2. dotnet-replace-statement
 Replace an entire statement with new code.
 
 ```yaml
-name: dotnet/replace-statement
+name: dotnet-replace-statement
 description: |
   Replace a statement with new code. The new code must be a valid statement.
   Preserves indentation and formatting context.
@@ -148,11 +148,11 @@ returns:
   preview: string (shows before/after context)
 ```
 
-### 3. dotnet/insert-statement
+### 3. dotnet-insert-statement
 Insert a statement before or after another statement.
 
 ```yaml
-name: dotnet/insert-statement
+name: dotnet-insert-statement
 description: |
   Insert a new statement relative to an existing statement.
   Automatically handles indentation and formatting.
@@ -184,11 +184,11 @@ returns:
     column: number
 ```
 
-### 4. dotnet/remove-statement
+### 4. dotnet-remove-statement
 Remove a statement from the code.
 
 ```yaml
-name: dotnet/remove-statement
+name: dotnet-remove-statement
 description: |
   Remove a statement and its associated trivia (comments, whitespace).
   Maintains proper formatting of surrounding code.
@@ -208,11 +208,11 @@ returns:
   removedText: string
 ```
 
-### 5. dotnet/get-statement-context
+### 5. dotnet-get-statement-context
 Get semantic and syntactic context for a statement.
 
 ```yaml
-name: dotnet/get-statement-context
+name: dotnet-get-statement-context
 description: |
   Get detailed context about a statement including semantic information,
   data flow, and relationships to other code elements.
@@ -251,11 +251,11 @@ returns:
     accessibleMembers: string[]
 ```
 
-### 6. dotnet/replace-statement-group
+### 6. dotnet-replace-statement-group
 Replace multiple statements atomically.
 
 ```yaml
-name: dotnet/replace-statement-group
+name: dotnet-replace-statement-group
 description: |
   Replace a group of statements with new code atomically.
   Preserves proper indentation and formatting.
@@ -281,11 +281,11 @@ returns:
   preview: string (shows before/after context)
 ```
 
-### 7. dotnet/extract-statements
+### 7. dotnet-extract-statements
 Extract a group of statements into a new method.
 
 ```yaml
-name: dotnet/extract-statements
+name: dotnet-extract-statements
 description: |
   Extract selected statements into a new method.
   Automatically determines parameters and return values.
