@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
+using CS = Microsoft.CodeAnalysis.CSharp.Syntax;
+using VB = Microsoft.CodeAnalysis.VisualBasic.Syntax;
+using CSSyntaxKind = Microsoft.CodeAnalysis.CSharp.SyntaxKind;
+using VBSyntaxKind = Microsoft.CodeAnalysis.VisualBasic.SyntaxKind;
 
 namespace McpRoslyn.Server.RoslynPath
 {
@@ -111,23 +113,52 @@ namespace McpRoslyn.Server.RoslynPath
 
         private string GetNodeTypeName(SyntaxNode node)
         {
-            return node switch
+            var language = node.Language;
+            
+            if (language == LanguageNames.CSharp)
             {
-                ClassDeclarationSyntax _ => "class",
-                InterfaceDeclarationSyntax _ => "interface",
-                StructDeclarationSyntax _ => "struct",
-                EnumDeclarationSyntax _ => "enum",
-                MethodDeclarationSyntax _ => "method",
-                PropertyDeclarationSyntax _ => "property",
-                FieldDeclarationSyntax _ => "field",
-                ConstructorDeclarationSyntax _ => "constructor",
-                NamespaceDeclarationSyntax _ => "namespace",
-                FileScopedNamespaceDeclarationSyntax _ => "namespace",
-                BlockSyntax _ => "block",
-                StatementSyntax _ => "statement",
-                ExpressionSyntax _ => "expression",
-                _ => node.GetType().Name.Replace("Syntax", "").ToLower()
-            };
+                return node switch
+                {
+                    CS.ClassDeclarationSyntax _ => "class",
+                    CS.InterfaceDeclarationSyntax _ => "interface",
+                    CS.StructDeclarationSyntax _ => "struct",
+                    CS.EnumDeclarationSyntax _ => "enum",
+                    CS.MethodDeclarationSyntax _ => "method",
+                    CS.PropertyDeclarationSyntax _ => "property",
+                    CS.FieldDeclarationSyntax _ => "field",
+                    CS.ConstructorDeclarationSyntax _ => "constructor",
+                    CS.NamespaceDeclarationSyntax _ => "namespace",
+                    CS.FileScopedNamespaceDeclarationSyntax _ => "namespace",
+                    CS.BlockSyntax _ => "block",
+                    CS.StatementSyntax _ => "statement",
+                    CS.ExpressionSyntax _ => "expression",
+                    _ => node.GetType().Name.Replace("Syntax", "").ToLower()
+                };
+            }
+            else if (language == LanguageNames.VisualBasic)
+            {
+                return node switch
+                {
+                    VB.ClassBlockSyntax _ => "class",
+                    VB.InterfaceBlockSyntax _ => "interface",
+                    VB.StructureBlockSyntax _ => "struct",
+                    VB.EnumBlockSyntax _ => "enum",
+                    VB.MethodBlockSyntax _ => "method",
+                    VB.PropertyBlockSyntax _ => "property",
+                    VB.FieldDeclarationSyntax _ => "field",
+                    VB.SubNewStatementSyntax _ => "constructor",
+                    VB.ConstructorBlockSyntax _ => "constructor",
+                    VB.NamespaceBlockSyntax _ => "namespace",
+                    VB.StatementSyntax _ => "statement",
+                    VB.ExpressionSyntax _ => "expression",
+                    _ => node.GetType().Name.Replace("Syntax", "").ToLower()
+                };
+            }
+            else
+            {
+                // Fallback for unknown languages
+                return node.GetType().Name.Replace("Syntax", "").ToLower();
+            }
         }
 
         private IEnumerable<SyntaxNode> EvaluateAxis(SyntaxNode node, string axis, string nodeTest)
@@ -225,23 +256,54 @@ namespace McpRoslyn.Server.RoslynPath
 
         private string? GetNodeName(SyntaxNode node)
         {
-            return node switch
+            var language = node.Language;
+            
+            if (language == LanguageNames.CSharp)
             {
-                ClassDeclarationSyntax classDecl => classDecl.Identifier.Text,
-                InterfaceDeclarationSyntax interfaceDecl => interfaceDecl.Identifier.Text,
-                StructDeclarationSyntax structDecl => structDecl.Identifier.Text,
-                EnumDeclarationSyntax enumDecl => enumDecl.Identifier.Text,
-                MethodDeclarationSyntax methodDecl => methodDecl.Identifier.Text,
-                PropertyDeclarationSyntax propDecl => propDecl.Identifier.Text,
-                FieldDeclarationSyntax fieldDecl => fieldDecl.Declaration.Variables.FirstOrDefault()?.Identifier.Text,
-                ConstructorDeclarationSyntax ctorDecl => ctorDecl.Identifier.Text,
-                NamespaceDeclarationSyntax nsDecl => GetNamespaceName(nsDecl.Name),
-                FileScopedNamespaceDeclarationSyntax fsNsDecl => GetNamespaceName(fsNsDecl.Name),
-                _ => null
-            };
+                return node switch
+                {
+                    CS.ClassDeclarationSyntax classDecl => classDecl.Identifier.Text,
+                    CS.InterfaceDeclarationSyntax interfaceDecl => interfaceDecl.Identifier.Text,
+                    CS.StructDeclarationSyntax structDecl => structDecl.Identifier.Text,
+                    CS.EnumDeclarationSyntax enumDecl => enumDecl.Identifier.Text,
+                    CS.MethodDeclarationSyntax methodDecl => methodDecl.Identifier.Text,
+                    CS.PropertyDeclarationSyntax propDecl => propDecl.Identifier.Text,
+                    CS.FieldDeclarationSyntax fieldDecl => fieldDecl.Declaration.Variables.FirstOrDefault()?.Identifier.Text,
+                    CS.ConstructorDeclarationSyntax ctorDecl => ctorDecl.Identifier.Text,
+                    CS.NamespaceDeclarationSyntax nsDecl => GetNamespaceName(nsDecl.Name),
+                    CS.FileScopedNamespaceDeclarationSyntax fsNsDecl => GetNamespaceName(fsNsDecl.Name),
+                    _ => null
+                };
+            }
+            else if (language == LanguageNames.VisualBasic)
+            {
+                return node switch
+                {
+                    VB.ClassBlockSyntax classBlock => classBlock.ClassStatement.Identifier.Text,
+                    VB.InterfaceBlockSyntax interfaceBlock => interfaceBlock.InterfaceStatement.Identifier.Text,
+                    VB.StructureBlockSyntax structBlock => structBlock.StructureStatement.Identifier.Text,
+                    VB.EnumBlockSyntax enumBlock => enumBlock.EnumStatement.Identifier.Text,
+                    VB.MethodBlockSyntax methodBlock => methodBlock.SubOrFunctionStatement.Identifier.Text,
+                    VB.PropertyBlockSyntax propBlock => propBlock.PropertyStatement.Identifier.Text,
+                    VB.FieldDeclarationSyntax fieldDecl => fieldDecl.Declarators.FirstOrDefault()?.Names.FirstOrDefault()?.Identifier.Text,
+                    VB.SubNewStatementSyntax ctorStmt => "New",
+                    VB.ConstructorBlockSyntax ctorBlock => "New",
+                    VB.NamespaceBlockSyntax nsBlock => GetVBNamespaceName(nsBlock.NamespaceStatement.Name),
+                    _ => null
+                };
+            }
+            else
+            {
+                return null;
+            }
         }
 
-        private string? GetNamespaceName(NameSyntax name)
+        private string? GetNamespaceName(CS.NameSyntax name)
+        {
+            return name?.ToString();
+        }
+        
+        private string? GetVBNamespaceName(VB.NameSyntax name)
         {
             return name?.ToString();
         }
@@ -293,6 +355,18 @@ namespace McpRoslyn.Server.RoslynPath
                     case "matches":
                         var nodeText = node.ToString();
                         return Regex.IsMatch(nodeText, predicate.Value);
+                        
+                    case "language":
+                        return MatchesValue(node.Language, predicate.Value, predicate.Operator);
+                        
+                    case "modifiers":
+                        return CheckModifiers(node, predicate.Value, predicate.Operator);
+                        
+                    case "returns":
+                        return CheckReturnType(node, predicate.Value, predicate.Operator);
+                        
+                    case "methodtype":
+                        return CheckMethodType(node, predicate.Value, predicate.Operator);
 
                     default:
                         return false;
@@ -315,53 +389,184 @@ namespace McpRoslyn.Server.RoslynPath
 
             return actual.Equals(expected, StringComparison.OrdinalIgnoreCase);
         }
+        
+        private bool CheckModifiers(SyntaxNode node, string value, string op)
+        {
+            var modifiers = GetModifiers(node);
+            if (modifiers == null) return false;
+            
+            if (op == "~=") // contains
+            {
+                return modifiers.Any(m => m.Equals(value, StringComparison.OrdinalIgnoreCase));
+            }
+            
+            return false;
+        }
+        
+        private bool CheckReturnType(SyntaxNode node, string value, string op)
+        {
+            var returnType = GetReturnType(node);
+            if (returnType == null) return false;
+            
+            if (op == "=")
+            {
+                return returnType.Equals(value, StringComparison.OrdinalIgnoreCase);
+            }
+            else if (op == "~=") // contains
+            {
+                return returnType.Contains(value, StringComparison.OrdinalIgnoreCase);
+            }
+            
+            return false;
+        }
+        
+        private bool CheckMethodType(SyntaxNode node, string value, string op)
+        {
+            // Only applicable to VB.NET methods
+            if (node.Language != LanguageNames.VisualBasic) return false;
+            
+            if (node is VB.MethodBlockSyntax methodBlock)
+            {
+                var isSubMethod = methodBlock.SubOrFunctionStatement.SubOrFunctionKeyword.IsKind(VBSyntaxKind.SubKeyword);
+                var methodType = isSubMethod ? "sub" : "function";
+                
+                if (op == "=")
+                {
+                    return methodType.Equals(value, StringComparison.OrdinalIgnoreCase);
+                }
+            }
+            
+            return false;
+        }
+        
+        private List<string>? GetModifiers(SyntaxNode node)
+        {
+            if (node.Language == LanguageNames.CSharp)
+            {
+                return node switch
+                {
+                    CS.ClassDeclarationSyntax classDecl => classDecl.Modifiers.Select(m => m.Text).ToList(),
+                    CS.MethodDeclarationSyntax methodDecl => methodDecl.Modifiers.Select(m => m.Text).ToList(),
+                    CS.PropertyDeclarationSyntax propDecl => propDecl.Modifiers.Select(m => m.Text).ToList(),
+                    CS.FieldDeclarationSyntax fieldDecl => fieldDecl.Modifiers.Select(m => m.Text).ToList(),
+                    _ => null
+                };
+            }
+            else if (node.Language == LanguageNames.VisualBasic)
+            {
+                return node switch
+                {
+                    VB.ClassBlockSyntax classBlock => classBlock.ClassStatement.Modifiers.Select(m => m.Text).ToList(),
+                    VB.MethodBlockSyntax methodBlock => methodBlock.SubOrFunctionStatement.Modifiers.Select(m => m.Text).ToList(),
+                    VB.PropertyBlockSyntax propBlock => propBlock.PropertyStatement.Modifiers.Select(m => m.Text).ToList(),
+                    VB.FieldDeclarationSyntax fieldDecl => fieldDecl.Modifiers.Select(m => m.Text).ToList(),
+                    _ => null
+                };
+            }
+            
+            return null;
+        }
+        
+        private string? GetReturnType(SyntaxNode node)
+        {
+            if (node.Language == LanguageNames.CSharp)
+            {
+                if (node is CS.MethodDeclarationSyntax methodDecl)
+                {
+                    return methodDecl.ReturnType.ToString();
+                }
+            }
+            else if (node.Language == LanguageNames.VisualBasic)
+            {
+                if (node is VB.MethodBlockSyntax methodBlock)
+                {
+                    // Check if it's a Sub (void) or Function
+                    if (methodBlock.SubOrFunctionStatement.SubOrFunctionKeyword.IsKind(VBSyntaxKind.SubKeyword))
+                    {
+                        return "void"; // Map VB Sub to C# void concept
+                    }
+                    else if (methodBlock.SubOrFunctionStatement.AsClause is VB.SimpleAsClauseSyntax asClause)
+                    {
+                        return asClause.Type.ToString();
+                    }
+                }
+            }
+            
+            return null;
+        }
 
         private IEnumerable<SyntaxNode> ApplyBooleanPredicate(IEnumerable<SyntaxNode> nodes, BooleanPredicate predicate)
         {
             return nodes.Where(node =>
             {
+                var modifiers = GetModifiers(node);
+                if (modifiers == null) return false;
+                
                 switch (predicate.Name)
                 {
                     case "async":
-                        return node is MethodDeclarationSyntax method &&
-                               method.Modifiers.Any(m => m.IsKind(SyntaxKind.AsyncKeyword));
+                        return modifiers.Any(m => m.Equals("async", StringComparison.OrdinalIgnoreCase));
 
                     case "public":
-                        return HasModifier(node, SyntaxKind.PublicKeyword);
+                        return modifiers.Any(m => m.Equals("public", StringComparison.OrdinalIgnoreCase));
 
                     case "private":
-                        return HasModifier(node, SyntaxKind.PrivateKeyword);
+                        return modifiers.Any(m => m.Equals("private", StringComparison.OrdinalIgnoreCase));
 
                     case "static":
-                        return HasModifier(node, SyntaxKind.StaticKeyword);
+                        return modifiers.Any(m => m.Equals("static", StringComparison.OrdinalIgnoreCase) || 
+                                               m.Equals("shared", StringComparison.OrdinalIgnoreCase)); // VB.NET uses "Shared"
 
                     case "abstract":
-                        return HasModifier(node, SyntaxKind.AbstractKeyword);
+                        return modifiers.Any(m => m.Equals("abstract", StringComparison.OrdinalIgnoreCase) ||
+                                               m.Equals("mustinherit", StringComparison.OrdinalIgnoreCase)); // VB.NET uses "MustInherit"
 
                     case "virtual":
-                        return HasModifier(node, SyntaxKind.VirtualKeyword);
+                        return modifiers.Any(m => m.Equals("virtual", StringComparison.OrdinalIgnoreCase) ||
+                                               m.Equals("overridable", StringComparison.OrdinalIgnoreCase)); // VB.NET uses "Overridable"
 
                     case "override":
-                        return HasModifier(node, SyntaxKind.OverrideKeyword);
+                        return modifiers.Any(m => m.Equals("override", StringComparison.OrdinalIgnoreCase) ||
+                                               m.Equals("overrides", StringComparison.OrdinalIgnoreCase)); // VB.NET uses "Overrides"
+                        
+                    case "has-getter":
+                        return CheckHasGetter(node);
+                        
+                    case "has-setter":
+                        return CheckHasSetter(node);
 
                     default:
                         return false;
                 }
             });
         }
-
-        private bool HasModifier(SyntaxNode node, SyntaxKind modifierKind)
+        
+        private bool CheckHasGetter(SyntaxNode node)
         {
-            var modifiers = node switch
+            if (node.Language == LanguageNames.CSharp && node is CS.PropertyDeclarationSyntax csProp)
             {
-                BaseTypeDeclarationSyntax typeDecl => typeDecl.Modifiers,
-                BaseMethodDeclarationSyntax methodDecl => methodDecl.Modifiers,
-                BasePropertyDeclarationSyntax propDecl => propDecl.Modifiers,
-                BaseFieldDeclarationSyntax fieldDecl => fieldDecl.Modifiers,
-                _ => default(SyntaxTokenList)
-            };
-
-            return modifiers.Any(m => m.IsKind(modifierKind));
+                return csProp.AccessorList?.Accessors.Any(a => a.IsKind(CSSyntaxKind.GetAccessorDeclaration)) ?? false;
+            }
+            else if (node.Language == LanguageNames.VisualBasic && node is VB.PropertyBlockSyntax vbProp)
+            {
+                return vbProp.Accessors.Any(a => a.IsKind(VBSyntaxKind.GetAccessorBlock));
+            }
+            
+            return false;
+        }
+        
+        private bool CheckHasSetter(SyntaxNode node)
+        {
+            if (node.Language == LanguageNames.CSharp && node is CS.PropertyDeclarationSyntax csProp)
+            {
+                return csProp.AccessorList?.Accessors.Any(a => a.IsKind(CSSyntaxKind.SetAccessorDeclaration)) ?? false;
+            }
+            else if (node.Language == LanguageNames.VisualBasic && node is VB.PropertyBlockSyntax vbProp)
+            {
+                return vbProp.Accessors.Any(a => a.IsKind(VBSyntaxKind.SetAccessorBlock));
+            }
+            
+            return false;
         }
 
         private IEnumerable<SyntaxNode> ApplyCompoundPredicate(IEnumerable<SyntaxNode> nodes, CompoundPredicate predicate)

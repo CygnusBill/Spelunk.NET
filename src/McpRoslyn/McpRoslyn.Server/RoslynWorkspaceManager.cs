@@ -6,6 +6,7 @@ using Microsoft.CodeAnalysis.Formatting;
 using Microsoft.CodeAnalysis.CSharp;
 using CS = Microsoft.CodeAnalysis.CSharp.Syntax;
 using VB = Microsoft.CodeAnalysis.VisualBasic.Syntax;
+using VBSyntaxKind = Microsoft.CodeAnalysis.VisualBasic.SyntaxKind;
 using Microsoft.CodeAnalysis.Rename;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.Logging;
@@ -1969,53 +1970,109 @@ public class RoslynWorkspaceManager : IDisposable
     
     private async Task FindAsyncPatterns(SyntaxNode root, SemanticModel semanticModel, SourceText sourceText, string filePath, string findPattern, string replacePattern, List<PatternFix> fixes)
     {
+        var language = root.Language;
+        
         // Find async methods without await
         if (findPattern == "async-without-await")
         {
-            var methods = root.DescendantNodes().OfType<CS.MethodDeclarationSyntax>()
-                .Where(m => m.Modifiers.Any(mod => mod.IsKind(SyntaxKind.AsyncKeyword)));
-            
-            foreach (var method in methods)
+            if (language == LanguageNames.CSharp)
             {
-                var hasAwait = method.DescendantNodes().OfType<CS.AwaitExpressionSyntax>().Any();
-                if (!hasAwait)
+                var methods = root.DescendantNodes().OfType<CS.MethodDeclarationSyntax>()
+                    .Where(m => m.Modifiers.Any(mod => mod.IsKind(SyntaxKind.AsyncKeyword)));
+                
+                foreach (var method in methods)
                 {
-                    var lineSpan = method.Identifier.GetLocation().GetLineSpan();
-                    
-                    fixes.Add(new PatternFix
+                    var hasAwait = method.DescendantNodes().OfType<CS.AwaitExpressionSyntax>().Any();
+                    if (!hasAwait)
                     {
-                        FilePath = filePath,
-                        Line = lineSpan.StartLinePosition.Line + 1,
-                        Column = lineSpan.StartLinePosition.Character + 1,
-                        OriginalCode = "async",
-                        FixedCode = "",
-                        Description = $"Remove unnecessary async modifier from {method.Identifier.Text}"
-                    });
+                        var lineSpan = method.Identifier.GetLocation().GetLineSpan();
+                        
+                        fixes.Add(new PatternFix
+                        {
+                            FilePath = filePath,
+                            Line = lineSpan.StartLinePosition.Line + 1,
+                            Column = lineSpan.StartLinePosition.Character + 1,
+                            OriginalCode = "async",
+                            FixedCode = "",
+                            Description = $"Remove unnecessary async modifier from {method.Identifier.Text}"
+                        });
+                    }
+                }
+            }
+            else if (language == LanguageNames.VisualBasic)
+            {
+                var methods = root.DescendantNodes().OfType<VB.MethodBlockSyntax>()
+                    .Where(m => m.SubOrFunctionStatement.Modifiers.Any(mod => mod.IsKind(VBSyntaxKind.AsyncKeyword)));
+                
+                foreach (var method in methods)
+                {
+                    var hasAwait = method.DescendantNodes().OfType<VB.AwaitExpressionSyntax>().Any();
+                    if (!hasAwait)
+                    {
+                        var lineSpan = method.SubOrFunctionStatement.Identifier.GetLocation().GetLineSpan();
+                        
+                        fixes.Add(new PatternFix
+                        {
+                            FilePath = filePath,
+                            Line = lineSpan.StartLinePosition.Line + 1,
+                            Column = lineSpan.StartLinePosition.Character + 1,
+                            OriginalCode = "Async",
+                            FixedCode = "",
+                            Description = $"Remove unnecessary Async modifier from {method.SubOrFunctionStatement.Identifier.Text}"
+                        });
+                    }
                 }
             }
         }
         // Find missing await on async calls
         else if (findPattern == "missing-await")
         {
-            var invocations = root.DescendantNodes().OfType<CS.InvocationExpressionSyntax>();
-            
-            foreach (var invocation in invocations)
+            if (language == LanguageNames.CSharp)
             {
-                var symbol = semanticModel.GetSymbolInfo(invocation).Symbol as IMethodSymbol;
-                if (symbol != null && symbol.ReturnType.Name == "Task" && 
-                    !invocation.Parent.IsKind(SyntaxKind.AwaitExpression))
+                var invocations = root.DescendantNodes().OfType<CS.InvocationExpressionSyntax>();
+                
+                foreach (var invocation in invocations)
                 {
-                    var lineSpan = invocation.GetLocation().GetLineSpan();
-                    
-                    fixes.Add(new PatternFix
+                    var symbol = semanticModel.GetSymbolInfo(invocation).Symbol as IMethodSymbol;
+                    if (symbol != null && symbol.ReturnType.Name == "Task" && 
+                        !invocation.Parent.IsKind(SyntaxKind.AwaitExpression))
                     {
-                        FilePath = filePath,
-                        Line = lineSpan.StartLinePosition.Line + 1,
-                        Column = lineSpan.StartLinePosition.Character + 1,
-                        OriginalCode = invocation.ToString(),
-                        FixedCode = $"await {invocation}",
-                        Description = $"Add missing await to async call"
-                    });
+                        var lineSpan = invocation.GetLocation().GetLineSpan();
+                        
+                        fixes.Add(new PatternFix
+                        {
+                            FilePath = filePath,
+                            Line = lineSpan.StartLinePosition.Line + 1,
+                            Column = lineSpan.StartLinePosition.Character + 1,
+                            OriginalCode = invocation.ToString(),
+                            FixedCode = $"await {invocation}",
+                            Description = $"Add missing await to async call"
+                        });
+                    }
+                }
+            }
+            else if (language == LanguageNames.VisualBasic)
+            {
+                var invocations = root.DescendantNodes().OfType<VB.InvocationExpressionSyntax>();
+                
+                foreach (var invocation in invocations)
+                {
+                    var symbol = semanticModel.GetSymbolInfo(invocation).Symbol as IMethodSymbol;
+                    if (symbol != null && symbol.ReturnType.Name == "Task" && 
+                        !invocation.Parent.IsKind(VBSyntaxKind.AwaitExpression))
+                    {
+                        var lineSpan = invocation.GetLocation().GetLineSpan();
+                        
+                        fixes.Add(new PatternFix
+                        {
+                            FilePath = filePath,
+                            Line = lineSpan.StartLinePosition.Line + 1,
+                            Column = lineSpan.StartLinePosition.Character + 1,
+                            OriginalCode = invocation.ToString(),
+                            FixedCode = $"Await {invocation}",
+                            Description = $"Add missing Await to async call"
+                        });
+                    }
                 }
             }
         }
@@ -2023,34 +2080,100 @@ public class RoslynWorkspaceManager : IDisposable
     
     private async Task FindNullCheckPatterns(SyntaxNode root, SemanticModel semanticModel, SourceText sourceText, string filePath, string findPattern, string replacePattern, List<PatternFix> fixes)
     {
+        var language = root.Language;
+        
         // Find old-style null checks and replace with null-conditional operator
         if (findPattern == "if-null-check")
         {
-            var ifStatements = root.DescendantNodes().OfType<CS.IfStatementSyntax>();
-            
-            foreach (var ifStatement in ifStatements)
+            if (language == LanguageNames.CSharp)
             {
-                // Look for pattern: if (x != null) x.Method()
-                if (ifStatement.Condition is CS.BinaryExpressionSyntax binary &&
-                    binary.IsKind(SyntaxKind.NotEqualsExpression) &&
-                    binary.Right.IsKind(SyntaxKind.NullLiteralExpression))
+                var ifStatements = root.DescendantNodes().OfType<CS.IfStatementSyntax>();
+                
+                foreach (var ifStatement in ifStatements)
                 {
-                    var identifier = binary.Left.ToString();
-                    var lineSpan = ifStatement.GetLocation().GetLineSpan();
-                    
-                    // Check if the body uses the same identifier
-                    var bodyText = ifStatement.Statement.ToString();
-                    if (bodyText.Contains($"{identifier}."))
+                    // Look for pattern: if (x != null) x.Method()
+                    if (ifStatement.Condition is CS.BinaryExpressionSyntax binary &&
+                        binary.IsKind(SyntaxKind.NotEqualsExpression) &&
+                        binary.Right.IsKind(SyntaxKind.NullLiteralExpression))
                     {
-                        fixes.Add(new PatternFix
+                        var identifier = binary.Left.ToString();
+                        var lineSpan = ifStatement.GetLocation().GetLineSpan();
+                        
+                        // Check if the body uses the same identifier
+                        var bodyText = ifStatement.Statement.ToString();
+                        if (bodyText.Contains($"{identifier}."))
                         {
-                            FilePath = filePath,
-                            Line = lineSpan.StartLinePosition.Line + 1,
-                            Column = lineSpan.StartLinePosition.Character + 1,
-                            OriginalCode = ifStatement.ToString(),
-                            FixedCode = bodyText.Replace($"{identifier}.", $"{identifier}?.").Trim('{', '}', ' ', '\n', '\r'),
-                            Description = "Replace null check with null-conditional operator"
-                        });
+                            fixes.Add(new PatternFix
+                            {
+                                FilePath = filePath,
+                                Line = lineSpan.StartLinePosition.Line + 1,
+                                Column = lineSpan.StartLinePosition.Character + 1,
+                                OriginalCode = ifStatement.ToString(),
+                                FixedCode = bodyText.Replace($"{identifier}.", $"{identifier}?.").Trim('{', '}', ' ', '\n', '\r'),
+                                Description = "Replace null check with null-conditional operator"
+                            });
+                        }
+                    }
+                }
+            }
+            else if (language == LanguageNames.VisualBasic)
+            {
+                var ifStatements = root.DescendantNodes().OfType<VB.MultiLineIfBlockSyntax>();
+                
+                foreach (var ifStatement in ifStatements)
+                {
+                    // Look for pattern: If x IsNot Nothing Then x.Method()
+                    if (ifStatement.IfStatement.Condition is VB.BinaryExpressionSyntax binary &&
+                        binary.IsKind(VBSyntaxKind.IsNotExpression) &&
+                        binary.Right.IsKind(VBSyntaxKind.NothingLiteralExpression))
+                    {
+                        var identifier = binary.Left.ToString();
+                        var lineSpan = ifStatement.GetLocation().GetLineSpan();
+                        
+                        // Check if the body uses the same identifier
+                        var bodyText = string.Join(" ", ifStatement.Statements.Select(s => s.ToString()));
+                        if (bodyText.Contains($"{identifier}."))
+                        {
+                            fixes.Add(new PatternFix
+                            {
+                                FilePath = filePath,
+                                Line = lineSpan.StartLinePosition.Line + 1,
+                                Column = lineSpan.StartLinePosition.Character + 1,
+                                OriginalCode = ifStatement.ToString(),
+                                FixedCode = bodyText.Replace($"{identifier}.", $"{identifier}?.").Trim(),
+                                Description = "Replace null check with null-conditional operator"
+                            });
+                        }
+                    }
+                }
+                
+                // Also check single-line If statements
+                var singleLineIfs = root.DescendantNodes().OfType<VB.SingleLineIfStatementSyntax>();
+                
+                foreach (var ifStatement in singleLineIfs)
+                {
+                    // Look for pattern: If x IsNot Nothing Then x.Method()
+                    if (ifStatement.Condition is VB.BinaryExpressionSyntax binary &&
+                        binary.IsKind(VBSyntaxKind.IsNotExpression) &&
+                        binary.Right.IsKind(VBSyntaxKind.NothingLiteralExpression))
+                    {
+                        var identifier = binary.Left.ToString();
+                        var lineSpan = ifStatement.GetLocation().GetLineSpan();
+                        
+                        // Check if the statements use the same identifier
+                        var bodyText = string.Join(" ", ifStatement.Statements.Select(s => s.ToString()));
+                        if (bodyText.Contains($"{identifier}."))
+                        {
+                            fixes.Add(new PatternFix
+                            {
+                                FilePath = filePath,
+                                Line = lineSpan.StartLinePosition.Line + 1,
+                                Column = lineSpan.StartLinePosition.Character + 1,
+                                OriginalCode = ifStatement.ToString(),
+                                FixedCode = bodyText.Replace($"{identifier}.", $"{identifier}?."),
+                                Description = "Replace null check with null-conditional operator"
+                            });
+                        }
                     }
                 }
             }
@@ -2059,37 +2182,75 @@ public class RoslynWorkspaceManager : IDisposable
     
     private async Task FindStringFormatPatterns(SyntaxNode root, SemanticModel semanticModel, SourceText sourceText, string filePath, string findPattern, string replacePattern, List<PatternFix> fixes)
     {
+        var language = root.Language;
+        
         // Find string.Format and replace with interpolation
-        if (findPattern == "string.Format")
+        if (findPattern == "string.Format" || findPattern == "String.Format")
         {
-            var invocations = root.DescendantNodes().OfType<CS.InvocationExpressionSyntax>()
-                .Where(i => i.Expression.ToString() == "string.Format");
-            
-            foreach (var invocation in invocations)
+            if (language == LanguageNames.CSharp)
             {
-                if (invocation.ArgumentList.Arguments.Count >= 2)
+                var invocations = root.DescendantNodes().OfType<CS.InvocationExpressionSyntax>()
+                    .Where(i => i.Expression.ToString() == "string.Format" || i.Expression.ToString() == "String.Format");
+                
+                foreach (var invocation in invocations)
                 {
-                    var formatString = invocation.ArgumentList.Arguments[0].ToString().Trim('"');
-                    var args = invocation.ArgumentList.Arguments.Skip(1).Select(a => a.ToString()).ToList();
-                    
-                    // Simple conversion to string interpolation
-                    var interpolated = formatString;
-                    for (int i = 0; i < args.Count; i++)
+                    if (invocation.ArgumentList.Arguments.Count >= 2)
                     {
-                        interpolated = interpolated.Replace($"{{{i}}}", $"{{{args[i]}}}");
+                        var formatString = invocation.ArgumentList.Arguments[0].ToString().Trim('"');
+                        var args = invocation.ArgumentList.Arguments.Skip(1).Select(a => a.ToString()).ToList();
+                        
+                        // Simple conversion to string interpolation
+                        var interpolated = formatString;
+                        for (int i = 0; i < args.Count; i++)
+                        {
+                            interpolated = interpolated.Replace($"{{{i}}}", $"{{{args[i]}}}");
+                        }
+                        
+                        var lineSpan = invocation.GetLocation().GetLineSpan();
+                        
+                        fixes.Add(new PatternFix
+                        {
+                            FilePath = filePath,
+                            Line = lineSpan.StartLinePosition.Line + 1,
+                            Column = lineSpan.StartLinePosition.Character + 1,
+                            OriginalCode = invocation.ToString(),
+                            FixedCode = $"$\"{interpolated}\"",
+                            Description = "Convert string.Format to string interpolation"
+                        });
                     }
-                    
-                    var lineSpan = invocation.GetLocation().GetLineSpan();
-                    
-                    fixes.Add(new PatternFix
+                }
+            }
+            else if (language == LanguageNames.VisualBasic)
+            {
+                var invocations = root.DescendantNodes().OfType<VB.InvocationExpressionSyntax>()
+                    .Where(i => i.Expression.ToString() == "String.Format");
+                
+                foreach (var invocation in invocations)
+                {
+                    if (invocation.ArgumentList?.Arguments.Count >= 2)
                     {
-                        FilePath = filePath,
-                        Line = lineSpan.StartLinePosition.Line + 1,
-                        Column = lineSpan.StartLinePosition.Character + 1,
-                        OriginalCode = invocation.ToString(),
-                        FixedCode = $"$\"{interpolated}\"",
-                        Description = "Convert string.Format to string interpolation"
-                    });
+                        var formatString = invocation.ArgumentList.Arguments[0].ToString().Trim('"');
+                        var args = invocation.ArgumentList.Arguments.Skip(1).Select(a => a.ToString()).ToList();
+                        
+                        // Simple conversion to string interpolation
+                        var interpolated = formatString;
+                        for (int i = 0; i < args.Count; i++)
+                        {
+                            interpolated = interpolated.Replace($"{{{i}}}", $"{{{args[i]}}}");
+                        }
+                        
+                        var lineSpan = invocation.GetLocation().GetLineSpan();
+                        
+                        fixes.Add(new PatternFix
+                        {
+                            FilePath = filePath,
+                            Line = lineSpan.StartLinePosition.Line + 1,
+                            Column = lineSpan.StartLinePosition.Character + 1,
+                            OriginalCode = invocation.ToString(),
+                            FixedCode = $"$\"{interpolated}\"",
+                            Description = "Convert String.Format to string interpolation"
+                        });
+                    }
                 }
             }
         }

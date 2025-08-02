@@ -98,6 +98,7 @@ Complex refactorings are built from simple, composable tools. The 24 implemented
 - ✅ RoslynPath integration into find-statements tool
 - ✅ Fixed compilation warnings across all projects
 - ✅ Added clear error handling for port conflicts in SSE server
+- ✅ 1, unified, and accurately document for the agent
 
 ### High Priority Pending
 - 🔲 Implement get-statement-context tool (semantic info)
