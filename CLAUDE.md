@@ -7,7 +7,7 @@ If you're starting fresh with this codebase:
 2. **Check Serena memories** - Use `mcp__serena__list_memories` and read relevant ones for project context
 3. **Check recent changes** - See "Recent Changes" section below
 4. **Review key files** - Listed in "Key Implementation Files" section
-5. **Understand the architecture** - MCP server with 25 Roslyn-based tools (including diagnostics)
+5. **Understand the architecture** - MCP server with 27 Roslyn-based tools (including diagnostics)
 6. **Check pending tasks** - See implementation status sections
 
 ## Project Structure
@@ -119,15 +119,17 @@ Complex refactorings are built from simple, composable tools. The 27 implemented
 - ✅ F# workspace manager and tools (dotnet-load-fsharp-project, dotnet-fsharp-find-symbols)
 - ✅ Multi-language test coverage (VB.NET and F# integration tests)
 - ✅ Documentation updates for multi-language support
+- ✅ Implemented get-statement-context tool (semantic info)
+- ✅ Implemented get-data-flow tool (comprehensive data flow analysis)
+- ✅ Refactored fix-pattern to use statement-level operations with semantic transformations
+- ✅ Added StatementTransformer for intelligent code transformations
+- ✅ Tool descriptions centralized in ToolDescriptions.cs
 
 ### High Priority Pending
-- 🔲 Implement get-statement-context tool (semantic info)
+- None currently
 
 ### Medium Priority Pending
-- ✅ Update test files to use new project paths (completed - now using relative paths)
-- 🔲 Refactor fix-pattern to use statement-level operations
 - 🔲 Design generic syntax tree navigation tools
-- 🔲 Implement get-data-flow tool
 
 ## Development Workflow
 

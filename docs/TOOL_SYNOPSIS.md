@@ -1223,44 +1223,70 @@ Preview:
 **Use Case**: Add methods/properties, convert to async, add parameters, add error handling
 
 #### `dotnet-fix-pattern`
-**MCP Description**: "Find code matching a pattern and transform it to a new pattern"
+**MCP Description**: "Transform code using semantic-aware patterns with RoslynPath queries and statement-level operations"
 
-**Purpose**: Apply pattern-based transformations across the codebase.
+**Purpose**: Apply powerful semantic-aware transformations using RoslynPath queries and statement-level operations.
 
 **Input Format**:
 ```json
 {
-  "findPattern": "Console.WriteLine",  // Required: pattern to find
-  "replacePattern": "_logger.LogInfo", // Required: replacement pattern
-  "patternType": "method-call",       // Required: pattern type
-  "workspacePath": "/path/to/apply",  // Optional
-  "preview": true                     // Optional: preview changes
+  "findPattern": "//statement[@contains='Console.WriteLine']",  // RoslynPath or text pattern
+  "replacePattern": "logger.LogInfo",                          // For custom transformations
+  "patternType": "convert-to-interpolation",                   // Transformation type
+  "workspacePath": "/path/to/apply",                          // Optional
+  "preview": true                                              // Optional: preview changes
 }
 ```
 
-**Pattern Types**:
-- `method-call`: Transform method invocations
-- `property-access`: Transform property access patterns
-- `async-usage`: Add/remove async/await
-- `null-check`: Transform null checking patterns
-- `string-format`: Update string formatting
+**Transformation Types**:
+- `add-null-check`: Add ArgumentNullException.ThrowIfNull before method calls
+- `convert-to-async`: Convert sync methods to async (e.g., ReadAllText → ReadAllTextAsync)
+- `extract-variable`: Extract complex expressions into variables
+- `simplify-conditional`: Convert if-null checks to null-conditional operators (?.)
+- `parameterize-query`: Convert SQL string concatenation to parameterized queries
+- `convert-to-interpolation`: Convert string.Format to string interpolation ($"")
+- `add-await`: Add missing await keywords to async method calls
+- `custom`: Apply custom text replacement (uses replacePattern)
 
-**Output Format**:
-```text
-Found 5 instance(s) of pattern 'Console.WriteLine':
+**Legacy Pattern Types** (for backward compatibility):
+- `method-call`, `async-usage`, `null-check`, `string-format`
 
-1. /path/src/Program.cs:10:9
-   Before: Console.WriteLine("Starting...");
-   After:  _logger.LogInfo("Starting...");
-
-2. /path/src/UserService.cs:25:13
-   Before: Console.WriteLine($"User {id} found");
-   After:  _logger.LogInfo($"User {id} found");
-
-Apply changes? (preview mode)
+**Example - Add Null Checks**:
+```json
+{
+  "findPattern": "//statement[@type=ExpressionStatement and @contains='.']",
+  "patternType": "add-null-check",
+  "preview": true
+}
 ```
 
-**Use Case**: Migrate logging frameworks, update API usage patterns, modernize code patterns
+**Example - Convert to Async**:
+```json
+{
+  "findPattern": "//method[*Async]//statement[@contains='File.Read']",
+  "patternType": "convert-to-async",
+  "preview": true
+}
+```
+
+**Output Format**:
+```json
+{
+  "Success": true,
+  "Fixes": [
+    {
+      "FilePath": "/path/src/Program.cs",
+      "Line": 10,
+      "Column": 9,
+      "OriginalCode": "Console.WriteLine(msg);",
+      "ReplacementCode": "ArgumentNullException.ThrowIfNull(console);\nConsole.WriteLine(msg);",
+      "Description": "Apply AddNullCheck transformation"
+    }
+  ]
+}
+```
+
+**Use Case**: Add null safety, modernize async patterns, improve code quality, refactor with semantic understanding
 
 ## Usage Patterns
 

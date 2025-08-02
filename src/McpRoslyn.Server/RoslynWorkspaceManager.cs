@@ -1910,68 +1910,186 @@ public class RoslynWorkspaceManager : IDisposable
     public async Task<PatternFixResult> FixPatternAsync(string findPattern, string replacePattern, string patternType, string? workspacePath, bool preview)
     {
         var result = new PatternFixResult { Success = true };
-        var workspacesToSearch = GetWorkspacesToSearch(workspacePath);
         
         try
         {
-            foreach (var workspace in workspacesToSearch)
+            // Parse transformation type
+            TransformationType transformType;
+            Dictionary<string, object> parameters = new();
+            
+            // Handle legacy pattern types for backward compatibility
+            switch (patternType.ToLower())
             {
-                var solution = workspace.CurrentSolution;
+                case "method-call":
+                    transformType = TransformationType.Custom;
+                    parameters["legacyType"] = "method-call";
+                    break;
+                case "async-usage":
+                    transformType = TransformationType.ConvertToAsync;
+                    break;
+                case "null-check":
+                    transformType = TransformationType.AddNullCheck;
+                    break;
+                case "string-format":
+                    transformType = TransformationType.ConvertToInterpolation;
+                    break;
+                case "add-null-check":
+                    transformType = TransformationType.AddNullCheck;
+                    break;
+                case "convert-to-async":
+                    transformType = TransformationType.ConvertToAsync;
+                    break;
+                case "extract-variable":
+                    transformType = TransformationType.ExtractVariable;
+                    break;
+                case "simplify-conditional":
+                    transformType = TransformationType.SimplifyConditional;
+                    break;
+                case "parameterize-query":
+                    transformType = TransformationType.ParameterizeQuery;
+                    break;
+                case "convert-to-interpolation":
+                    transformType = TransformationType.ConvertToInterpolation;
+                    break;
+                case "add-await":
+                    transformType = TransformationType.AddAwait;
+                    break;
+                case "custom":
+                    transformType = TransformationType.Custom;
+                    parameters["replacement"] = replacePattern;
+                    break;
+                default:
+                    // Assume it's a RoslynPath pattern
+                    transformType = TransformationType.Custom;
+                    parameters["replacement"] = replacePattern;
+                    break;
+            }
+            
+            // Create transformation rule
+            var rule = new TransformationRule
+            {
+                Name = patternType,
+                Type = transformType,
+                RoslynPathPattern = findPattern,
+                Parameters = parameters
+            };
+            
+            // If it looks like a RoslynPath pattern, use statement-level search
+            bool useRoslynPath = findPattern.StartsWith("//") || findPattern.Contains("[@");
+            
+            if (useRoslynPath)
+            {
+                // Use RoslynPath to find statements
+                var statementsResult = await FindStatementsAsync(
+                    findPattern, 
+                    null, 
+                    "roslynpath", 
+                    true, 
+                    false, 
+                    workspacePath);
                 
-                foreach (var project in solution.Projects)
+                foreach (var statementInfo in statementsResult.Statements)
                 {
-                    foreach (var document in project.Documents)
+                    // Get semantic context for the statement
+                    var context = await GetStatementContextAsync(
+                        statementInfo.Location.FilePath,
+                        statementInfo.Location.Line,
+                        statementInfo.Location.Column,
+                        workspacePath);
+                    
+                    // Get the document and semantic model
+                    var workspace = GetWorkspace(workspacePath);
+                    var solution = workspace?.CurrentSolution;
+                    var document = solution?.Projects
+                        .SelectMany(p => p.Documents)
+                        .FirstOrDefault(d => d.FilePath == statementInfo.Location.FilePath);
+                    
+                    if (document != null)
                     {
-                        var root = await document.GetSyntaxRootAsync();
-                        if (root == null) continue;
-                        
                         var semanticModel = await document.GetSemanticModelAsync();
-                        if (semanticModel == null) continue;
-                        
                         var sourceText = await document.GetTextAsync();
+                        var root = await document.GetSyntaxRootAsync();
                         
-                        // Find patterns based on type
-                        switch (patternType.ToLower())
+                        if (semanticModel != null && sourceText != null && root != null)
                         {
-                            case "method-call":
-                                await FindMethodCallPatterns(root, semanticModel, sourceText, document.FilePath ?? "", findPattern, replacePattern, result.Fixes);
-                                break;
+                            // Find the statement node
+                            var position = sourceText.Lines.GetPosition(new LinePosition(
+                                statementInfo.Location.Line - 1,
+                                statementInfo.Location.Column - 1));
+                            var node = root.FindNode(new TextSpan(position, 0));
+                            var statement = node.AncestorsAndSelf().OfType<StatementSyntax>().FirstOrDefault();
+                            
+                            if (statement != null)
+                            {
+                                var transformer = new StatementTransformer(semanticModel, sourceText);
+                                var transformed = await transformer.TransformStatementAsync(statement, context, rule);
                                 
-                            case "async-usage":
-                                await FindAsyncPatterns(root, semanticModel, sourceText, document.FilePath ?? "", findPattern, replacePattern, result.Fixes);
-                                break;
-                                
-                            case "null-check":
-                                await FindNullCheckPatterns(root, semanticModel, sourceText, document.FilePath ?? "", findPattern, replacePattern, result.Fixes);
-                                break;
-                                
-                            case "string-format":
-                                await FindStringFormatPatterns(root, semanticModel, sourceText, document.FilePath ?? "", findPattern, replacePattern, result.Fixes);
-                                break;
+                                if (!string.IsNullOrEmpty(transformed))
+                                {
+                                    result.Fixes.Add(new PatternFix
+                                    {
+                                        FilePath = statementInfo.Location.FilePath,
+                                        Line = statementInfo.Location.Line,
+                                        Column = statementInfo.Location.Column,
+                                        OriginalCode = statementInfo.Text,
+                                        ReplacementCode = transformed,
+                                        Description = $"Apply {transformType} transformation"
+                                    });
+                                }
+                            }
                         }
                     }
                 }
+            }
+            else
+            {
+                // Fall back to text-based search for simple patterns
+                var statementsResult = await FindStatementsAsync(
+                    findPattern, 
+                    null, 
+                    "text", 
+                    true, 
+                    false, 
+                    workspacePath);
                 
-                // Apply fixes if not preview
-                if (!preview && result.Fixes.Any())
+                foreach (var statementInfo in statementsResult.Statements)
                 {
-                    var fileGroups = result.Fixes.GroupBy(f => f.FilePath);
-                    
-                    foreach (var fileGroup in fileGroups)
+                    result.Fixes.Add(new PatternFix
                     {
-                        var filePath = fileGroup.Key;
-                        if (File.Exists(filePath))
+                        FilePath = statementInfo.Location.FilePath,
+                        Line = statementInfo.Location.Line,
+                        Column = statementInfo.Location.Column,
+                        OriginalCode = statementInfo.Text,
+                        ReplacementCode = statementInfo.Text.Replace(findPattern, replacePattern),
+                        Description = "Text replacement"
+                    });
+                }
+            }
+            
+            // Apply fixes if not preview
+            if (!preview && result.Fixes.Any())
+            {
+                // Use statement-level operations to apply fixes
+                foreach (var fix in result.Fixes.OrderByDescending(f => f.Line).ThenByDescending(f => f.Column))
+                {
+                    try
+                    {
+                        var replaceResult = await ReplaceStatementAsync(
+                            fix.FilePath,
+                            fix.Line,
+                            fix.Column,
+                            fix.ReplacementCode,
+                            true, // preserve comments
+                            workspacePath);
+                        
+                        if (!replaceResult.Success)
                         {
-                            var content = await File.ReadAllTextAsync(filePath);
-                            
-                            // Apply fixes in reverse order
-                            foreach (var fix in fileGroup.OrderByDescending(f => f.Line).ThenByDescending(f => f.Column))
-                            {
-                                content = content.Replace(fix.OriginalCode, fix.FixedCode);
-                            }
-                            
-                            await File.WriteAllTextAsync(filePath, content);
+                            _logger.LogWarning($"Failed to apply fix at {fix.FilePath}:{fix.Line}:{fix.Column} - {replaceResult.Error}");
                         }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, $"Error applying fix at {fix.FilePath}:{fix.Line}:{fix.Column}");
                     }
                 }
             }
@@ -1985,46 +2103,6 @@ public class RoslynWorkspaceManager : IDisposable
         return result;
     }
     
-    private async Task FindMethodCallPatterns(SyntaxNode root, SemanticModel semanticModel, SourceText sourceText, string filePath, string findPattern, string replacePattern, List<PatternFix> fixes)
-    {
-        // Find invocations based on language
-        var invocations = root.Language switch
-        {
-            LanguageNames.CSharp => root.DescendantNodes().OfType<CS.InvocationExpressionSyntax>().Cast<SyntaxNode>(),
-            LanguageNames.VisualBasic => root.DescendantNodes().OfType<VB.InvocationExpressionSyntax>().Cast<SyntaxNode>(),
-            _ => Enumerable.Empty<SyntaxNode>()
-        };
-        
-        foreach (var invocation in invocations)
-        {
-            var methodSymbol = semanticModel.GetSymbolInfo(invocation).Symbol as IMethodSymbol;
-            if (methodSymbol == null) continue;
-            
-            var methodName = methodSymbol.Name;
-            
-            // Check if method matches pattern
-            if (MatchesWildcardPattern(methodName, findPattern))
-            {
-                var lineSpan = invocation.GetLocation().GetLineSpan();
-                var line = sourceText.Lines[lineSpan.StartLinePosition.Line];
-                
-                // Create replacement
-                var originalCode = invocation.ToString();
-                var newMethodName = ApplyReplacePattern(methodName, findPattern, replacePattern);
-                var fixedCode = originalCode.Replace(methodName, newMethodName);
-                
-                fixes.Add(new PatternFix
-                {
-                    FilePath = filePath,
-                    Line = lineSpan.StartLinePosition.Line + 1,
-                    Column = lineSpan.StartLinePosition.Character + 1,
-                    OriginalCode = originalCode,
-                    FixedCode = fixedCode,
-                    Description = $"Rename method call from {methodName} to {newMethodName}"
-                });
-            }
-        }
-    }
     
     private async Task FindAsyncPatterns(SyntaxNode root, SemanticModel semanticModel, SourceText sourceText, string filePath, string findPattern, string replacePattern, List<PatternFix> fixes)
     {
@@ -4938,7 +5016,7 @@ public class PatternFix
     public int Line { get; set; }
     public int Column { get; set; }
     public string OriginalCode { get; set; } = "";
-    public string FixedCode { get; set; } = "";
+    public string ReplacementCode { get; set; } = "";
     public string? Description { get; set; }
 }
 

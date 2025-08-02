@@ -1,0 +1,378 @@
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.VisualBasic;
+using Microsoft.CodeAnalysis.VisualBasic.Syntax;
+using Microsoft.CodeAnalysis.Text;
+using System.Text.Json;
+
+namespace McpRoslyn.Server;
+
+/// <summary>
+/// Handles semantic-aware transformations of statements
+/// </summary>
+public class StatementTransformer
+{
+    private readonly SemanticModel _semanticModel;
+    private readonly SourceText _sourceText;
+    
+    public StatementTransformer(SemanticModel semanticModel, SourceText sourceText)
+    {
+        _semanticModel = semanticModel;
+        _sourceText = sourceText;
+    }
+    
+    /// <summary>
+    /// Transform a statement based on the provided rule
+    /// </summary>
+    public async Task<string?> TransformStatementAsync(
+        SyntaxNode statement,
+        StatementContextResult context,
+        TransformationRule rule)
+    {
+        return rule.Type switch
+        {
+            TransformationType.AddNullCheck => await AddNullCheckAsync(statement, context, rule),
+            TransformationType.ConvertToAsync => await ConvertToAsyncAsync(statement, context, rule),
+            TransformationType.ExtractVariable => await ExtractVariableAsync(statement, context, rule),
+            TransformationType.SimplifyConditional => await SimplifyConditionalAsync(statement, context, rule),
+            TransformationType.ParameterizeQuery => await ParameterizeQueryAsync(statement, context, rule),
+            TransformationType.ConvertToInterpolation => await ConvertToInterpolationAsync(statement, context, rule),
+            TransformationType.AddAwait => await AddAwaitAsync(statement, context, rule),
+            TransformationType.Custom => await ApplyCustomTransformationAsync(statement, context, rule),
+            _ => null
+        };
+    }
+    
+    private async Task<string?> AddNullCheckAsync(SyntaxNode statement, StatementContextResult context, TransformationRule rule)
+    {
+        // For method calls, add null check before
+        if (statement.Language == LanguageNames.CSharp)
+        {
+            if (statement is ExpressionStatementSyntax exprStmt &&
+                exprStmt.Expression is InvocationExpressionSyntax invocation)
+            {
+                // Extract the object being called
+                string? objectName = null;
+                if (invocation.Expression is MemberAccessExpressionSyntax memberAccess)
+                {
+                    objectName = memberAccess.Expression.ToString();
+                }
+                
+                if (!string.IsNullOrEmpty(objectName))
+                {
+                    // Check if null check already exists
+                    var alreadyChecked = context.Context?.LocalVariables
+                        .Any(v => v.Name == objectName && v.Usage.Contains("null-checked")) ?? false;
+                    
+                    if (!alreadyChecked)
+                    {
+                        var indent = GetIndentation(statement);
+                        return $"{indent}ArgumentNullException.ThrowIfNull({objectName});\n{statement}";
+                    }
+                }
+            }
+        }
+        
+        return null;
+    }
+    
+    private async Task<string?> ConvertToAsyncAsync(SyntaxNode statement, StatementContextResult context, TransformationRule rule)
+    {
+        if (statement.Language == LanguageNames.CSharp)
+        {
+            if (statement is ExpressionStatementSyntax exprStmt &&
+                exprStmt.Expression is InvocationExpressionSyntax invocation)
+            {
+                var symbolInfo = _semanticModel.GetSymbolInfo(invocation);
+                if (symbolInfo.Symbol is IMethodSymbol method)
+                {
+                    // Check if there's an async version
+                    var asyncMethodName = method.Name + "Async";
+                    var containingType = method.ContainingType;
+                    
+                    var asyncMethod = containingType?.GetMembers(asyncMethodName)
+                        .OfType<IMethodSymbol>()
+                        .FirstOrDefault(m => m.ReturnType.Name.Contains("Task"));
+                    
+                    if (asyncMethod != null)
+                    {
+                        var newStatement = statement.ToString()
+                            .Replace(method.Name + "(", asyncMethodName + "(");
+                        
+                        // Add await if in async context
+                        if (context.Context?.IsAsyncContext == true)
+                        {
+                            newStatement = $"await {newStatement}";
+                        }
+                        
+                        return newStatement;
+                    }
+                }
+            }
+        }
+        
+        return null;
+    }
+    
+    private async Task<string?> ExtractVariableAsync(SyntaxNode statement, StatementContextResult context, TransformationRule rule)
+    {
+        if (statement.Language == LanguageNames.CSharp)
+        {
+            if (statement is ExpressionStatementSyntax exprStmt)
+            {
+                // Find complex expressions to extract
+                var complexExpressions = exprStmt.DescendantNodes()
+                    .Where(n => n is BinaryExpressionSyntax || n is ConditionalExpressionSyntax)
+                    .Where(n => n.Span.Length > 50); // Arbitrary complexity threshold
+                
+                var expr = complexExpressions.FirstOrDefault();
+                if (expr != null)
+                {
+                    var varName = GenerateVariableName(expr);
+                    var indent = GetIndentation(statement);
+                    
+                    var extractedVar = $"{indent}var {varName} = {expr};\n";
+                    var newStatement = statement.ToString().Replace(expr.ToString(), varName);
+                    
+                    return extractedVar + newStatement;
+                }
+            }
+        }
+        
+        return null;
+    }
+    
+    private async Task<string?> SimplifyConditionalAsync(SyntaxNode statement, StatementContextResult context, TransformationRule rule)
+    {
+        if (statement.Language == LanguageNames.CSharp)
+        {
+            // Convert if (x != null) x.Method() to x?.Method()
+            if (statement is IfStatementSyntax ifStmt &&
+                ifStmt.Condition is BinaryExpressionSyntax binary &&
+                binary.IsKind(SyntaxKind.NotEqualsExpression) &&
+                binary.Right.IsKind(SyntaxKind.NullLiteralExpression))
+            {
+                var identifier = binary.Left.ToString();
+                
+                if (ifStmt.Statement is BlockSyntax block && block.Statements.Count == 1)
+                {
+                    var innerStatement = block.Statements[0].ToString().Trim();
+                    if (innerStatement.StartsWith(identifier + "."))
+                    {
+                        var nullConditional = innerStatement.Replace(identifier + ".", identifier + "?.");
+                        return nullConditional;
+                    }
+                }
+            }
+        }
+        
+        return null;
+    }
+    
+    private async Task<string?> ParameterizeQueryAsync(SyntaxNode statement, StatementContextResult context, TransformationRule rule)
+    {
+        if (statement.Language == LanguageNames.CSharp)
+        {
+            // Look for SQL command creation with concatenation
+            if (statement.ToString().Contains("SqlCommand") && 
+                (statement.ToString().Contains(" + ") || statement.ToString().Contains("$\"")))
+            {
+                // This is a simplified example - real implementation would parse the SQL
+                var modifiedStatement = statement.ToString();
+                
+                // Find string concatenations in SQL
+                if (statement is LocalDeclarationStatementSyntax localDecl)
+                {
+                    foreach (var variable in localDecl.Declaration.Variables)
+                    {
+                        if (variable.Initializer?.Value.ToString().Contains("\"SELECT") == true)
+                        {
+                            // Extract the SQL and parameters
+                            var sql = variable.Initializer.Value.ToString();
+                            var parameterized = ConvertToParameterizedSql(sql);
+                            
+                            if (parameterized != null)
+                            {
+                                var indent = GetIndentation(statement);
+                                var cmdVar = variable.Identifier.Text;
+                                
+                                // Create parameterized version
+                                var result = modifiedStatement.Replace(sql, parameterized.Sql) + "\n";
+                                
+                                // Add parameter statements
+                                foreach (var param in parameterized.Parameters)
+                                {
+                                    result += $"{indent}{cmdVar}.Parameters.AddWithValue(\"{param.Name}\", {param.Value});\n";
+                                }
+                                
+                                return result.TrimEnd();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        return null;
+    }
+    
+    private async Task<string?> ConvertToInterpolationAsync(SyntaxNode statement, StatementContextResult context, TransformationRule rule)
+    {
+        if (statement.Language == LanguageNames.CSharp)
+        {
+            var text = statement.ToString();
+            
+            // Convert string.Format to interpolation
+            if (text.Contains("string.Format(") || text.Contains("String.Format("))
+            {
+                // Parse the format call
+                if (statement.DescendantNodes()
+                    .OfType<InvocationExpressionSyntax>()
+                    .FirstOrDefault(i => i.Expression.ToString().EndsWith(".Format")) is { } formatCall)
+                {
+                    if (formatCall.ArgumentList.Arguments.Count >= 2)
+                    {
+                        var formatString = formatCall.ArgumentList.Arguments[0].ToString().Trim('"');
+                        var args = formatCall.ArgumentList.Arguments.Skip(1).Select(a => a.ToString()).ToList();
+                        
+                        // Convert {0}, {1} to interpolation
+                        var interpolated = "$\"" + formatString;
+                        for (int i = 0; i < args.Count; i++)
+                        {
+                            interpolated = interpolated.Replace($"{{{i}}}", $"{{{args[i]}}}");
+                        }
+                        interpolated += "\"";
+                        
+                        return text.Replace(formatCall.ToString(), interpolated);
+                    }
+                }
+            }
+        }
+        
+        return null;
+    }
+    
+    private async Task<string?> AddAwaitAsync(SyntaxNode statement, StatementContextResult context, TransformationRule rule)
+    {
+        if (statement.Language == LanguageNames.CSharp)
+        {
+            // Add await to async method calls that are missing it
+            if (statement is ReturnStatementSyntax returnStmt &&
+                returnStmt.Expression is InvocationExpressionSyntax invocation)
+            {
+                var symbolInfo = _semanticModel.GetSymbolInfo(invocation);
+                if (symbolInfo.Symbol is IMethodSymbol method &&
+                    method.ReturnType.Name.Contains("Task") &&
+                    !statement.ToString().Contains("await"))
+                {
+                    return statement.ToString().Replace("return ", "return await ");
+                }
+            }
+            else if (statement is ExpressionStatementSyntax exprStmt &&
+                     exprStmt.Expression is InvocationExpressionSyntax inv)
+            {
+                var symbolInfo = _semanticModel.GetSymbolInfo(inv);
+                if (symbolInfo.Symbol is IMethodSymbol method &&
+                    method.ReturnType.Name.Contains("Task") &&
+                    !statement.ToString().Contains("await"))
+                {
+                    return $"await {statement}";
+                }
+            }
+        }
+        
+        return null;
+    }
+    
+    private async Task<string?> ApplyCustomTransformationAsync(SyntaxNode statement, StatementContextResult context, TransformationRule rule)
+    {
+        // Apply custom transformation from rule parameters
+        if (rule.Parameters.TryGetValue("replacement", out var replacement))
+        {
+            return replacement.ToString();
+        }
+        
+        return null;
+    }
+    
+    private string GetIndentation(SyntaxNode node)
+    {
+        var lineSpan = _sourceText.Lines.GetLinePositionSpan(node.Span);
+        var line = _sourceText.Lines[lineSpan.Start.Line];
+        var leadingWhitespace = line.ToString().TakeWhile(char.IsWhiteSpace).Count();
+        return new string(' ', leadingWhitespace);
+    }
+    
+    private string GenerateVariableName(SyntaxNode expression)
+    {
+        // Simple variable name generation based on expression type
+        return expression switch
+        {
+            BinaryExpressionSyntax => "result",
+            ConditionalExpressionSyntax => "condition",
+            _ => "temp"
+        };
+    }
+    
+    private ParameterizedSql? ConvertToParameterizedSql(string sql)
+    {
+        // Simplified SQL parameterization - real implementation would be more robust
+        var result = new ParameterizedSql { Sql = sql };
+        
+        // Look for concatenations like " + userName + "
+        var pattern = @"\s*\+\s*(\w+)\s*\+\s*";
+        var matches = System.Text.RegularExpressions.Regex.Matches(sql, pattern);
+        
+        int paramIndex = 0;
+        foreach (System.Text.RegularExpressions.Match match in matches)
+        {
+            var varName = match.Groups[1].Value;
+            var paramName = $"@p{paramIndex++}";
+            
+            result.Sql = result.Sql.Replace(match.Value, paramName);
+            result.Parameters.Add(new SqlParameter { Name = paramName, Value = varName });
+        }
+        
+        return result.Parameters.Any() ? result : null;
+    }
+    
+    private class ParameterizedSql
+    {
+        public string Sql { get; set; } = "";
+        public List<SqlParameter> Parameters { get; set; } = new();
+    }
+    
+    private class SqlParameter
+    {
+        public string Name { get; set; } = "";
+        public string Value { get; set; } = "";
+    }
+}
+
+/// <summary>
+/// Defines a transformation rule for statement-level refactoring
+/// </summary>
+public class TransformationRule
+{
+    public string Name { get; set; } = "";
+    public string Description { get; set; } = "";
+    public string? RoslynPathPattern { get; set; }
+    public TransformationType Type { get; set; }
+    public Dictionary<string, object> Parameters { get; set; } = new();
+}
+
+/// <summary>
+/// Types of transformations supported
+/// </summary>
+public enum TransformationType
+{
+    AddNullCheck,
+    ConvertToAsync,
+    ExtractVariable,
+    SimplifyConditional,
+    ParameterizeQuery,
+    ConvertToInterpolation,
+    AddAwait,
+    Custom
+}
