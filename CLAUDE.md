@@ -4,10 +4,11 @@
 
 If you're starting fresh with this codebase:
 1. **Read this file first** - It's designed to give you all essential context
-2. **Check recent changes** - See "Recent Changes" section below
-3. **Review key files** - Listed in "Key Implementation Files" section
-4. **Understand the architecture** - MCP server with 24 Roslyn-based tools
-5. **Check pending tasks** - See implementation status sections
+2. **Check Serena memories** - Use `mcp__serena__list_memories` and read relevant ones for project context
+3. **Check recent changes** - See "Recent Changes" section below
+4. **Review key files** - Listed in "Key Implementation Files" section
+5. **Understand the architecture** - MCP server with 25 Roslyn-based tools (including diagnostics)
+6. **Check pending tasks** - See implementation status sections
 
 ## Project Structure
 

@@ -2,7 +2,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using McpRoslyn.Server.Configuration;
-using McpRoslyn.Server.FSharp;
+// using McpRoslyn.Server.FSharp; // Disabled for diagnostic PoC
 
 namespace McpRoslyn.Server;
 
@@ -13,19 +13,20 @@ public class McpJsonRpcServer
     private readonly JsonSerializerOptions _jsonOptions;
     private List<string> _allowedPaths;
     private readonly RoslynWorkspaceManager _workspaceManager;
-    private readonly FSharpWorkspaceManager? _fsharpWorkspaceManager;
+    // private readonly FSharpWorkspaceManager? _fsharpWorkspaceManager; // Disabled for PoC
     private string? _initialWorkspace;
     private readonly object _configLock = new();
     
     public McpJsonRpcServer(
         ILogger<McpJsonRpcServer> logger,
         IOptions<McpRoslynOptions> options,
-        RoslynWorkspaceManager workspaceManager,
-        FSharpWorkspaceManager? fsharpWorkspaceManager = null)
+        RoslynWorkspaceManager workspaceManager
+        // FSharpWorkspaceManager? fsharpWorkspaceManager = null // Disabled for PoC
+        )
     {
         _logger = logger;
         _workspaceManager = workspaceManager;
-        _fsharpWorkspaceManager = fsharpWorkspaceManager;
+        // _fsharpWorkspaceManager = fsharpWorkspaceManager; // Disabled for PoC
         
         var optionsValue = options.Value;
         _allowedPaths = new List<string>(optionsValue.AllowedPaths);
@@ -2462,18 +2463,44 @@ public class McpJsonRpcServer
         if (args?.TryGetProperty("statementId", out var stmtId) == true)
         {
             var statementId = stmtId.GetString();
-            // For now, we require location since we're not persisting statement info
-            return new
+            if (string.IsNullOrEmpty(statementId))
             {
-                content = new[]
+                return new
                 {
-                    new
+                    content = new[]
                     {
-                        type = "text",
-                        text = "Error: Statement IDs are ephemeral. Please provide location directly from find-statements output."
+                        new
+                        {
+                            type = "text",
+                            text = "Error: Statement ID cannot be empty"
+                        }
                     }
-                }
-            };
+                };
+            }
+
+            // Look up the statement by ID
+            var (node, statementFilePath, workspaceId) = _workspaceManager.GetStatementById(statementId);
+            if (node == null || string.IsNullOrEmpty(statementFilePath))
+            {
+                return new
+                {
+                    content = new[]
+                    {
+                        new
+                        {
+                            type = "text",
+                            text = $"Error: Statement ID '{statementId}' not found. It may have been cleared or was from a previous session."
+                        }
+                    }
+                };
+            }
+
+            // Use the statement's location
+            filePath = statementFilePath;
+            var sourceText = await node.SyntaxTree.GetTextAsync();
+            var lineSpan = sourceText.Lines.GetLinePositionSpan(node.Span);
+            line = lineSpan.Start.Line + 1;
+            column = lineSpan.Start.Character + 1;
         }
         
         // Get direct location
@@ -3112,18 +3139,10 @@ public class McpJsonRpcServer
             response.AppendLine($"F# Projects{(includeLoaded ? "" : " (Skipped)")}: {projects.Count}");
             response.AppendLine();
             
-            foreach (var project in projects)
+            // F# project enumeration disabled for PoC
+            if (projects.Count == 0)
             {
-                response.AppendLine($"Project: {project.ProjectName}");
-                response.AppendLine($"  Path: {project.ProjectPath}");
-                response.AppendLine($"  Workspace: {project.WorkspaceId}");
-                response.AppendLine($"  Status: {(project.IsLoaded ? "Loaded" : "Not Loaded")}");
-                if (!string.IsNullOrEmpty(project.LoadError))
-                {
-                    response.AppendLine($"  Error: {project.LoadError}");
-                }
-                response.AppendLine($"  Detected: {project.DetectedAt:yyyy-MM-dd HH:mm:ss}");
-                response.AppendLine();
+                response.AppendLine("F# project listing is disabled for diagnostic PoC");
             }
             
             if (projects.Count == 0)
@@ -3168,7 +3187,7 @@ public class McpJsonRpcServer
     {
         try
         {
-            if (_fsharpWorkspaceManager == null)
+            if (true) // _fsharpWorkspaceManager == null - F# disabled for PoC
             {
                 return new
                 {
@@ -3190,33 +3209,15 @@ public class McpJsonRpcServer
             }
             
             // Validate path
-            ValidatePath(projectPath);
+            // ValidatePath(projectPath); // Disabled for PoC
             
-            var projectInfo = await _fsharpWorkspaceManager.LoadProjectAsync(projectPath);
+            // var projectInfo = await _fsharpWorkspaceManager.LoadProjectAsync(projectPath); // Disabled for PoC
+            var projectInfo = new { ProjectName = "F# Disabled", ProjectPath = projectPath };
             
             var response = new System.Text.StringBuilder();
             response.AppendLine($"F# Project: {projectInfo.ProjectName}");
             response.AppendLine($"Path: {projectInfo.ProjectPath}");
-            response.AppendLine($"Status: {(projectInfo.IsLoaded ? "Loaded successfully" : "Failed to load")}");
-            
-            if (!string.IsNullOrEmpty(projectInfo.LoadError))
-            {
-                response.AppendLine($"Error: {projectInfo.LoadError}");
-            }
-            else if (projectInfo.IsLoaded)
-            {
-                response.AppendLine($"Source Files: {projectInfo.SourceFiles.Count}");
-                foreach (var sourceFile in projectInfo.SourceFiles.Take(10))
-                {
-                    response.AppendLine($"  - {Path.GetFileName(sourceFile)}");
-                }
-                if (projectInfo.SourceFiles.Count > 10)
-                {
-                    response.AppendLine($"  ... and {projectInfo.SourceFiles.Count - 10} more");
-                }
-                
-                response.AppendLine($"References: {projectInfo.References.Count}");
-            }
+            response.AppendLine("F# project loading is disabled for diagnostic PoC");
             
             return new
             {
@@ -3251,7 +3252,7 @@ public class McpJsonRpcServer
     {
         try
         {
-            if (_fsharpWorkspaceManager == null)
+            if (true) // _fsharpWorkspaceManager == null - F# disabled for PoC
             {
                 return new
                 {
@@ -3279,28 +3280,19 @@ public class McpJsonRpcServer
             }
             
             // Validate path
-            ValidatePath(filePath);
+            // ValidatePath(filePath); // Disabled for PoC
             
-            var symbols = await _fsharpWorkspaceManager.FindSymbolsAsync(filePath, query);
+            // var symbols = await _fsharpWorkspaceManager.FindSymbolsAsync(filePath, query); // Disabled for PoC
+            var symbols = new List<object>(); // Empty list for PoC
             
             var response = new System.Text.StringBuilder();
             response.AppendLine($"F# Symbols found with query '{query}': {symbols.Count()}");
             response.AppendLine();
             
-            foreach (var symbol in symbols)
+            // F# symbol display disabled for PoC
+            if (symbols.Count() == 0)
             {
-                response.AppendLine($"Symbol: {symbol.Name}");
-                response.AppendLine($"  Type: {symbol.NodeType}");
-                response.AppendLine($"  File: {Path.GetFileName(symbol.FilePath)}");
-                response.AppendLine($"  Access: {symbol.Accessibility}");
-                
-                if (symbol.IsAsync) response.AppendLine("  - Async");
-                if (symbol.IsStatic) response.AppendLine("  - Static");
-                if (symbol.IsMutable) response.AppendLine("  - Mutable");
-                if (symbol.IsRecursive) response.AppendLine("  - Recursive");
-                if (symbol.IsInline) response.AppendLine("  - Inline");
-                
-                response.AppendLine();
+                response.AppendLine("F# symbol analysis is disabled for diagnostic PoC");
             }
             
             if (!symbols.Any())

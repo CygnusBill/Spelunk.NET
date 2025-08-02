@@ -1,4 +1,5 @@
 using Microsoft.Build.Locator;
+using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.MSBuild;
 using Microsoft.CodeAnalysis.FindSymbols;
@@ -14,7 +15,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using McpRoslyn.Server.RoslynPath;
 using McpRoslyn.Server.LanguageHandlers;
-using McpRoslyn.Server.FSharp;
+// using McpRoslyn.Server.FSharp; // Temporarily commented for diagnostic PoC
 
 namespace McpRoslyn.Server;
 
@@ -24,7 +25,8 @@ public class RoslynWorkspaceManager : IDisposable
     private readonly Dictionary<string, WorkspaceEntry> _workspaces = new();
     private readonly Dictionary<string, string> _workspaceHistory = new(); // ID -> Path mapping for recently cleaned workspaces
     private readonly MarkerManager _markerManager = new();
-    private readonly FSharpProjectTracker _fsharpTracker = new();
+    private readonly Dictionary<string, StatementTrackingInfo> _statementTracker = new(); // Session-scoped statement ID tracking
+    // private readonly FSharpProjectTracker _fsharpTracker = new(); // Disabled for diagnostic PoC
     private readonly Timer _cleanupTimer;
     private readonly TimeSpan _workspaceTimeout = TimeSpan.FromMinutes(15);
     private readonly TimeSpan _historyTimeout = TimeSpan.FromHours(1);
@@ -130,7 +132,7 @@ public class RoslynWorkspaceManager : IDisposable
                 {
                     var projectPath = match.Groups[1].Value;
                     var projectName = Path.GetFileNameWithoutExtension(projectPath);
-                    _fsharpTracker.AddSkippedProject(projectPath, projectName, workspaceId);
+                    // _fsharpTracker.AddSkippedProject(projectPath, projectName, workspaceId); // Disabled for PoC
                     _logger.LogInformation("Detected F# project: {Path}", projectPath);
                 }
             }
@@ -172,7 +174,7 @@ public class RoslynWorkspaceManager : IDisposable
                 {
                     var projectPath = match.Groups[1].Value;
                     var projectName = Path.GetFileNameWithoutExtension(projectPath);
-                    _fsharpTracker.AddSkippedProject(projectPath, projectName, workspaceId);
+                    // _fsharpTracker.AddSkippedProject(projectPath, projectName, workspaceId); // Disabled for PoC
                     _logger.LogInformation("Detected F# project: {Path}", projectPath);
                 }
             }
@@ -194,14 +196,21 @@ public class RoslynWorkspaceManager : IDisposable
         return (true, $"Project '{project.Name}' loaded successfully", workspace, workspaceId);
     }
     
-    public IReadOnlyList<FSharpProjectInfo> GetFSharpProjects(string? workspaceId = null)
+    // F# methods temporarily disabled for diagnostic PoC
+    // public IReadOnlyList<FSharpProjectInfo> GetFSharpProjects(string? workspaceId = null)
+    // {
+    //     return _fsharpTracker.GetAllProjects(workspaceId);
+    // }
+    
+    // F# methods temporarily disabled for diagnostic PoC
+    public IReadOnlyList<object> GetFSharpProjects(string? workspaceId = null)
     {
-        return _fsharpTracker.GetAllProjects(workspaceId);
+        return new List<object>(); // Empty list for PoC
     }
     
-    public IReadOnlyList<FSharpProjectInfo> GetSkippedFSharpProjects(string? workspaceId = null)
+    public IReadOnlyList<object> GetSkippedFSharpProjects(string? workspaceId = null)
     {
-        return _fsharpTracker.GetSkippedProjects(workspaceId);
+        return new List<object>(); // Empty list for PoC
     }
     
     public WorkspaceStatus GetStatus()
@@ -221,7 +230,8 @@ public class RoslynWorkspaceManager : IDisposable
                 hasCompilationErrors = false // Will be implemented later
             }).ToList();
             
-            var fsharpProjects = _fsharpTracker.GetAllProjects(workspaceId);
+            // var fsharpProjects = _fsharpTracker.GetAllProjects(workspaceId); // Disabled for PoC
+            var fsharpProjects = new List<object>(); // Temporary empty list for PoC
             
             statuses.Add(new
             {
@@ -231,13 +241,8 @@ public class RoslynWorkspaceManager : IDisposable
                 lastAccessTime = entry.LastAccessTime,
                 projectCount = projects.Count,
                 projects,
-                fsharpProjects = fsharpProjects.Select(fp => new
-                {
-                    path = fp.ProjectPath,
-                    name = fp.ProjectName,
-                    isLoaded = fp.IsLoaded,
-                    loadError = fp.LoadError
-                }).ToList()
+                // F# projects disabled for PoC
+                fsharpProjects = new List<object>()
             });
         }
         
@@ -2349,6 +2354,8 @@ public class RoslynWorkspaceManager : IDisposable
         {
             foreach (var workspace in workspacesToSearch)
             {
+                // Find the workspace ID for this workspace
+                var workspaceId = _workspaces.FirstOrDefault(kvp => kvp.Value.Workspace == workspace).Key ?? "unknown";
                 var solution = workspace.CurrentSolution;
                 
                 foreach (var project in solution.Projects)
@@ -2360,7 +2367,7 @@ public class RoslynWorkspaceManager : IDisposable
                         if (document != null)
                         {
                             await ProcessDocumentForStatements(document, pattern, patternType, 
-                                includeNestedStatements, scope, result, statementIdCounter);
+                                includeNestedStatements, scope, result, statementIdCounter, workspaceId);
                         }
                     }
                     else
@@ -2368,7 +2375,7 @@ public class RoslynWorkspaceManager : IDisposable
                         foreach (var document in project.Documents)
                         {
                             await ProcessDocumentForStatements(document, pattern, patternType, 
-                                includeNestedStatements, scope, result, statementIdCounter);
+                                includeNestedStatements, scope, result, statementIdCounter, workspaceId);
                         }
                     }
                 }
@@ -2397,7 +2404,8 @@ public class RoslynWorkspaceManager : IDisposable
         bool includeNestedStatements,
         Dictionary<string, string>? scope,
         FindStatementsResult result,
-        StatementIdCounter statementIdCounter)
+        StatementIdCounter statementIdCounter,
+        string workspaceId)
     {
         var root = await document.GetSyntaxRootAsync();
         if (root == null) return;
@@ -2444,7 +2452,7 @@ public class RoslynWorkspaceManager : IDisposable
                 foreach (var statement in statements)
                 {
                     await AddStatementToResult(statement, sourceText, semanticModel, 
-                        document.FilePath ?? "", result, statementIdCounter, language);
+                        document.FilePath ?? "", result, statementIdCounter, language, workspaceId);
                 }
             }
             catch (Exception ex)
@@ -2488,7 +2496,7 @@ public class RoslynWorkspaceManager : IDisposable
                 if (matches)
                 {
                     await AddStatementToResult(statement, sourceText, semanticModel, 
-                        document.FilePath ?? "", result, statementIdCounter, language);
+                        document.FilePath ?? "", result, statementIdCounter, language, workspaceId);
                 }
             }
         }
@@ -2501,7 +2509,8 @@ public class RoslynWorkspaceManager : IDisposable
         string filePath,
         FindStatementsResult result,
         StatementIdCounter statementIdCounter,
-        string language)
+        string language,
+        string workspaceId)
     {
         var handler = LanguageHandlerFactory.GetHandler(language);
         if (handler == null) return;
@@ -2537,7 +2546,35 @@ public class RoslynWorkspaceManager : IDisposable
         
         statementInfo.SemanticTags.AddRange(symbols);
         
+        // Store statement tracking info for session-scoped access
+        _statementTracker[statementId] = new StatementTrackingInfo
+        {
+            Node = statement,
+            FilePath = filePath,
+            WorkspaceId = workspaceId
+        };
+        
         result.Statements.Add(statementInfo);
+    }
+
+    // Statement ID lookup methods
+    public (SyntaxNode? node, string? filePath, string? workspaceId) GetStatementById(string statementId)
+    {
+        if (_statementTracker.TryGetValue(statementId, out var trackingInfo))
+        {
+            return (trackingInfo.Node, trackingInfo.FilePath, trackingInfo.WorkspaceId);
+        }
+        return (null, null, null);
+    }
+
+    public void ClearStatementTracking()
+    {
+        _statementTracker.Clear();
+    }
+
+    public int GetTrackedStatementCount()
+    {
+        return _statementTracker.Count;
     }
     
     private bool IsInScope(SyntaxNode statement, Dictionary<string, string> scope, string language)
@@ -3869,6 +3906,98 @@ public class RoslynWorkspaceManager : IDisposable
         };
     }
     
+    // Diagnostic PoC - Classes and method for compilation diagnostics
+    public class DiagnosticInfo
+    {
+        public string Id { get; set; } = "";
+        public string Severity { get; set; } = "";
+        public string Message { get; set; } = "";
+        public LocationInfo? Location { get; set; }
+        public string Category { get; set; } = "";
+        public int WarningLevel { get; set; }
+        public bool IsEnabledByDefault { get; set; }
+        public bool IsSuppressed { get; set; }
+    }
+
+    public class LocationInfo
+    {
+        public string File { get; set; } = "";
+        public int Line { get; set; }
+        public int Column { get; set; }
+        public int EndLine { get; set; }
+        public int EndColumn { get; set; }
+    }
+
+    public class StatementTrackingInfo
+    {
+        public SyntaxNode Node { get; set; } = null!;
+        public string FilePath { get; set; } = "";
+        public string WorkspaceId { get; set; } = "";
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    }
+
+    public async Task<List<DiagnosticInfo>> GetDiagnosticsAsync(string? workspaceId = null, string? filePath = null)
+    {
+        var diagnostics = new List<DiagnosticInfo>();
+        var workspaces = string.IsNullOrEmpty(workspaceId) ? _workspaces.Values : 
+                         _workspaces.Where(kvp => kvp.Key == workspaceId).Select(kvp => kvp.Value);
+        
+        foreach (var entry in workspaces)
+        {
+            entry.Touch(); // Update access time
+            var solution = entry.Workspace.CurrentSolution;
+            
+            foreach (var project in solution.Projects)
+            {
+                var compilation = await project.GetCompilationAsync();
+                if (compilation == null) continue;
+                
+                var projectDiagnostics = compilation.GetDiagnostics();
+                
+                if (!string.IsNullOrEmpty(filePath))
+                {
+                    projectDiagnostics = projectDiagnostics.Where(d => 
+                        d.Location.SourceTree?.FilePath?.EndsWith(filePath, StringComparison.OrdinalIgnoreCase) == true).ToImmutableArray();
+                }
+                
+                diagnostics.AddRange(projectDiagnostics.Select(MapDiagnostic));
+            }
+        }
+        
+        return diagnostics.OrderBy(d => d.Location?.File ?? "").ThenBy(d => d.Location?.Line ?? 0).ToList();
+    }
+
+    private DiagnosticInfo MapDiagnostic(Microsoft.CodeAnalysis.Diagnostic diagnostic)
+    {
+        var location = diagnostic.Location;
+        LocationInfo? locationInfo = null;
+        
+        if (location.IsInSource && location.SourceTree != null)
+        {
+            var lineSpan = location.GetLineSpan();
+            locationInfo = new LocationInfo
+            {
+                File = location.SourceTree.FilePath ?? "",
+                Line = lineSpan.StartLinePosition.Line + 1, // Convert to 1-based
+                Column = lineSpan.StartLinePosition.Character + 1, // Convert to 1-based
+                EndLine = lineSpan.EndLinePosition.Line + 1,
+                EndColumn = lineSpan.EndLinePosition.Character + 1
+            };
+        }
+        
+        return new DiagnosticInfo
+        {
+            Id = diagnostic.Id,
+            Severity = diagnostic.Severity.ToString(),
+            Message = diagnostic.GetMessage(),
+            Location = locationInfo,
+            Category = diagnostic.Descriptor.Category,
+            WarningLevel = diagnostic.WarningLevel,
+            IsEnabledByDefault = diagnostic.Descriptor.IsEnabledByDefault,
+            IsSuppressed = diagnostic.IsSuppressed
+        };
+    }
+    
     /// <summary>
     /// Dispose resources
     /// </summary>
@@ -3897,7 +4026,7 @@ public class RoslynWorkspaceManager : IDisposable
             
             _workspaces.Clear();
             _workspaceHistory.Clear();
-            _fsharpTracker.Clear();
+            // _fsharpTracker.Clear(); // Disabled for PoC
         }
         catch (Exception ex)
         {
