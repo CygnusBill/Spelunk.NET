@@ -2,7 +2,21 @@
 
 ## Overview
 
-The MCP Roslyn Server provides a comprehensive set of tools for code analysis, navigation, and manipulation at various granularities. These tools are designed to be composable, allowing agents to perform complex refactoring operations through coordinated use of multiple tools.
+The MCP Roslyn Server provides a comprehensive set of tools for multi-language code analysis, navigation, and manipulation at various granularities. These tools are designed to be composable, allowing agents to perform complex refactoring operations through coordinated use of multiple tools.
+
+## Supported Languages
+
+- **C#** - Full support via Roslyn compiler services
+- **VB.NET** - Full support via Roslyn compiler services with language-agnostic mapping
+- **F#** - Basic support via FSharp.Compiler.Service (separate from Roslyn)
+
+### Language-Agnostic Features
+The server provides unified abstractions across supported languages:
+- C# `void` methods ↔ VB.NET `Sub` procedures
+- C# `static` ↔ VB.NET `Shared`
+- C# `abstract` ↔ VB.NET `MustInherit`
+- C# `virtual` ↔ VB.NET `Overridable`
+- C# `override` ↔ VB.NET `Overrides`
 
 ## Format Conventions
 
@@ -114,6 +128,103 @@ RoslynPath provides stable code references that survive edits:
 ```
 
 **Use Case**: Check what projects are available for analysis, verify load status
+
+#### `dotnet-fsharp-projects`
+**MCP Description**: "Get information about F# projects in the workspace (detected but not loaded by MSBuild)"
+
+**Purpose**: List F# projects that were detected but cannot be loaded by MSBuildWorkspace due to F# compiler limitations.
+
+**Input Format**:
+```json
+{
+  "workspaceId": "specific-id",  // Optional: filter by workspace
+  "includeLoaded": false         // Optional: include successfully loaded F# projects
+}
+```
+
+**Output Format**:
+```text
+F# Projects (Skipped): 2
+
+Project: FSharpLibrary
+  Path: /path/to/FSharpLibrary.fsproj
+  Workspace: MyProject_a1b2c3d4
+  Status: Not Loaded
+  Detected: 2025-01-15 10:30:25
+
+Note: F# projects are not fully supported by MSBuildWorkspace.
+To work with F# projects, use FSharp.Compiler.Service directly.
+```
+
+**Use Case**: Identify F# projects in mixed-language solutions, understand why certain projects aren't loaded
+
+#### `dotnet-load-fsharp-project`
+**MCP Description**: "Load an F# project using FSharp.Compiler.Service (separate from MSBuild workspaces)"
+
+**Purpose**: Load and analyze F# projects using the F# compiler service directly.
+
+**Input Format**:
+```json
+{
+  "projectPath": "/path/to/project.fsproj"  // Required: path to F# project file
+}
+```
+
+**Output Format**:
+```text
+F# Project: FSharpLibrary
+Path: /path/to/FSharpLibrary.fsproj
+Status: Loaded successfully
+Source Files: 5
+  - Library.fs
+  - Types.fs
+  - AsyncExamples.fs
+  - PatternMatching.fs
+  - Utils.fs
+References: 8
+```
+
+**Use Case**: Enable F# code analysis when MSBuildWorkspace cannot handle F# projects
+
+#### `dotnet-fsharp-find-symbols`
+**MCP Description**: "Find symbols in F# code using FSharpPath queries"
+
+**Purpose**: Search F# code using FSharpPath (XPath-style queries for F# AST).
+
+**Input Format**:
+```json
+{
+  "filePath": "/path/to/file.fs",          // Required: F# source file
+  "query": "//function[@recursive]"        // Required: FSharpPath query
+}
+```
+
+**FSharpPath Query Examples**:
+- `//function` - All functions
+- `//function[@async]` - Async functions
+- `//function[@recursive]` - Recursive functions
+- `//type[Union]` - Discriminated unions
+- `//type[Record]` - Record types
+- `//value[@mutable]` - Mutable values
+
+**Output Format**:
+```text
+F# Symbols found with query '//function[@recursive]': 3
+
+Symbol: factorial
+  Type: Function
+  File: Library.fs
+  Access: public
+  - Recursive
+
+Symbol: quickSort
+  Type: Function
+  File: Algorithms.fs
+  Access: public
+  - Recursive
+```
+
+**Use Case**: Navigate and analyze F# code structures, find specific F# constructs
 
 ### 2. Code Discovery Tools (Read-Only)
 

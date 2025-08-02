@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Library.fs" />
+    <Compile Include="TestTypes.fs" />
+    <Compile Include="AsyncExamples.fs" />
+    <Compile Include="PatternMatching.fs" />
+  </ItemGroup>
+
+</Project>

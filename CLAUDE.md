@@ -11,7 +11,7 @@ If you're starting fresh with this codebase:
 
 ## Project Structure
 
-This is the MCP Roslyn Server project, which provides code analysis and manipulation tools for C# via the Model Context Protocol (MCP).
+This is the MCP Roslyn Server project, which provides multi-language code analysis and manipulation tools via the Model Context Protocol (MCP). It supports C#, VB.NET, and F# with language-agnostic abstractions.
 
 ### Directory Layout
 
@@ -21,6 +21,8 @@ McpDotnet/
 │   └── McpRoslyn/
 │       ├── McpRoslyn.Server/      # Main server implementation
 │       │   ├── RoslynPath/        # RoslynPath query engine
+│       │   ├── LanguageHandlers/  # C# and VB.NET language handlers
+│       │   ├── FSharp/           # F# support infrastructure
 │       │   └── *.cs              # Core server files
 │       └── McpRoslyn.Server.Sse/  # SSE server (experimental)
 │           ├── Program.cs         # SSE server entry point
@@ -52,7 +54,7 @@ McpDotnet/
 │   └── test/                    # Test scripts
 │       ├── test-server.sh       # Run with test-requests.jsonl
 │       └── test-mcp-server.sh   # Interactive protocol test
-├── test-workspace/              # Sample C# projects for testing
+├── test-workspace/              # Sample projects for testing (C#, VB.NET, F#)
 ├── README.md                    # Project readme
 └── CLAUDE.md                    # This file
 ```
@@ -62,13 +64,26 @@ McpDotnet/
 ### 1. Statement-Level Operations
 All code modifications work at the statement level - this is the optimal granularity for refactoring. See `docs/design/STATEMENT_LEVEL_EDITING.md`.
 
-### 2. RoslynPath
-An XPath-inspired query language for C# code that provides stable references surviving edits:
+### 2. Multi-Language Support
+- **C#**: Full Roslyn integration
+- **VB.NET**: Full Roslyn integration with language-agnostic mapping
+- **F#**: Basic support via FSharp.Compiler.Service (separate from Roslyn)
+
+### 3. RoslynPath
+An XPath-inspired query language for .NET code that provides stable references surviving edits:
+- Language-agnostic: works with C# and VB.NET
 - Example: `//class[UserService]/method[GetUser]//statement[@contains='Console.WriteLine']`
+- VB.NET mapping: `//method[@returns='void']` finds both C# void methods and VB.NET Subs
 - See `docs/roslyn-path/` for full documentation
 
-### 3. Tool Composition
-Complex refactorings are built from simple, composable tools. The 24 implemented tools can be combined for powerful operations.
+### 4. FSharpPath
+An XPath-inspired query language specifically for F# AST:
+- F#-specific constructs: `//function[@recursive]`, `//type[Union]`
+- Pattern matching: `//function[@async and @inline]`
+- Active patterns and computation expressions support
+
+### 5. Tool Composition
+Complex refactorings are built from simple, composable tools. The 27 implemented tools can be combined for powerful operations.
 
 ## Documentation Guide
 
@@ -88,17 +103,21 @@ Complex refactorings are built from simple, composable tools. The 24 implemented
 ## Current Implementation Status
 
 ### Completed Features
-- ✅ 24 MCP tools implemented (see TOOL_SYNOPSIS.md)
+- ✅ 27 MCP tools implemented (see TOOL_SYNOPSIS.md)
+- ✅ Multi-language support (C#, VB.NET, F#)
 - ✅ Statement-level operations (find, replace, insert, remove)
 - ✅ Ephemeral marker system for tracking statements
-- ✅ RoslynPath query engine with parser and evaluator
-- ✅ Comprehensive test suite
+- ✅ Language-agnostic RoslynPath query engine
+- ✅ F# support via FSharp.Compiler.Service
+- ✅ Comprehensive test suite with multi-language tests
 
-### Recently Completed
-- ✅ RoslynPath integration into find-statements tool
-- ✅ Fixed compilation warnings across all projects
-- ✅ Added clear error handling for port conflicts in SSE server
-- ✅ 1, unified, and accurately document for the agent
+### Recently Completed (Latest Session)
+- ✅ Complete VB.NET support with language-agnostic mapping
+- ✅ F# project detection and tracking
+- ✅ FSharpPath query language implementation
+- ✅ F# workspace manager and tools (dotnet-load-fsharp-project, dotnet-fsharp-find-symbols)
+- ✅ Multi-language test coverage (VB.NET and F# integration tests)
+- ✅ Documentation updates for multi-language support
 
 ### High Priority Pending
 - 🔲 Implement get-statement-context tool (semantic info)
