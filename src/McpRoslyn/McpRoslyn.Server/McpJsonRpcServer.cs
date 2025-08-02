@@ -1,58 +1,67 @@
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using McpRoslyn.Server.Configuration;
 
 namespace McpRoslyn.Server;
 
 public class McpJsonRpcServer
 {
-    private readonly ILogger _logger;
+    private readonly ILogger<McpJsonRpcServer> _logger;
     private readonly Dictionary<string, WorkspaceInfo> _workspaces = new();
     private readonly JsonSerializerOptions _jsonOptions;
-    private readonly List<string> _allowedPaths;
+    private List<string> _allowedPaths;
     private readonly RoslynWorkspaceManager _workspaceManager;
+    private string? _initialWorkspace;
+    private readonly object _configLock = new();
     
-    public McpJsonRpcServer(ILogger logger, List<string> allowedPaths, string? initialWorkspace)
+    public McpJsonRpcServer(
+        ILogger<McpJsonRpcServer> logger,
+        IOptions<McpRoslynOptions> options,
+        RoslynWorkspaceManager workspaceManager)
     {
         _logger = logger;
-        _allowedPaths = allowedPaths;
+        _workspaceManager = workspaceManager;
+        
+        var optionsValue = options.Value;
+        _allowedPaths = new List<string>(optionsValue.AllowedPaths);
+        _initialWorkspace = optionsValue.InitialWorkspace;
+        
         _jsonOptions = new JsonSerializerOptions 
         { 
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             WriteIndented = false 
         };
         
-        // Create logger factory for workspace manager
-        var loggerFactory = LoggerFactory.Create(builder =>
-        {
-            builder
-                .SetMinimumLevel(LogLevel.Information)
-                .AddConsole(options =>
-                {
-                    options.LogToStandardErrorThreshold = LogLevel.Trace;
-                });
-        });
-        
-        _workspaceManager = new RoslynWorkspaceManager(loggerFactory.CreateLogger<RoslynWorkspaceManager>());
-        
         // Pre-load initial workspace if provided
-        if (!string.IsNullOrEmpty(initialWorkspace))
+        if (!string.IsNullOrEmpty(_initialWorkspace))
         {
             Task.Run(async () =>
             {
                 try
                 {
-                    await LoadWorkspaceAsync(initialWorkspace);
-                    _logger.LogInformation("Pre-loaded workspace: {Path}", initialWorkspace);
+                    await LoadWorkspaceAsync(_initialWorkspace);
+                    _logger.LogInformation("Pre-loaded workspace: {Path}", _initialWorkspace);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to pre-load workspace: {Path}", initialWorkspace);
+                    _logger.LogError(ex, "Failed to pre-load workspace: {Path}", _initialWorkspace);
                 }
             });
         }
     }
     
-    public async Task RunAsync()
+    public void UpdateConfiguration(McpRoslynOptions options)
+    {
+        lock (_configLock)
+        {
+            _allowedPaths = new List<string>(options.AllowedPaths);
+            _logger.LogInformation("Configuration updated. New allowed paths: {Paths}", 
+                string.Join(", ", _allowedPaths));
+        }
+    }
+    
+    public async Task RunAsync(CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("MCP Roslyn Server started - listening on stdio");
         
@@ -60,12 +69,14 @@ public class McpJsonRpcServer
         var writer = Console.Out;
         
         // Read JSON-RPC messages from stdin
-        while (true)
+        while (!cancellationToken.IsCancellationRequested)
         {
             try
             {
                 var line = await reader.ReadLineAsync();
                 if (line == null) break;
+                
+                cancellationToken.ThrowIfCancellationRequested();
                 
                 // Skip empty lines
                 if (string.IsNullOrWhiteSpace(line)) continue;
@@ -1025,8 +1036,11 @@ public class McpJsonRpcServer
     private bool IsPathAllowed(string path)
     {
         var normalizedPath = Path.GetFullPath(path);
-        return _allowedPaths.Any(allowed => 
-            normalizedPath.StartsWith(Path.GetFullPath(allowed), StringComparison.OrdinalIgnoreCase));
+        lock (_configLock)
+        {
+            return _allowedPaths.Any(allowed => 
+                normalizedPath.StartsWith(Path.GetFullPath(allowed), StringComparison.OrdinalIgnoreCase));
+        }
     }
     
     private JsonRpcResponse HandleWorkspacesList(JsonRpcRequest request)

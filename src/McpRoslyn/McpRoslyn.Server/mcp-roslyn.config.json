@@ -1,0 +1,17 @@
+{
+  "McpRoslyn": {
+    "AllowedPaths": [
+      "."
+    ],
+    "InitialWorkspace": null,
+    "Logging": {
+      "MinimumLevel": "Information",
+      "EnableDebugLogging": false
+    },
+    "Server": {
+      "RequestTimeoutSeconds": 120,
+      "MaxWorkspaces": 10,
+      "EnableExperimentalFeatures": false
+    }
+  }
+}

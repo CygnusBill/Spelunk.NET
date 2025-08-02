@@ -11,6 +11,13 @@
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0-preview.6.25358.103" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.0-preview.6.25358.103" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.0-preview.6.25358.103" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.0-preview.6.25358.103" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.0-preview.6.25358.103" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.0-preview.6.25358.103" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.CommandLine" Version="10.0.0-preview.6.25358.103" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.0-preview.6.25358.103" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.0-preview.6.25358.103" />
+    <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" Version="10.0.0-preview.6.25358.103" />
     <PackageReference Include="ModelContextProtocol" Version="0.3.0-preview.3" />
     <PackageReference Include="ModelContextProtocol.Core" Version="0.3.0-preview.3" />
     <PackageReference Include="Microsoft.CodeAnalysis.Workspaces.MSBuild" Version="4.12.0" />
