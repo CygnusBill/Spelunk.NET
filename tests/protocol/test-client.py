@@ -156,9 +156,9 @@ def main():
     # Server command - adjust path as needed
     server_cmd = [
         "dotnet", "run",
-        "--project", "/Users/bill/Desktop/McpDotnet/src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj",
+        "--project", "./src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj",
         "--",
-        "--allowed-path", "/Users/bill/Desktop/McpDotnet"
+        "--allowed-path", "."
     ]
     
     client = McpTestClient(server_cmd)

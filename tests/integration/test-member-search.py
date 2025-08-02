@@ -31,8 +31,8 @@ def test_member_search():
     # Start the MCP server
     cmd = [
         "dotnet", "run", 
-        "--project", "/Users/bill/Desktop/McpDotnet/src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj",
-        "--", "--allowed-path", "/Users/bill/Desktop/McpDotnet"
+        "--project", "./src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj",
+        "--", "--allowed-path", "."
     ]
     
     print("Starting MCP server...")
@@ -70,7 +70,7 @@ def test_member_search():
             "method": "tools/call",
             "params": {
                 "name": "dotnet-load-workspace",
-                "arguments": {"path": "/Users/bill/Desktop/McpDotnet/src/McpRoslyn/McpRoslyn.sln"}
+                "arguments": {"path": "./src/McpRoslyn/McpRoslyn.sln"}
             },
             "id": 2
         }

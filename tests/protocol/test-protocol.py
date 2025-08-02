@@ -21,8 +21,8 @@ def test_mcp_protocol():
     # Start the MCP server
     cmd = [
         "dotnet", "run", 
-        "--project", "/Users/bill/Desktop/McpDotnet/src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj",
-        "--", "--allowed-path", "/Users/bill/Desktop/McpDotnet"
+        "--project", "./src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj",
+        "--", "--allowed-path", "."
     ]
     
     print("Starting MCP server...")
@@ -75,7 +75,7 @@ def test_mcp_protocol():
             "params": {
                 "name": "dotnet-load-workspace",
                 "arguments": {
-                    "path": "/Users/bill/Desktop/McpDotnet/src/McpRoslyn/McpRoslyn.sln"
+                    "path": "./src/McpRoslyn/McpRoslyn.sln"
                 }
             },
             "id": 3

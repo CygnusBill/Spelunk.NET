@@ -37,9 +37,9 @@ def main():
     # Start the server
     server_cmd = [
         "dotnet", "run",
-        "--project", "/Users/bill/Desktop/McpDotnet/src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj",
+        "--project", "./src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj",
         "--",
-        "--allowed-path", "/Users/bill/Desktop/McpDotnet"
+        "--allowed-path", "."
     ]
     
     process = subprocess.Popen(
@@ -74,7 +74,7 @@ def main():
         response = send_request(process, "tools/call", {
             "name": "dotnet-load-workspace",
             "arguments": {
-                "path": "/Users/bill/Desktop/McpDotnet/test-workspace/TestProject.csproj"
+                "path": "./test-workspace/TestProject.csproj"
             }
         })
         
@@ -93,7 +93,7 @@ def main():
             "name": "dotnet-remove-statement",
             "arguments": {
                 "location": {
-                    "file": "/Users/bill/Desktop/McpDotnet/test-workspace/Program.cs",
+                    "file": "./test-workspace/Program.cs",
                     "line": 8,
                     "column": 9
                 },
@@ -114,7 +114,7 @@ def main():
             "name": "dotnet-remove-statement",
             "arguments": {
                 "location": {
-                    "file": "/Users/bill/Desktop/McpDotnet/test-workspace/Program.cs",
+                    "file": "./test-workspace/Program.cs",
                     "line": 10,
                     "column": 9
                 },
@@ -135,7 +135,7 @@ def main():
             "name": "dotnet-remove-statement",
             "arguments": {
                 "location": {
-                    "file": "/Users/bill/Desktop/McpDotnet/test-workspace/Program.cs",
+                    "file": "./test-workspace/Program.cs",
                     "line": 22,
                     "column": 9
                 },
@@ -149,7 +149,7 @@ def main():
             "name": "dotnet-remove-statement",
             "arguments": {
                 "location": {
-                    "file": "/Users/bill/Desktop/McpDotnet/test-workspace/Program.cs",
+                    "file": "./test-workspace/Program.cs",
                     "line": 11,
                     "column": 9
                 },
@@ -163,7 +163,7 @@ def main():
             "name": "dotnet-remove-statement",
             "arguments": {
                 "location": {
-                    "file": "/Users/bill/Desktop/McpDotnet/test-workspace/Program.cs",
+                    "file": "./test-workspace/Program.cs",
                     "line": 999,
                     "column": 1
                 }
@@ -177,7 +177,7 @@ def main():
             "arguments": {
                 "pattern": "Main",
                 "scope": {
-                    "file": "/Users/bill/Desktop/McpDotnet/test-workspace/Program.cs"
+                    "file": "./test-workspace/Program.cs"
                 }
             }
         })

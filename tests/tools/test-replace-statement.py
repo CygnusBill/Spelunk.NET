@@ -37,9 +37,9 @@ def main():
     # Start the server
     server_cmd = [
         "dotnet", "run",
-        "--project", "/Users/bill/Desktop/McpDotnet/src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj",
+        "--project", "./src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj",
         "--",
-        "--allowed-path", "/Users/bill/Desktop/McpDotnet"
+        "--allowed-path", "."
     ]
     
     process = subprocess.Popen(
@@ -74,7 +74,7 @@ def main():
         response = send_request(process, "tools/call", {
             "name": "dotnet-load-workspace",
             "arguments": {
-                "path": "/Users/bill/Desktop/McpDotnet/test-workspace/TestProject.csproj"
+                "path": "./test-workspace/TestProject.csproj"
             }
         })
         
@@ -89,7 +89,7 @@ def main():
         
         # Extract the location from the response
         # The response contains the statement locations - we'll replace the first one
-        # Example location: /Users/bill/Desktop/McpDotnet/test-workspace/Program.cs:7:9
+        # Example location: ./test-workspace/Program.cs:7:9
         
         # Test 1: Replace the Hello World statement
         print("\n=== Test 1: Replace Hello World with Hello MCP ===")
@@ -97,7 +97,7 @@ def main():
             "name": "dotnet-replace-statement",
             "arguments": {
                 "location": {
-                    "file": "/Users/bill/Desktop/McpDotnet/test-workspace/Program.cs",
+                    "file": "./test-workspace/Program.cs",
                     "line": 7,
                     "column": 9
                 },
@@ -119,7 +119,7 @@ def main():
             "name": "dotnet-replace-statement",
             "arguments": {
                 "location": {
-                    "file": "/Users/bill/Desktop/McpDotnet/test-workspace/Program.cs",
+                    "file": "./test-workspace/Program.cs",
                     "line": 9,
                     "column": 9
                 },
@@ -141,7 +141,7 @@ def main():
             "name": "dotnet-replace-statement",
             "arguments": {
                 "location": {
-                    "file": "/Users/bill/Desktop/McpDotnet/test-workspace/Program.cs",
+                    "file": "./test-workspace/Program.cs",
                     "line": 10,
                     "column": 9
                 },
@@ -157,7 +157,7 @@ def main():
             "name": "dotnet-replace-statement",
             "arguments": {
                 "location": {
-                    "file": "/Users/bill/Desktop/McpDotnet/test-workspace/Program.cs",
+                    "file": "./test-workspace/Program.cs",
                     "line": 7,
                     "column": 9
                 },

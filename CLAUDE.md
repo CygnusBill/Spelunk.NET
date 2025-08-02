@@ -124,7 +124,7 @@ Complex refactorings are built from simple, composable tools. The 27 implemented
 - 🔲 Implement get-statement-context tool (semantic info)
 
 ### Medium Priority Pending
-- 🔲 Update test files to use new project paths (15 files still reference /Users/bill/ClaudeDir)
+- ✅ Update test files to use new project paths (completed - now using relative paths)
 - 🔲 Refactor fix-pattern to use statement-level operations
 - 🔲 Design generic syntax tree navigation tools
 - 🔲 Implement get-data-flow tool
@@ -217,7 +217,7 @@ for method in methods:
 
 ## Common Pitfalls & Gotchas
 
-1. **Test Paths**: 15 test files still reference old `/Users/bill/ClaudeDir` paths
+1. **Test Paths**: Updated - all test files now use relative paths
 2. **Port Conflicts**: SSE server uses port 3333 - check with `lsof -i :3333`
 3. **Nullable Warnings**: Project uses nullable reference types - initialize all properties
 4. **Build Warnings**: Run clean builds to catch all warnings: `dotnet clean && dotnet build`
