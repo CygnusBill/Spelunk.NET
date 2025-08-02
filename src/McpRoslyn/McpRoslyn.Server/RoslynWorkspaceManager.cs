@@ -2463,9 +2463,7 @@ public class RoslynWorkspaceManager : IDisposable
             {
                 // At least preserve indentation
                 var leadingWhitespace = statement.GetLeadingTrivia()
-                    .Where(t => t.IsKind(language == LanguageNames.CSharp ? 
-                        SyntaxKind.WhitespaceTrivia : 
-                        Microsoft.CodeAnalysis.VisualBasic.SyntaxKind.WhitespaceTrivia))
+                    .Where(t => handler.IsWhitespaceTrivia(t))
                     .LastOrDefault();
                 if (leadingWhitespace != default)
                 {
@@ -2474,9 +2472,7 @@ public class RoslynWorkspaceManager : IDisposable
                 
                 // Preserve line ending
                 var trailingTrivia = statement.GetTrailingTrivia()
-                    .Where(t => t.IsKind(language == LanguageNames.CSharp ? 
-                        SyntaxKind.EndOfLineTrivia : 
-                        Microsoft.CodeAnalysis.VisualBasic.SyntaxKind.EndOfLineTrivia))
+                    .Where(t => handler.IsEndOfLineTrivia(t))
                     .LastOrDefault();
                 if (trailingTrivia != default)
                 {
@@ -2626,31 +2622,20 @@ public class RoslynWorkspaceManager : IDisposable
                 return result;
             }
             
-            // Determine indentation from the reference statement
-            var leadingTrivia = referenceStatement.GetLeadingTrivia();
-            var indentationTrivia = leadingTrivia
-                .Where(t => t.IsKind(SyntaxKind.WhitespaceTrivia))
-                .LastOrDefault();
-                
-            // Add proper indentation and newline to the new statement
-            if (indentationTrivia != default)
-            {
-                newStatementSyntax = newStatementSyntax
-                    .WithLeadingTrivia(indentationTrivia)
-                    .WithTrailingTrivia(SyntaxFactory.EndOfLine("\n"));
-            }
-            else
-            {
-                newStatementSyntax = newStatementSyntax
-                    .WithTrailingTrivia(SyntaxFactory.EndOfLine("\n"));
-            }
+            // Apply indentation from the reference statement
+            newStatementSyntax = handler.ApplyIndentation(newStatementSyntax, referenceStatement);
+            
+            // Add end-of-line trivia
+            var eolTrivia = handler.CreateEndOfLineTrivia();
+            newStatementSyntax = newStatementSyntax.WithTrailingTrivia(
+                newStatementSyntax.GetTrailingTrivia().Add(eolTrivia));
             
             SyntaxNode newRoot;
             
-            if (parent is CS.BlockSyntax block)
+            if (handler.IsBlock(parent))
             {
                 // Insert within a block
-                var statements = block.Statements;
+                var statements = handler.GetBlockStatements(parent).ToList();
                 var index = statements.IndexOf(referenceStatement);
                 
                 if (index == -1)
@@ -2660,38 +2645,36 @@ public class RoslynWorkspaceManager : IDisposable
                     return result;
                 }
                 
-                List<CS.StatementSyntax> newStatements;
-                if (position.ToLower() == "before")
-                {
-                    newStatements = statements.Take(index)
-                        .Concat(new[] { newStatementSyntax })
-                        .Concat(statements.Skip(index))
-                        .ToList();
-                }
-                else // after
-                {
-                    newStatements = statements.Take(index + 1)
-                        .Concat(new[] { newStatementSyntax })
-                        .Concat(statements.Skip(index + 1))
-                        .ToList();
-                }
-                
-                var newBlock = block.WithStatements(SyntaxFactory.List(newStatements));
-                newRoot = root.ReplaceNode(block, newBlock);
+                // Insert at the appropriate position
+                var newBlock = position.ToLower() == "before"
+                    ? handler.InsertIntoBlock(parent, index, newStatementSyntax)
+                    : handler.InsertIntoBlock(parent, index + 1, newStatementSyntax);
+                    
+                newRoot = root.ReplaceNode(parent, newBlock);
             }
             else
             {
-                // Handle other cases (like single statement methods)
-                // For now, we'll wrap in a block
-                var blockStatements = position.ToLower() == "before"
-                    ? new[] { newStatementSyntax, referenceStatement }
-                    : new[] { referenceStatement, newStatementSyntax };
-                    
-                var newBlock = SyntaxFactory.Block(blockStatements)
-                    .WithLeadingTrivia(referenceStatement.GetLeadingTrivia())
-                    .WithTrailingTrivia(referenceStatement.GetTrailingTrivia());
-                    
-                newRoot = root.ReplaceNode(referenceStatement, newBlock);
+                // Handle other cases - language-specific behavior
+                if (language == LanguageNames.CSharp)
+                {
+                    // For C#, wrap in a block
+                    var blockStatements = position.ToLower() == "before"
+                        ? new[] { newStatementSyntax, referenceStatement }
+                        : new[] { referenceStatement, newStatementSyntax };
+                        
+                    var newBlock = handler.CreateBlock(blockStatements)
+                        .WithLeadingTrivia(referenceStatement.GetLeadingTrivia())
+                        .WithTrailingTrivia(referenceStatement.GetTrailingTrivia());
+                        
+                    newRoot = root.ReplaceNode(referenceStatement, newBlock);
+                }
+                else
+                {
+                    // For VB.NET, this is more complex as statements are typically in method blocks
+                    result.Success = false;
+                    result.Error = "Cannot insert statement outside of a block in VB.NET";
+                    return result;
+                }
             }
             
             // Update the document

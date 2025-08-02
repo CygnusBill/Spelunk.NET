@@ -157,4 +157,164 @@ End Module";
     {
         return VisualBasicSyntaxTree.ParseText(sourceText, path: filePath);
     }
+    
+    // ===== Block and Statement Manipulation =====
+    
+    public bool IsBlock(SyntaxNode node)
+    {
+        // In VB, blocks are implicit in method/property bodies
+        return node is MethodBlockBaseSyntax || 
+               node is PropertyBlockSyntax || 
+               node is MultiLineIfBlockSyntax ||
+               node is MultiLineLambdaExpressionSyntax;
+    }
+    
+    public IEnumerable<SyntaxNode> GetBlockStatements(SyntaxNode block)
+    {
+        return block switch
+        {
+            MethodBlockBaseSyntax methodBlock => methodBlock.Statements,
+            PropertyBlockSyntax propertyBlock => propertyBlock.Accessors.SelectMany(a => a.Statements),
+            MultiLineIfBlockSyntax ifBlock => ifBlock.Statements,
+            MultiLineLambdaExpressionSyntax lambda => lambda.Statements,
+            _ => Enumerable.Empty<SyntaxNode>()
+        };
+    }
+    
+    public SyntaxNode CreateBlock(IEnumerable<SyntaxNode> statements)
+    {
+        // VB doesn't have explicit block syntax like C#
+        // This would typically be used within a method or other container
+        throw new NotSupportedException("VB.NET doesn't support standalone blocks. Use within a method or other container.");
+    }
+    
+    public SyntaxNode InsertIntoBlock(SyntaxNode block, int index, SyntaxNode statement)
+    {
+        if (statement is not StatementSyntax statementSyntax)
+            return block;
+            
+        return block switch
+        {
+            MethodBlockBaseSyntax methodBlock => 
+                methodBlock.WithStatements(methodBlock.Statements.Insert(index, statementSyntax)),
+            MultiLineIfBlockSyntax ifBlock => 
+                ifBlock.WithStatements(ifBlock.Statements.Insert(index, statementSyntax)),
+            _ => block
+        };
+    }
+    
+    public SyntaxNode RemoveFromBlock(SyntaxNode block, SyntaxNode statement)
+    {
+        if (statement is not StatementSyntax statementSyntax)
+            return block;
+            
+        return block switch
+        {
+            MethodBlockBaseSyntax methodBlock => 
+                methodBlock.WithStatements(methodBlock.Statements.Remove(statementSyntax)),
+            MultiLineIfBlockSyntax ifBlock => 
+                ifBlock.WithStatements(ifBlock.Statements.Remove(statementSyntax)),
+            _ => block
+        };
+    }
+    
+    // ===== Trivia Handling =====
+    
+    public SyntaxTrivia CreateWhitespaceTrivia(string text)
+    {
+        return SyntaxFactory.Whitespace(text);
+    }
+    
+    public SyntaxTrivia CreateEndOfLineTrivia()
+    {
+        return SyntaxFactory.EndOfLine(Environment.NewLine);
+    }
+    
+    public bool IsWhitespaceTrivia(SyntaxTrivia trivia)
+    {
+        return trivia.IsKind(SyntaxKind.WhitespaceTrivia);
+    }
+    
+    public bool IsEndOfLineTrivia(SyntaxTrivia trivia)
+    {
+        return trivia.IsKind(SyntaxKind.EndOfLineTrivia);
+    }
+    
+    public bool IsCommentTrivia(SyntaxTrivia trivia)
+    {
+        return trivia.IsKind(SyntaxKind.CommentTrivia) ||
+               trivia.IsKind(SyntaxKind.DocumentationCommentTrivia);
+    }
+    
+    public SyntaxNode ApplyIndentation(SyntaxNode statement, SyntaxNode context)
+    {
+        // Get indentation from context
+        var leadingTrivia = context.GetLeadingTrivia();
+        var indentationTrivia = leadingTrivia
+            .Where(t => t.IsKind(SyntaxKind.WhitespaceTrivia))
+            .LastOrDefault();
+            
+        if (indentationTrivia != default)
+        {
+            // Apply same indentation to statement
+            var newLeadingTrivia = SyntaxTriviaList.Create(indentationTrivia)
+                .AddRange(statement.GetLeadingTrivia().Where(t => !t.IsKind(SyntaxKind.WhitespaceTrivia)));
+            return statement.WithLeadingTrivia(newLeadingTrivia);
+        }
+        
+        return statement;
+    }
+    
+    // ===== Node Identification =====
+    
+    public bool IsConstructor(SyntaxNode node)
+    {
+        return node is SubNewStatementSyntax || 
+               (node is MethodBlockSyntax methodBlock && 
+                methodBlock.SubOrFunctionStatement is SubNewStatementSyntax);
+    }
+    
+    public bool IsEventDeclaration(SyntaxNode node)
+    {
+        return node is EventStatementSyntax || node is EventBlockSyntax;
+    }
+    
+    public string? GetConstructorName(SyntaxNode node)
+    {
+        // In VB, constructors are always named "New"
+        if (IsConstructor(node))
+        {
+            return "New";
+        }
+        return null;
+    }
+    
+    // ===== Parsing Extensions =====
+    
+    public SyntaxNode? ParseMemberDeclaration(string memberText)
+    {
+        var wrappedCode = $@"Class TempClass
+    {memberText}
+End Class";
+        var syntaxTree = VisualBasicSyntaxTree.ParseText(wrappedCode);
+        var root = syntaxTree.GetRoot();
+        var classBlock = root.DescendantNodes().OfType<ClassBlockSyntax>().FirstOrDefault();
+        return classBlock?.Members.FirstOrDefault();
+    }
+    
+    public SyntaxNode? ParseTypeDeclaration(string typeText)
+    {
+        var syntaxTree = VisualBasicSyntaxTree.ParseText(typeText);
+        var root = syntaxTree.GetRoot();
+        return root.DescendantNodes().FirstOrDefault(n => IsTypeDeclaration(n));
+    }
+    
+    public SyntaxNode? ParseExpression(string expressionText)
+    {
+        var wrappedCode = $"Dim x = {expressionText}";
+        var syntaxTree = VisualBasicSyntaxTree.ParseText(wrappedCode);
+        var root = syntaxTree.GetRoot();
+        var variableDecl = root.DescendantNodes().OfType<VariableDeclaratorSyntax>().FirstOrDefault();
+        return variableDecl?.Initializer?.Value;
+    }
 }

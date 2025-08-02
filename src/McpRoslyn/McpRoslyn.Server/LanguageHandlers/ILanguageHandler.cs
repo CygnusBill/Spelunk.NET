@@ -87,4 +87,97 @@ public interface ILanguageHandler
     /// Creates a syntax tree from source text
     /// </summary>
     SyntaxTree ParseText(string sourceText, string filePath = "");
+    
+    // ===== Block and Statement Manipulation =====
+    
+    /// <summary>
+    /// Determines if a syntax node is a block (containing statements)
+    /// </summary>
+    bool IsBlock(SyntaxNode node);
+    
+    /// <summary>
+    /// Gets statements from a block node
+    /// </summary>
+    IEnumerable<SyntaxNode> GetBlockStatements(SyntaxNode block);
+    
+    /// <summary>
+    /// Creates a new block with the given statements
+    /// </summary>
+    SyntaxNode CreateBlock(IEnumerable<SyntaxNode> statements);
+    
+    /// <summary>
+    /// Inserts a statement into a block at the specified index
+    /// </summary>
+    SyntaxNode InsertIntoBlock(SyntaxNode block, int index, SyntaxNode statement);
+    
+    /// <summary>
+    /// Removes a statement from a block
+    /// </summary>
+    SyntaxNode RemoveFromBlock(SyntaxNode block, SyntaxNode statement);
+    
+    // ===== Trivia Handling =====
+    
+    /// <summary>
+    /// Creates whitespace trivia
+    /// </summary>
+    SyntaxTrivia CreateWhitespaceTrivia(string text);
+    
+    /// <summary>
+    /// Creates end-of-line trivia
+    /// </summary>
+    SyntaxTrivia CreateEndOfLineTrivia();
+    
+    /// <summary>
+    /// Checks if trivia is whitespace
+    /// </summary>
+    bool IsWhitespaceTrivia(SyntaxTrivia trivia);
+    
+    /// <summary>
+    /// Checks if trivia is end-of-line
+    /// </summary>
+    bool IsEndOfLineTrivia(SyntaxTrivia trivia);
+    
+    /// <summary>
+    /// Checks if trivia is a comment
+    /// </summary>
+    bool IsCommentTrivia(SyntaxTrivia trivia);
+    
+    /// <summary>
+    /// Applies indentation to a statement based on context
+    /// </summary>
+    SyntaxNode ApplyIndentation(SyntaxNode statement, SyntaxNode context);
+    
+    // ===== Node Identification =====
+    
+    /// <summary>
+    /// Determines if a node is a constructor
+    /// </summary>
+    bool IsConstructor(SyntaxNode node);
+    
+    /// <summary>
+    /// Determines if a node is an event declaration
+    /// </summary>
+    bool IsEventDeclaration(SyntaxNode node);
+    
+    /// <summary>
+    /// Gets the name of a constructor (usually the class name)
+    /// </summary>
+    string? GetConstructorName(SyntaxNode node);
+    
+    // ===== Parsing Extensions =====
+    
+    /// <summary>
+    /// Parses a member declaration (method, property, field, etc.)
+    /// </summary>
+    SyntaxNode? ParseMemberDeclaration(string memberText);
+    
+    /// <summary>
+    /// Parses a type declaration (class, interface, etc.)
+    /// </summary>
+    SyntaxNode? ParseTypeDeclaration(string typeText);
+    
+    /// <summary>
+    /// Parses an expression
+    /// </summary>
+    SyntaxNode? ParseExpression(string expressionText);
 }

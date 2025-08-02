@@ -124,4 +124,137 @@ public class CSharpLanguageHandler : ILanguageHandler
     {
         return CSharpSyntaxTree.ParseText(sourceText, path: filePath);
     }
+    
+    // ===== Block and Statement Manipulation =====
+    
+    public bool IsBlock(SyntaxNode node)
+    {
+        return node is BlockSyntax;
+    }
+    
+    public IEnumerable<SyntaxNode> GetBlockStatements(SyntaxNode block)
+    {
+        return block is BlockSyntax blockSyntax ? blockSyntax.Statements : Enumerable.Empty<SyntaxNode>();
+    }
+    
+    public SyntaxNode CreateBlock(IEnumerable<SyntaxNode> statements)
+    {
+        var statementList = statements.Cast<StatementSyntax>();
+        return SyntaxFactory.Block(statementList);
+    }
+    
+    public SyntaxNode InsertIntoBlock(SyntaxNode block, int index, SyntaxNode statement)
+    {
+        if (block is BlockSyntax blockSyntax && statement is StatementSyntax statementSyntax)
+        {
+            var statements = blockSyntax.Statements.Insert(index, statementSyntax);
+            return blockSyntax.WithStatements(statements);
+        }
+        return block;
+    }
+    
+    public SyntaxNode RemoveFromBlock(SyntaxNode block, SyntaxNode statement)
+    {
+        if (block is BlockSyntax blockSyntax && statement is StatementSyntax statementSyntax)
+        {
+            var statements = blockSyntax.Statements.Remove(statementSyntax);
+            return blockSyntax.WithStatements(statements);
+        }
+        return block;
+    }
+    
+    // ===== Trivia Handling =====
+    
+    public SyntaxTrivia CreateWhitespaceTrivia(string text)
+    {
+        return SyntaxFactory.Whitespace(text);
+    }
+    
+    public SyntaxTrivia CreateEndOfLineTrivia()
+    {
+        return SyntaxFactory.EndOfLine("\n");
+    }
+    
+    public bool IsWhitespaceTrivia(SyntaxTrivia trivia)
+    {
+        return trivia.IsKind(SyntaxKind.WhitespaceTrivia);
+    }
+    
+    public bool IsEndOfLineTrivia(SyntaxTrivia trivia)
+    {
+        return trivia.IsKind(SyntaxKind.EndOfLineTrivia);
+    }
+    
+    public bool IsCommentTrivia(SyntaxTrivia trivia)
+    {
+        return trivia.IsKind(SyntaxKind.SingleLineCommentTrivia) || 
+               trivia.IsKind(SyntaxKind.MultiLineCommentTrivia) ||
+               trivia.IsKind(SyntaxKind.SingleLineDocumentationCommentTrivia) ||
+               trivia.IsKind(SyntaxKind.MultiLineDocumentationCommentTrivia);
+    }
+    
+    public SyntaxNode ApplyIndentation(SyntaxNode statement, SyntaxNode context)
+    {
+        // Get indentation from context
+        var leadingTrivia = context.GetLeadingTrivia();
+        var indentationTrivia = leadingTrivia
+            .Where(t => t.IsKind(SyntaxKind.WhitespaceTrivia))
+            .LastOrDefault();
+            
+        if (indentationTrivia != default)
+        {
+            // Apply same indentation to statement
+            var newLeadingTrivia = SyntaxTriviaList.Create(indentationTrivia)
+                .AddRange(statement.GetLeadingTrivia().Where(t => !t.IsKind(SyntaxKind.WhitespaceTrivia)));
+            return statement.WithLeadingTrivia(newLeadingTrivia);
+        }
+        
+        return statement;
+    }
+    
+    // ===== Node Identification =====
+    
+    public bool IsConstructor(SyntaxNode node)
+    {
+        return node is ConstructorDeclarationSyntax;
+    }
+    
+    public bool IsEventDeclaration(SyntaxNode node)
+    {
+        return node is EventDeclarationSyntax || node is EventFieldDeclarationSyntax;
+    }
+    
+    public string? GetConstructorName(SyntaxNode node)
+    {
+        if (node is ConstructorDeclarationSyntax constructor)
+        {
+            return constructor.Identifier.Text;
+        }
+        return null;
+    }
+    
+    // ===== Parsing Extensions =====
+    
+    public SyntaxNode? ParseMemberDeclaration(string memberText)
+    {
+        var syntaxTree = CSharpSyntaxTree.ParseText($"class Temp {{ {memberText} }}");
+        var root = syntaxTree.GetRoot();
+        var classDecl = root.DescendantNodes().OfType<ClassDeclarationSyntax>().FirstOrDefault();
+        return classDecl?.Members.FirstOrDefault();
+    }
+    
+    public SyntaxNode? ParseTypeDeclaration(string typeText)
+    {
+        var syntaxTree = CSharpSyntaxTree.ParseText(typeText);
+        var root = syntaxTree.GetRoot();
+        return root.DescendantNodes().FirstOrDefault(n => IsTypeDeclaration(n));
+    }
+    
+    public SyntaxNode? ParseExpression(string expressionText)
+    {
+        var syntaxTree = CSharpSyntaxTree.ParseText($"var x = {expressionText};");
+        var root = syntaxTree.GetRoot();
+        var variableDecl = root.DescendantNodes().OfType<VariableDeclarationSyntax>().FirstOrDefault();
+        return variableDecl?.Variables.FirstOrDefault()?.Initializer?.Value;
+    }
 }
