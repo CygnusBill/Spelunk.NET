@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "McpRoslyn.Server", "McpRoslyn.Server\McpRoslyn.Server.csproj", "{00D95CA3-8724-4CE6-A0AE-2F0C96BC9223}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "McpRoslyn.Server", "src\McpRoslyn.Server\McpRoslyn.Server.csproj", "{00D95CA3-8724-4CE6-A0AE-2F0C96BC9223}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "McpRoslyn.Server.Sse", "McpRoslyn.Server.Sse\McpRoslyn.Server.Sse.csproj", "{E65D9D83-103A-4F25-8467-872C5D85BF68}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "McpRoslyn.Server.Sse", "src\McpRoslyn.Server.Sse\McpRoslyn.Server.Sse.csproj", "{E65D9D83-103A-4F25-8467-872C5D85BF68}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
