@@ -2,6 +2,10 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using McpRoslyn.Server.Configuration;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Text;
+using CS = Microsoft.CodeAnalysis.CSharp.Syntax;
 // using McpRoslyn.Server.FSharp; // Disabled for diagnostic PoC
 
 namespace McpRoslyn.Server;
@@ -150,7 +154,7 @@ public class McpJsonRpcServer
         }
     }
     
-    private async Task<JsonRpcResponse> HandleInitializeAsync(JsonRpcRequest request)
+    private Task<JsonRpcResponse> HandleInitializeAsync(JsonRpcRequest request)
     {
         var result = new
         {
@@ -166,12 +170,12 @@ public class McpJsonRpcServer
             }
         };
         
-        return new JsonRpcResponse
+        return Task.FromResult(new JsonRpcResponse
         {
             JsonRpc = "2.0",
             Id = request.Id,
             Result = result
-        };
+        });
     }
     
     private JsonRpcResponse HandleToolsList(JsonRpcRequest request)
@@ -712,6 +716,68 @@ public class McpJsonRpcServer
                     },
                     required = new[] { "filePath", "query" }
                 }
+            },
+            new
+            {
+                name = "dotnet-query-syntax",
+                description = ToolDescriptions.QuerySyntax,
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        roslynPath = new { type = "string", description = "RoslynPath query (e.g., '//binary-expression[@operator=\"==\" and @right-text=\"null\"]')" },
+                        file = new { type = "string", description = "Optional: specific file to search in" },
+                        workspacePath = new { type = "string", description = "Optional: workspace to search in" },
+                        includeContext = new { type = "boolean", description = "Include surrounding context lines" },
+                        contextLines = new { type = "integer", description = "Number of context lines (default: 2)" }
+                    },
+                    required = new[] { "roslynPath" }
+                }
+            },
+            new
+            {
+                name = "dotnet-navigate",
+                description = ToolDescriptions.Navigate,
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        from = new
+                        {
+                            type = "object",
+                            properties = new
+                            {
+                                file = new { type = "string", description = "File path" },
+                                line = new { type = "integer", description = "Line number (1-based)" },
+                                column = new { type = "integer", description = "Column number (1-based)" }
+                            },
+                            required = new[] { "file", "line", "column" }
+                        },
+                        path = new { type = "string", description = "Navigation path (e.g., 'ancestor::method[1]/following-sibling::method[1]')" },
+                        returnPath = new { type = "boolean", description = "Return the RoslynPath of the target node" }
+                    },
+                    required = new[] { "from", "path" }
+                }
+            },
+            new
+            {
+                name = "dotnet-get-ast",
+                description = ToolDescriptions.GetAst,
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        file = new { type = "string", description = "File path to analyze" },
+                        root = new { type = "string", description = "Optional: RoslynPath to root node (e.g., '//method[Process]')" },
+                        depth = new { type = "integer", description = "Tree depth to include (default: 3)" },
+                        includeTokens = new { type = "boolean", description = "Include syntax tokens" },
+                        format = new { type = "string", description = "Output format: 'tree' (default)" }
+                    },
+                    required = new[] { "file" }
+                }
             }
         };
         
@@ -845,6 +911,18 @@ public class McpJsonRpcServer
                 
             case "dotnet-get-data-flow":
                 result = await GetDataFlowAsync(toolCallParams.Arguments);
+                break;
+                
+            case "dotnet-query-syntax":
+                result = await QuerySyntaxAsync(toolCallParams.Arguments);
+                break;
+                
+            case "dotnet-navigate":
+                result = await NavigateAsync(toolCallParams.Arguments);
+                break;
+                
+            case "dotnet-get-ast":
+                result = await GetAstAsync(toolCallParams.Arguments);
                 break;
                 
             case "dotnet-fsharp-projects":
@@ -2343,7 +2421,7 @@ public class McpJsonRpcServer
                 {
                     report += $"📄 {fix.FilePath}:{fix.Line}\n";
                     report += $"  Before: {fix.OriginalCode}\n";
-                    report += $"  After:  {fix.FixedCode}\n";
+                    report += $"  After:  {fix.ReplacementCode}\n";
                     if (!string.IsNullOrEmpty(fix.Description))
                     {
                         report += $"  Note:   {fix.Description}\n";
@@ -3307,6 +3385,509 @@ public class McpJsonRpcServer
         {
             _logger.LogWarning(ex, "Failed to synchronize workspace tracking");
         }
+    }
+    
+    private async Task<object> QuerySyntaxAsync(JsonElement? args)
+    {
+        if (args == null)
+            return CreateErrorResponse("No arguments provided");
+            
+        try
+        {
+            // Extract required parameters
+            if (!args.Value.TryGetProperty("roslynPath", out var pathElement))
+                return CreateErrorResponse("RoslynPath query is required");
+                
+            var roslynPath = pathElement.GetString();
+            if (string.IsNullOrEmpty(roslynPath))
+                return CreateErrorResponse("RoslynPath cannot be empty");
+                
+            // Extract optional parameters
+            string? filePath = null;
+            if (args.Value.TryGetProperty("file", out var fileElement))
+                filePath = fileElement.GetString();
+                
+            string? workspaceId = null;
+            if (args.Value.TryGetProperty("workspacePath", out var workspaceElement))
+                workspaceId = workspaceElement.GetString();
+                
+            bool includeContext = false;
+            if (args.Value.TryGetProperty("includeContext", out var contextElement))
+                includeContext = contextElement.GetBoolean();
+                
+            int contextLines = 2;
+            if (args.Value.TryGetProperty("contextLines", out var contextLinesElement))
+                contextLines = contextLinesElement.GetInt32();
+                
+            // Get documents to search
+            var documentsToSearch = new List<Document>();
+            
+            if (!string.IsNullOrEmpty(filePath))
+            {
+                // Search specific file
+                if (_workspaces.Count == 0)
+                    return CreateErrorResponse("No workspace loaded");
+                    
+                var workspaceInfo = !string.IsNullOrEmpty(workspaceId) 
+                    ? _workspaces.Values.FirstOrDefault(w => w.Id == workspaceId)
+                    : _workspaces.Values.First();
+                    
+                if (workspaceInfo == null)
+                    return CreateErrorResponse("Workspace not found");
+                    
+                var workspace = _workspaceManager.GetWorkspace(workspaceInfo.Id);
+                if (workspace == null)
+                    return CreateErrorResponse("Workspace not found");
+                    
+                var document = workspace.CurrentSolution.Projects
+                    .SelectMany(p => p.Documents)
+                    .FirstOrDefault(d => d.FilePath == filePath);
+                    
+                if (document != null)
+                    documentsToSearch.Add(document);
+            }
+            else
+            {
+                // Search all documents in workspace
+                if (_workspaces.Count == 0)
+                    return CreateErrorResponse("No workspace loaded");
+                    
+                var workspaceInfo = !string.IsNullOrEmpty(workspaceId) 
+                    ? _workspaces.Values.FirstOrDefault(w => w.Id == workspaceId)
+                    : _workspaces.Values.First();
+                    
+                if (workspaceInfo == null)
+                    return CreateErrorResponse("Workspace not found");
+                    
+                var workspace = _workspaceManager.GetWorkspace(workspaceInfo.Id);
+                if (workspace == null)
+                    return CreateErrorResponse("Workspace not found");
+                    
+                documentsToSearch = workspace.CurrentSolution.Projects
+                    .SelectMany(p => p.Documents)
+                    .ToList();
+            }
+            
+            // Search documents using RoslynPath
+            var matches = new List<object>();
+            
+            foreach (var document in documentsToSearch)
+            {
+                var tree = await document.GetSyntaxTreeAsync();
+                if (tree == null) continue;
+                
+                var semanticModel = await document.GetSemanticModelAsync();
+                var evaluator = new RoslynPath.RoslynPathEvaluator(tree, semanticModel);
+                
+                try
+                {
+                    var results = evaluator.Evaluate(roslynPath);
+                    
+                    foreach (var node in results)
+                    {
+                        var lineSpan = node.GetLocation().GetLineSpan();
+                        var nodeType = RoslynPath.EnhancedNodeTypes.GetDetailedNodeTypeName(node);
+                        
+                        var match = new
+                        {
+                            node = new
+                            {
+                                type = nodeType,
+                                kind = node.Kind().ToString(),
+                                text = node.ToString(),
+                                location = new
+                                {
+                                    file = document.FilePath,
+                                    line = lineSpan.StartLinePosition.Line + 1,
+                                    column = lineSpan.StartLinePosition.Character + 1
+                                }
+                            },
+                            path = RoslynPath.RoslynPath.GetNodePath(node),
+                            context = includeContext ? await GetContextLines(document, lineSpan.StartLinePosition.Line, contextLines) : null
+                        };
+                        
+                        matches.Add(match);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, $"Error evaluating RoslynPath in {document.FilePath}");
+                }
+            }
+            
+            return new { matches };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in QuerySyntaxAsync");
+            return CreateErrorResponse($"Error querying syntax: {ex.Message}");
+        }
+    }
+    
+    private async Task<object?> GetContextLines(Document document, int centerLine, int contextLines)
+    {
+        var text = await document.GetTextAsync();
+        var lines = text.Lines;
+        
+        var startLine = Math.Max(0, centerLine - contextLines);
+        var endLine = Math.Min(lines.Count - 1, centerLine + contextLines);
+        
+        var before = new List<string>();
+        var after = new List<string>();
+        
+        for (int i = startLine; i < centerLine; i++)
+        {
+            before.Add(lines[i].ToString());
+        }
+        
+        for (int i = centerLine + 1; i <= endLine; i++)
+        {
+            after.Add(lines[i].ToString());
+        }
+        
+        return new { before, after };
+    }
+    
+    private async Task<object> NavigateAsync(JsonElement? args)
+    {
+        if (args == null)
+            return CreateErrorResponse("No arguments provided");
+            
+        try
+        {
+            // Extract required from position
+            if (!args.Value.TryGetProperty("from", out var fromElement))
+                return CreateErrorResponse("From position is required");
+                
+            if (!fromElement.TryGetProperty("file", out var fileElement))
+                return CreateErrorResponse("File path is required in from position");
+            var filePath = fileElement.GetString();
+            
+            if (!fromElement.TryGetProperty("line", out var lineElement))
+                return CreateErrorResponse("Line is required in from position");
+            var line = lineElement.GetInt32();
+            
+            if (!fromElement.TryGetProperty("column", out var columnElement))
+                return CreateErrorResponse("Column is required in from position");
+            var column = columnElement.GetInt32();
+            
+            // Extract navigation path
+            if (!args.Value.TryGetProperty("path", out var pathElement))
+                return CreateErrorResponse("Navigation path is required");
+            var navPath = pathElement.GetString();
+            
+            bool returnPath = false;
+            if (args.Value.TryGetProperty("returnPath", out var returnPathElement))
+                returnPath = returnPathElement.GetBoolean();
+                
+            // Get the node at the starting position
+            if (_workspaces.Count == 0)
+                return CreateErrorResponse("No workspace loaded");
+                
+            var workspaceInfo = _workspaces.Values.First();
+            var workspace = _workspaceManager.GetWorkspace(workspaceInfo.Id);
+            if (workspace == null)
+                return CreateErrorResponse("Workspace not found");
+                
+            var solution = workspace.CurrentSolution;
+            var document = solution.Projects
+                .SelectMany(p => p.Documents)
+                .FirstOrDefault(d => d.FilePath == filePath);
+                
+            if (document == null)
+                return CreateErrorResponse($"Document not found: {filePath}");
+                
+            var root = await document.GetSyntaxRootAsync();
+            if (root == null)
+                return CreateErrorResponse("Failed to get syntax root");
+                
+            var sourceText = await document.GetTextAsync();
+            var position = sourceText.Lines.GetPosition(new LinePosition(line - 1, column - 1));
+            var startNode = root.FindNode(new TextSpan(position, 0));
+            
+            // Navigate from the starting node using the specified path
+            var targetNode = NavigateFromNode(startNode, navPath);
+            
+            if (targetNode == null)
+                return new { navigatedTo = (object?)null };
+                
+            var lineSpan = targetNode.GetLocation().GetLineSpan();
+            
+            var navigatedTo = new
+            {
+                type = RoslynPath.EnhancedNodeTypes.GetDetailedNodeTypeName(targetNode),
+                name = GetNodeName(targetNode),
+                location = new
+                {
+                    file = filePath,
+                    line = lineSpan.StartLinePosition.Line + 1,
+                    column = lineSpan.StartLinePosition.Character + 1
+                },
+                path = returnPath ? BuildNodePath(targetNode) : null
+            };
+            
+            return new { navigatedTo };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in NavigateAsync");
+            return CreateErrorResponse($"Error navigating: {ex.Message}");
+        }
+    }
+    
+    private SyntaxNode? NavigateFromNode(SyntaxNode startNode, string path)
+    {
+        var current = startNode;
+        
+        // Parse the navigation path (simple implementation)
+        var parts = path.Split(new[] { "::" }, StringSplitOptions.RemoveEmptyEntries);
+        
+        foreach (var part in parts)
+        {
+            if (current == null) return null;
+            
+            // Parse axis and node test
+            var match = System.Text.RegularExpressions.Regex.Match(part, @"^(\w+)(?:\[(\d+)\])?$");
+            if (!match.Success) continue;
+            
+            var axis = match.Groups[1].Value;
+            var index = match.Groups[2].Success ? int.Parse(match.Groups[2].Value) : 1;
+            
+            current = axis switch
+            {
+                "ancestor" => GetAncestor(current, index),
+                "parent" => current.Parent,
+                "child" => GetChild(current, index),
+                "descendant" => GetDescendant(current, index),
+                "following-sibling" => GetFollowingSibling(current, index),
+                "preceding-sibling" => GetPrecedingSibling(current, index),
+                "self" => current,
+                _ => null
+            };
+        }
+        
+        return current;
+    }
+    
+    private SyntaxNode? GetAncestor(SyntaxNode node, int index)
+    {
+        var current = node.Parent;
+        for (int i = 1; i < index && current != null; i++)
+        {
+            current = current.Parent;
+        }
+        return current;
+    }
+    
+    private SyntaxNode? GetChild(SyntaxNode node, int index)
+    {
+        var children = node.ChildNodes().ToList();
+        return index > 0 && index <= children.Count ? children[index - 1] : null;
+    }
+    
+    private SyntaxNode? GetDescendant(SyntaxNode node, int index)
+    {
+        var descendants = node.DescendantNodes().ToList();
+        return index > 0 && index <= descendants.Count ? descendants[index - 1] : null;
+    }
+    
+    private SyntaxNode? GetFollowingSibling(SyntaxNode node, int index)
+    {
+        if (node.Parent == null) return null;
+        
+        var siblings = node.Parent.ChildNodes().ToList();
+        var currentIndex = siblings.IndexOf(node);
+        var targetIndex = currentIndex + index;
+        
+        return targetIndex < siblings.Count ? siblings[targetIndex] : null;
+    }
+    
+    private SyntaxNode? GetPrecedingSibling(SyntaxNode node, int index)
+    {
+        if (node.Parent == null) return null;
+        
+        var siblings = node.Parent.ChildNodes().ToList();
+        var currentIndex = siblings.IndexOf(node);
+        var targetIndex = currentIndex - index;
+        
+        return targetIndex >= 0 ? siblings[targetIndex] : null;
+    }
+    
+    private string BuildNodePath(SyntaxNode node)
+    {
+        var pathParts = new List<string>();
+        var current = node;
+        
+        while (current != null)
+        {
+            var nodeType = RoslynPath.EnhancedNodeTypes.GetDetailedNodeTypeName(current);
+            var name = GetNodeName(current);
+            
+            if (!string.IsNullOrEmpty(name))
+            {
+                pathParts.Insert(0, $"{nodeType}[@name='{name}']");
+            }
+            else
+            {
+                pathParts.Insert(0, nodeType);
+            }
+            
+            current = current.Parent;
+        }
+        
+        return "/" + string.Join("/", pathParts);
+    }
+    
+    private async Task<object> GetAstAsync(JsonElement? args)
+    {
+        if (args == null)
+            return CreateErrorResponse("No arguments provided");
+            
+        try
+        {
+            // Extract required parameters
+            if (!args.Value.TryGetProperty("file", out var fileElement))
+                return CreateErrorResponse("File path is required");
+            var filePath = fileElement.GetString();
+            
+            // Extract optional root path
+            string? rootPath = null;
+            if (args.Value.TryGetProperty("root", out var rootElement))
+                rootPath = rootElement.GetString();
+                
+            int depth = 3;
+            if (args.Value.TryGetProperty("depth", out var depthElement))
+                depth = depthElement.GetInt32();
+                
+            bool includeTokens = false;
+            if (args.Value.TryGetProperty("includeTokens", out var tokensElement))
+                includeTokens = tokensElement.GetBoolean();
+                
+            string format = "tree";
+            if (args.Value.TryGetProperty("format", out var formatElement))
+                format = formatElement.GetString() ?? "tree";
+                
+            // Get the document
+            if (_workspaces.Count == 0)
+                return CreateErrorResponse("No workspace loaded");
+                
+            var workspaceInfo = _workspaces.Values.First();
+            var workspace = _workspaceManager.GetWorkspace(workspaceInfo.Id);
+            if (workspace == null)
+                return CreateErrorResponse("Workspace not found");
+                
+            var solution = workspace.CurrentSolution;
+            var document = solution.Projects
+                .SelectMany(p => p.Documents)
+                .FirstOrDefault(d => d.FilePath == filePath);
+                
+            if (document == null)
+                return CreateErrorResponse($"Document not found: {filePath}");
+                
+            var root = await document.GetSyntaxRootAsync();
+            if (root == null)
+                return CreateErrorResponse("Failed to get syntax root");
+                
+            SyntaxNode targetNode = root;
+            
+            // If a root path is specified, find that node first
+            if (!string.IsNullOrEmpty(rootPath))
+            {
+                var tree = await document.GetSyntaxTreeAsync();
+                if (tree == null)
+                    return CreateErrorResponse("Failed to get syntax tree");
+                    
+                var evaluator = new RoslynPath.RoslynPathEvaluator(tree, null);
+                var results = evaluator.Evaluate(rootPath).ToList();
+                
+                if (results.Count == 0)
+                    return CreateErrorResponse($"No nodes found matching path: {rootPath}");
+                    
+                targetNode = results.First();
+            }
+            
+            // Build the AST representation
+            var ast = BuildAstNode(targetNode, depth, includeTokens);
+            
+            return new { ast };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in GetAstAsync");
+            return CreateErrorResponse($"Error getting AST: {ex.Message}");
+        }
+    }
+    
+    private object BuildAstNode(SyntaxNode node, int remainingDepth, bool includeTokens)
+    {
+        var nodeType = RoslynPath.EnhancedNodeTypes.GetDetailedNodeTypeName(node);
+        var result = new Dictionary<string, object>
+        {
+            ["type"] = nodeType,
+            ["kind"] = node.Kind().ToString()
+        };
+        
+        // Add name if available
+        var name = GetNodeName(node);
+        if (!string.IsNullOrEmpty(name))
+            result["name"] = name;
+            
+        // Add specific properties based on node type
+        if (node is CS.BinaryExpressionSyntax binary)
+        {
+            result["operator"] = RoslynPath.EnhancedNodeTypes.GetBinaryOperator(node) ?? "";
+            if (remainingDepth > 0)
+            {
+                result["left"] = BuildAstNode(binary.Left, remainingDepth - 1, includeTokens);
+                result["right"] = BuildAstNode(binary.Right, remainingDepth - 1, includeTokens);
+            }
+        }
+        else if (node is CS.LiteralExpressionSyntax literal)
+        {
+            result["value"] = RoslynPath.EnhancedNodeTypes.GetLiteralValue(node) ?? "";
+        }
+        else if (remainingDepth > 0)
+        {
+            // Add children for other node types
+            var children = new List<object>();
+            foreach (var child in node.ChildNodes())
+            {
+                children.Add(BuildAstNode(child, remainingDepth - 1, includeTokens));
+            }
+            
+            if (children.Count > 0)
+                result["children"] = children;
+        }
+        
+        if (includeTokens && remainingDepth > 0)
+        {
+            var tokens = node.ChildTokens().Select(t => new
+            {
+                kind = t.Kind().ToString(),
+                text = t.Text,
+                value = t.Value?.ToString()
+            }).ToList();
+            
+            if (tokens.Count > 0)
+                result["tokens"] = tokens;
+        }
+        
+        return result;
+    }
+    
+    private string? GetNodeName(SyntaxNode node)
+    {
+        return node switch
+        {
+            CS.ClassDeclarationSyntax classDecl => classDecl.Identifier.Text,
+            CS.MethodDeclarationSyntax methodDecl => methodDecl.Identifier.Text,
+            CS.PropertyDeclarationSyntax propDecl => propDecl.Identifier.Text,
+            CS.FieldDeclarationSyntax fieldDecl => fieldDecl.Declaration.Variables.FirstOrDefault()?.Identifier.Text,
+            CS.ParameterSyntax param => param.Identifier.Text,
+            CS.VariableDeclaratorSyntax variable => variable.Identifier.Text,
+            CS.IdentifierNameSyntax identifier => identifier.Identifier.Text,
+            _ => null
+        };
     }
     
     private async Task<object> GetFSharpProjectsAsync(JsonElement? args)

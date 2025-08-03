@@ -73,7 +73,9 @@ All code modifications work at the statement level - this is the optimal granula
 ### 3. RoslynPath
 An XPath-inspired query language for .NET code that provides stable references surviving edits:
 - Language-agnostic: works with C# and VB.NET
-- Example: `//class[UserService]/method[GetUser]//statement[@contains='Console.WriteLine']`
+- Enhanced with low-level node types (binary-expression, if-statement, literal, etc.)
+- Full XPath-style axes support (ancestor::, descendant::, following-sibling::, etc.)
+- Example: `//binary-expression[@operator='==' and @right-text='null']`
 - VB.NET mapping: `//method[@returns='void']` finds both C# void methods and VB.NET Subs
 - See `docs/roslyn-path/` for full documentation
 
@@ -104,13 +106,14 @@ Complex refactorings are built from simple, composable tools. The 27 implemented
 ## Current Implementation Status
 
 ### Completed Features
-- ✅ 27 MCP tools implemented (see TOOL_SYNOPSIS.md)
+- ✅ 33 MCP tools implemented (see TOOL_SYNOPSIS.md)
 - ✅ Multi-language support (C#, VB.NET, F#)
 - ✅ Statement-level operations (find, replace, insert, remove)
 - ✅ Ephemeral marker system for tracking statements
-- ✅ Language-agnostic RoslynPath query engine
+- ✅ Language-agnostic RoslynPath query engine with enhanced navigation
 - ✅ F# support via FSharp.Compiler.Service
 - ✅ Comprehensive test suite with multi-language tests
+- ✅ Advanced AST navigation and querying capabilities
 
 ### Recently Completed (Latest Session)
 - ✅ Complete VB.NET support with language-agnostic mapping
@@ -122,14 +125,22 @@ Complex refactorings are built from simple, composable tools. The 27 implemented
 - ✅ Implemented get-statement-context tool (semantic info)
 - ✅ Implemented get-data-flow tool (comprehensive data flow analysis)
 - ✅ Refactored fix-pattern to use statement-level operations with semantic transformations
+- ✅ Enhanced RoslynPath with expression-level nodes and XPath-standard navigation axes
+- ✅ Implemented three new AST navigation tools (dotnet-query-syntax, dotnet-navigate, dotnet-get-ast)
+- ✅ Fixed all unit test failures (navigation regex patterns, boolean literal casing)
+- ✅ Added thread-safety collection attributes to prevent Roslyn concurrency issues
 - ✅ Added StatementTransformer for intelligent code transformations
 - ✅ Tool descriptions centralized in ToolDescriptions.cs
+- ✅ Enhanced RoslynPath with XPath-standard axes and low-level node types
+- ✅ Implemented dotnet-query-syntax tool for advanced AST queries
+- ✅ Implemented dotnet-navigate tool for syntax tree navigation
+- ✅ Implemented dotnet-get-ast tool for AST structure visualization
 
 ### High Priority Pending
 - None currently
 
 ### Medium Priority Pending
-- 🔲 Design generic syntax tree navigation tools
+- None currently
 
 ## Development Workflow
 
@@ -191,6 +202,27 @@ for method in methods:
         position="before",
         statement="ArgumentNullException.ThrowIfNull(input);"
     )
+```
+
+### Advanced AST Navigation
+```python
+# 1. Find null comparisons using enhanced RoslynPath
+null_checks = query_syntax(
+    roslynPath="//if-statement//binary-expression[@operator='==' and @right-text='null']"
+)
+
+# 2. Navigate to parent method from any position
+result = navigate(
+    from={"file": "/path/file.cs", "line": 42, "column": 10},
+    path="ancestor::method[1]"
+)
+
+# 3. Get AST structure to understand code
+ast = get_ast(
+    file="/path/file.cs",
+    root="//method[ProcessOrder]",
+    depth=3
+)
 ```
 
 ## Debugging Tips

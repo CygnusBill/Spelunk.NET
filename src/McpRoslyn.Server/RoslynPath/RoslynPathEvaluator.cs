@@ -107,6 +107,12 @@ namespace McpRoslyn.Server.RoslynPath
 
         private bool MatchesNodeTest(SyntaxNode node, string nodeTest)
         {
+            // First try enhanced detailed node types
+            var detailedTypeName = EnhancedNodeTypes.GetDetailedNodeTypeName(node);
+            if (detailedTypeName.Equals(nodeTest, StringComparison.OrdinalIgnoreCase))
+                return true;
+                
+            // Fall back to original high-level types for compatibility
             var nodeTypeName = GetNodeTypeName(node);
             return nodeTypeName.Equals(nodeTest, StringComparison.OrdinalIgnoreCase);
         }
@@ -167,8 +173,13 @@ namespace McpRoslyn.Server.RoslynPath
             {
                 "ancestor::" => GetAncestors(node, nodeTest),
                 "ancestor-or-self::" => GetAncestorsOrSelf(node, nodeTest),
+                "descendant::" => GetDescendants(node, nodeTest),
+                "descendant-or-self::" => GetDescendantsOrSelf(node, nodeTest),
                 "following-sibling::" => GetFollowingSiblings(node, nodeTest),
                 "preceding-sibling::" => GetPrecedingSiblings(node, nodeTest),
+                "child::" => GetChildren(node, nodeTest),
+                "parent::" => GetParent(node, nodeTest),
+                "self::" => GetSelf(node, nodeTest),
                 _ => Enumerable.Empty<SyntaxNode>()
             };
         }
@@ -219,6 +230,27 @@ namespace McpRoslyn.Server.RoslynPath
                 if (string.IsNullOrEmpty(nodeTest) || MatchesNodeTest(siblings[i], nodeTest))
                     yield return siblings[i];
             }
+        }
+        
+        private IEnumerable<SyntaxNode> GetDescendantsOrSelf(SyntaxNode node, string nodeTest)
+        {
+            if (string.IsNullOrEmpty(nodeTest) || MatchesNodeTest(node, nodeTest))
+                yield return node;
+                
+            foreach (var descendant in GetDescendants(node, nodeTest))
+                yield return descendant;
+        }
+        
+        private IEnumerable<SyntaxNode> GetParent(SyntaxNode node, string nodeTest)
+        {
+            if (node.Parent != null && (string.IsNullOrEmpty(nodeTest) || MatchesNodeTest(node.Parent, nodeTest)))
+                yield return node.Parent;
+        }
+        
+        private IEnumerable<SyntaxNode> GetSelf(SyntaxNode node, string nodeTest)
+        {
+            if (string.IsNullOrEmpty(nodeTest) || MatchesNodeTest(node, nodeTest))
+                yield return node;
         }
 
         private IEnumerable<SyntaxNode> ApplyPredicate(IEnumerable<SyntaxNode> nodes, Predicate predicate)
@@ -367,6 +399,49 @@ namespace McpRoslyn.Server.RoslynPath
                         
                     case "methodtype":
                         return CheckMethodType(node, predicate.Value, predicate.Operator);
+                        
+                    // Enhanced node properties
+                    case "name":
+                        var name = GetNodeName(node);
+                        return !string.IsNullOrEmpty(name) && MatchesValue(name, predicate.Value, predicate.Operator);
+                        
+                    case "kind":
+                        var kind = node.RawKind.ToString();
+                        return MatchesValue(kind, predicate.Value, predicate.Operator);
+                        
+                    case "text":
+                        return MatchesValue(node.ToString(), predicate.Value, predicate.Operator);
+                        
+                    case "line":
+                        var lineSpan = node.GetLocation().GetLineSpan();
+                        return MatchesValue((lineSpan.StartLinePosition.Line + 1).ToString(), predicate.Value, predicate.Operator);
+                        
+                    case "column":
+                        var colSpan = node.GetLocation().GetLineSpan();
+                        return MatchesValue((colSpan.StartLinePosition.Character + 1).ToString(), predicate.Value, predicate.Operator);
+                        
+                    // Expression properties
+                    case "operator":
+                        var op = EnhancedNodeTypes.GetBinaryOperator(node);
+                        return !string.IsNullOrEmpty(op) && MatchesValue(op, predicate.Value, predicate.Operator);
+                        
+                    case "literal-value":
+                        var literalValue = EnhancedNodeTypes.GetLiteralValue(node);
+                        return !string.IsNullOrEmpty(literalValue) && MatchesValue(literalValue, predicate.Value, predicate.Operator);
+                        
+                    case "right-text":
+                        if (node is CS.BinaryExpressionSyntax csBinary)
+                            return MatchesValue(csBinary.Right.ToString(), predicate.Value, predicate.Operator);
+                        if (node is VB.BinaryExpressionSyntax vbBinary)
+                            return MatchesValue(vbBinary.Right.ToString(), predicate.Value, predicate.Operator);
+                        return false;
+                        
+                    case "left-text":
+                        if (node is CS.BinaryExpressionSyntax csLeftBinary)
+                            return MatchesValue(csLeftBinary.Left.ToString(), predicate.Value, predicate.Operator);
+                        if (node is VB.BinaryExpressionSyntax vbLeftBinary)
+                            return MatchesValue(vbLeftBinary.Left.ToString(), predicate.Value, predicate.Operator);
+                        return false;
 
                     default:
                         return false;

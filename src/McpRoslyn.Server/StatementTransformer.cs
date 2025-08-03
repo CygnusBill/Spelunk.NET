@@ -1,10 +1,12 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
+using CS = Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.VisualBasic;
-using Microsoft.CodeAnalysis.VisualBasic.Syntax;
+using VB = Microsoft.CodeAnalysis.VisualBasic.Syntax;
 using Microsoft.CodeAnalysis.Text;
 using System.Text.Json;
+using CSSyntaxKind = Microsoft.CodeAnalysis.CSharp.SyntaxKind;
+using VBSyntaxKind = Microsoft.CodeAnalysis.VisualBasic.SyntaxKind;
 
 namespace McpRoslyn.Server;
 
@@ -49,12 +51,12 @@ public class StatementTransformer
         // For method calls, add null check before
         if (statement.Language == LanguageNames.CSharp)
         {
-            if (statement is ExpressionStatementSyntax exprStmt &&
-                exprStmt.Expression is InvocationExpressionSyntax invocation)
+            if (statement is CS.ExpressionStatementSyntax exprStmt &&
+                exprStmt.Expression is CS.InvocationExpressionSyntax invocation)
             {
                 // Extract the object being called
                 string? objectName = null;
-                if (invocation.Expression is MemberAccessExpressionSyntax memberAccess)
+                if (invocation.Expression is CS.MemberAccessExpressionSyntax memberAccess)
                 {
                     objectName = memberAccess.Expression.ToString();
                 }
@@ -62,8 +64,8 @@ public class StatementTransformer
                 if (!string.IsNullOrEmpty(objectName))
                 {
                     // Check if null check already exists
-                    var alreadyChecked = context.Context?.LocalVariables
-                        .Any(v => v.Name == objectName && v.Usage.Contains("null-checked")) ?? false;
+                    // TODO: Check if null check already exists by examining previous statements
+                    var alreadyChecked = false;
                     
                     if (!alreadyChecked)
                     {
@@ -81,8 +83,8 @@ public class StatementTransformer
     {
         if (statement.Language == LanguageNames.CSharp)
         {
-            if (statement is ExpressionStatementSyntax exprStmt &&
-                exprStmt.Expression is InvocationExpressionSyntax invocation)
+            if (statement is CS.ExpressionStatementSyntax exprStmt &&
+                exprStmt.Expression is CS.InvocationExpressionSyntax invocation)
             {
                 var symbolInfo = _semanticModel.GetSymbolInfo(invocation);
                 if (symbolInfo.Symbol is IMethodSymbol method)
@@ -101,7 +103,7 @@ public class StatementTransformer
                             .Replace(method.Name + "(", asyncMethodName + "(");
                         
                         // Add await if in async context
-                        if (context.Context?.IsAsyncContext == true)
+                        if (context.Context?.EnclosingSymbol?.IsAsyncContext == true)
                         {
                             newStatement = $"await {newStatement}";
                         }
@@ -119,11 +121,11 @@ public class StatementTransformer
     {
         if (statement.Language == LanguageNames.CSharp)
         {
-            if (statement is ExpressionStatementSyntax exprStmt)
+            if (statement is CS.ExpressionStatementSyntax exprStmt)
             {
                 // Find complex expressions to extract
                 var complexExpressions = exprStmt.DescendantNodes()
-                    .Where(n => n is BinaryExpressionSyntax || n is ConditionalExpressionSyntax)
+                    .Where(n => n is CS.BinaryExpressionSyntax || n is CS.ConditionalExpressionSyntax)
                     .Where(n => n.Span.Length > 50); // Arbitrary complexity threshold
                 
                 var expr = complexExpressions.FirstOrDefault();
@@ -148,14 +150,14 @@ public class StatementTransformer
         if (statement.Language == LanguageNames.CSharp)
         {
             // Convert if (x != null) x.Method() to x?.Method()
-            if (statement is IfStatementSyntax ifStmt &&
-                ifStmt.Condition is BinaryExpressionSyntax binary &&
-                binary.IsKind(SyntaxKind.NotEqualsExpression) &&
-                binary.Right.IsKind(SyntaxKind.NullLiteralExpression))
+            if (statement is CS.IfStatementSyntax ifStmt &&
+                ifStmt.Condition is CS.BinaryExpressionSyntax binary &&
+                binary.IsKind(CSSyntaxKind.NotEqualsExpression) &&
+                binary.Right.IsKind(CSSyntaxKind.NullLiteralExpression))
             {
                 var identifier = binary.Left.ToString();
                 
-                if (ifStmt.Statement is BlockSyntax block && block.Statements.Count == 1)
+                if (ifStmt.Statement is CS.BlockSyntax block && block.Statements.Count == 1)
                 {
                     var innerStatement = block.Statements[0].ToString().Trim();
                     if (innerStatement.StartsWith(identifier + "."))
@@ -182,7 +184,7 @@ public class StatementTransformer
                 var modifiedStatement = statement.ToString();
                 
                 // Find string concatenations in SQL
-                if (statement is LocalDeclarationStatementSyntax localDecl)
+                if (statement is CS.LocalDeclarationStatementSyntax localDecl)
                 {
                     foreach (var variable in localDecl.Declaration.Variables)
                     {
@@ -228,7 +230,7 @@ public class StatementTransformer
             {
                 // Parse the format call
                 if (statement.DescendantNodes()
-                    .OfType<InvocationExpressionSyntax>()
+                    .OfType<CS.InvocationExpressionSyntax>()
                     .FirstOrDefault(i => i.Expression.ToString().EndsWith(".Format")) is { } formatCall)
                 {
                     if (formatCall.ArgumentList.Arguments.Count >= 2)
@@ -258,8 +260,8 @@ public class StatementTransformer
         if (statement.Language == LanguageNames.CSharp)
         {
             // Add await to async method calls that are missing it
-            if (statement is ReturnStatementSyntax returnStmt &&
-                returnStmt.Expression is InvocationExpressionSyntax invocation)
+            if (statement is CS.ReturnStatementSyntax returnStmt &&
+                returnStmt.Expression is CS.InvocationExpressionSyntax invocation)
             {
                 var symbolInfo = _semanticModel.GetSymbolInfo(invocation);
                 if (symbolInfo.Symbol is IMethodSymbol method &&
@@ -269,8 +271,8 @@ public class StatementTransformer
                     return statement.ToString().Replace("return ", "return await ");
                 }
             }
-            else if (statement is ExpressionStatementSyntax exprStmt &&
-                     exprStmt.Expression is InvocationExpressionSyntax inv)
+            else if (statement is CS.ExpressionStatementSyntax exprStmt &&
+                     exprStmt.Expression is CS.InvocationExpressionSyntax inv)
             {
                 var symbolInfo = _semanticModel.GetSymbolInfo(inv);
                 if (symbolInfo.Symbol is IMethodSymbol method &&
@@ -309,8 +311,8 @@ public class StatementTransformer
         // Simple variable name generation based on expression type
         return expression switch
         {
-            BinaryExpressionSyntax => "result",
-            ConditionalExpressionSyntax => "condition",
+            CS.BinaryExpressionSyntax => "result",
+            CS.ConditionalExpressionSyntax => "condition",
             _ => "temp"
         };
     }

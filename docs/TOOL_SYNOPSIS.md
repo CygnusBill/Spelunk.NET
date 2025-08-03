@@ -1288,6 +1288,131 @@ Preview:
 
 **Use Case**: Add null safety, modernize async patterns, improve code quality, refactor with semantic understanding
 
+### 7. Enhanced AST Navigation Tools
+
+#### `dotnet-query-syntax`
+**MCP Description**: "Query any syntax node using enhanced RoslynPath with full AST navigation"
+
+**Purpose**: Query the abstract syntax tree using enhanced RoslynPath expressions that support low-level node types and advanced navigation.
+
+**Input Format**:
+```json
+{
+  "roslynPath": "//binary-expression[@operator='==' and @right-text='null']",
+  "file": "/path/to/specific/file.cs",     // Optional: specific file to search
+  "workspacePath": "workspace-id",         // Optional: workspace to search in
+  "includeContext": true,                  // Optional: include surrounding context
+  "contextLines": 2                        // Optional: number of context lines
+}
+```
+
+**Output Format**:
+```json
+{
+  "matches": [
+    {
+      "node": {
+        "type": "BinaryExpression",
+        "kind": "EqualsExpression",
+        "text": "user == null",
+        "location": { "line": 42, "column": 12 }
+      },
+      "path": "UserService/Process/statement[stmt-123]"
+    }
+  ]
+}
+```
+
+**Use Case**: Find specific patterns in code using detailed AST queries (null comparisons, complex expressions, specific node types)
+
+#### `dotnet-navigate`  
+**MCP Description**: "Navigate from a position using RoslynPath axes (ancestor::, following-sibling::, etc.)"
+
+**Purpose**: Navigate the syntax tree from a specific position using XPath-style axes to find related code elements.
+
+**Input Format**:
+```json
+{
+  "from": {
+    "file": "/path/to/file.cs",
+    "line": 42,
+    "column": 15
+  },
+  "path": "ancestor::method[1]/following-sibling::method[1]",
+  "returnPath": true  // Optional: return the RoslynPath of the target
+}
+```
+
+**Output Format**:
+```json
+{
+  "navigatedTo": {
+    "type": "MethodDeclaration",
+    "name": "ProcessNext",
+    "location": { "line": 50, "column": 5 },
+    "path": "//class[UserService]/method[ProcessNext]"
+  }
+}
+```
+
+**Use Case**: Navigate between related code elements (find next method, parent class, enclosing block, sibling statements)
+
+#### `dotnet-get-ast`
+**MCP Description**: "Get AST structure for understanding code hierarchy"
+
+**Purpose**: Retrieve the abstract syntax tree structure for a file or specific node to understand code organization and hierarchy.
+
+**Input Format**:
+```json
+{
+  "file": "/path/to/file.cs",
+  "root": "//method[Process]",    // Optional: RoslynPath to root node
+  "depth": 3,                     // Optional: tree depth (default: 3)
+  "includeTokens": false,         // Optional: include syntax tokens
+  "format": "tree"                // Optional: output format (default: "tree")
+}
+```
+
+**Output Format**:
+```json
+{
+  "ast": {
+    "type": "MethodDeclaration",
+    "name": "Process",
+    "children": [
+      {
+        "type": "ParameterList",
+        "children": [
+          {
+            "type": "Parameter",
+            "name": "user",
+            "type": "User"
+          }
+        ]
+      },
+      {
+        "type": "Block",
+        "children": [
+          {
+            "type": "IfStatement",
+            "children": [
+              {
+                "type": "BinaryExpression",
+                "operator": "==",
+                "left": { "type": "Identifier", "name": "user" },
+                "right": { "type": "Literal", "value": "null" }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+**Use Case**: Understand code structure, learn AST node types, debug RoslynPath queries, analyze code patterns
+
 ## Usage Patterns
 
 ### 1. Discovery → Analysis → Modification
@@ -1468,13 +1593,14 @@ Preview:
 
 ## Tool Implementation Status
 
-### Fully Implemented (25 tools)
+### Fully Implemented (28 tools)
 - ✅ Workspace: load-workspace, workspace-status, get-diagnostics
 - ✅ Discovery: find-class, find-method, find-property
 - ✅ Relationships: find-method-calls, find-method-callers, find-references, find-implementations, find-overrides, find-derived-types
 - ✅ Statements: find-statements, replace-statement, insert-statement, remove-statement
 - ✅ Markers: mark-statement, find-marked-statements, unmark-statement, clear-markers
 - ✅ Refactoring: rename-symbol, edit-code, fix-pattern
+- ✅ AST Navigation: query-syntax, navigate, get-ast
 
 ### Not Implemented (3 tools)
 - ❌ analyze-syntax: Syntax tree analysis (placeholder)

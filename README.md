@@ -5,11 +5,12 @@ A Model Context Protocol (MCP) server that provides powerful code analysis and m
 ## Overview
 
 This MCP server exposes Roslyn's advanced code analysis capabilities, allowing AI agents to:
-- **Analyze** C# code at both syntactic and semantic levels
+- **Analyze** C#, VB.NET, and F# code at both syntactic and semantic levels
 - **Search** for symbols, references, and patterns across entire solutions
-- **Navigate** code relationships and type hierarchies
+- **Navigate** code relationships and AST structure with XPath-style queries
 - **Modify** code safely using Roslyn's syntax tree manipulation
 - **Refactor** with confidence using semantic understanding
+- **Query** abstract syntax trees with enhanced RoslynPath expressions
 
 ## Key Capabilities
 
@@ -70,6 +71,22 @@ The server leverages Roslyn's unique ability to seamlessly move between syntacti
 - `dotnet/load-workspace` - Load a .NET solution or project
 - `dotnet/analyze-syntax` - Get syntax tree information
 - `dotnet/workspace-status` - Check workspace loading status
+
+### Advanced AST Navigation
+- `dotnet/query-syntax` - Query AST using enhanced RoslynPath expressions
+  - Support for expression-level nodes (binary-expression, literal, identifier)
+  - Advanced predicates (@operator, @literal-value, @contains)
+  - Find specific patterns like null checks, string comparisons
+  
+- `dotnet/navigate` - Navigate from any position using XPath-style axes
+  - Navigate to parent, ancestor, child, descendant nodes
+  - Find siblings with following-sibling:: and preceding-sibling::
+  - Chain navigation paths like "parent::method/following-sibling::method"
+  
+- `dotnet/get-ast` - Get abstract syntax tree structure
+  - Visualize code hierarchy and node relationships
+  - Debug RoslynPath queries
+  - Understand AST node types for pattern matching
 
 ## Building and Running
 

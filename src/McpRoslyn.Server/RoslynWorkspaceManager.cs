@@ -1992,7 +1992,7 @@ public class RoslynWorkspaceManager : IDisposable
                 {
                     // Get semantic context for the statement
                     var context = await GetStatementContextAsync(
-                        statementInfo.Location.FilePath,
+                        statementInfo.Location.File,
                         statementInfo.Location.Line,
                         statementInfo.Location.Column,
                         workspacePath);
@@ -2002,7 +2002,7 @@ public class RoslynWorkspaceManager : IDisposable
                     var solution = workspace?.CurrentSolution;
                     var document = solution?.Projects
                         .SelectMany(p => p.Documents)
-                        .FirstOrDefault(d => d.FilePath == statementInfo.Location.FilePath);
+                        .FirstOrDefault(d => d.FilePath == statementInfo.Location.File);
                     
                     if (document != null)
                     {
@@ -2017,7 +2017,7 @@ public class RoslynWorkspaceManager : IDisposable
                                 statementInfo.Location.Line - 1,
                                 statementInfo.Location.Column - 1));
                             var node = root.FindNode(new TextSpan(position, 0));
-                            var statement = node.AncestorsAndSelf().OfType<StatementSyntax>().FirstOrDefault();
+                            var statement = node.AncestorsAndSelf().OfType<CS.StatementSyntax>().FirstOrDefault();
                             
                             if (statement != null)
                             {
@@ -2028,7 +2028,7 @@ public class RoslynWorkspaceManager : IDisposable
                                 {
                                     result.Fixes.Add(new PatternFix
                                     {
-                                        FilePath = statementInfo.Location.FilePath,
+                                        FilePath = statementInfo.Location.File,
                                         Line = statementInfo.Location.Line,
                                         Column = statementInfo.Location.Column,
                                         OriginalCode = statementInfo.Text,
@@ -2056,7 +2056,7 @@ public class RoslynWorkspaceManager : IDisposable
                 {
                     result.Fixes.Add(new PatternFix
                     {
-                        FilePath = statementInfo.Location.FilePath,
+                        FilePath = statementInfo.Location.File,
                         Line = statementInfo.Location.Line,
                         Column = statementInfo.Location.Column,
                         OriginalCode = statementInfo.Text,
@@ -2129,7 +2129,7 @@ public class RoslynWorkspaceManager : IDisposable
                             Line = lineSpan.StartLinePosition.Line + 1,
                             Column = lineSpan.StartLinePosition.Character + 1,
                             OriginalCode = "async",
-                            FixedCode = "",
+                            ReplacementCode = "",
                             Description = $"Remove unnecessary async modifier from {method.Identifier.Text}"
                         });
                     }
@@ -2153,7 +2153,7 @@ public class RoslynWorkspaceManager : IDisposable
                             Line = lineSpan.StartLinePosition.Line + 1,
                             Column = lineSpan.StartLinePosition.Character + 1,
                             OriginalCode = "Async",
-                            FixedCode = "",
+                            ReplacementCode = "",
                             Description = $"Remove unnecessary Async modifier from {method.SubOrFunctionStatement.Identifier.Text}"
                         });
                     }
@@ -2181,7 +2181,7 @@ public class RoslynWorkspaceManager : IDisposable
                             Line = lineSpan.StartLinePosition.Line + 1,
                             Column = lineSpan.StartLinePosition.Character + 1,
                             OriginalCode = invocation.ToString(),
-                            FixedCode = $"await {invocation}",
+                            ReplacementCode = $"await {invocation}",
                             Description = $"Add missing await to async call"
                         });
                     }
@@ -2205,7 +2205,7 @@ public class RoslynWorkspaceManager : IDisposable
                             Line = lineSpan.StartLinePosition.Line + 1,
                             Column = lineSpan.StartLinePosition.Character + 1,
                             OriginalCode = invocation.ToString(),
-                            FixedCode = $"Await {invocation}",
+                            ReplacementCode = $"Await {invocation}",
                             Description = $"Add missing Await to async call"
                         });
                     }
@@ -2245,7 +2245,7 @@ public class RoslynWorkspaceManager : IDisposable
                                 Line = lineSpan.StartLinePosition.Line + 1,
                                 Column = lineSpan.StartLinePosition.Character + 1,
                                 OriginalCode = ifStatement.ToString(),
-                                FixedCode = bodyText.Replace($"{identifier}.", $"{identifier}?.").Trim('{', '}', ' ', '\n', '\r'),
+                                ReplacementCode = bodyText.Replace($"{identifier}.", $"{identifier}?.").Trim('{', '}', ' ', '\n', '\r'),
                                 Description = "Replace null check with null-conditional operator"
                             });
                         }
@@ -2276,7 +2276,7 @@ public class RoslynWorkspaceManager : IDisposable
                                 Line = lineSpan.StartLinePosition.Line + 1,
                                 Column = lineSpan.StartLinePosition.Character + 1,
                                 OriginalCode = ifStatement.ToString(),
-                                FixedCode = bodyText.Replace($"{identifier}.", $"{identifier}?.").Trim(),
+                                ReplacementCode = bodyText.Replace($"{identifier}.", $"{identifier}?.").Trim(),
                                 Description = "Replace null check with null-conditional operator"
                             });
                         }
@@ -2306,7 +2306,7 @@ public class RoslynWorkspaceManager : IDisposable
                                 Line = lineSpan.StartLinePosition.Line + 1,
                                 Column = lineSpan.StartLinePosition.Character + 1,
                                 OriginalCode = ifStatement.ToString(),
-                                FixedCode = bodyText.Replace($"{identifier}.", $"{identifier}?."),
+                                ReplacementCode = bodyText.Replace($"{identifier}.", $"{identifier}?."),
                                 Description = "Replace null check with null-conditional operator"
                             });
                         }
@@ -2350,7 +2350,7 @@ public class RoslynWorkspaceManager : IDisposable
                             Line = lineSpan.StartLinePosition.Line + 1,
                             Column = lineSpan.StartLinePosition.Character + 1,
                             OriginalCode = invocation.ToString(),
-                            FixedCode = $"$\"{interpolated}\"",
+                            ReplacementCode = $"$\"{interpolated}\"",
                             Description = "Convert string.Format to string interpolation"
                         });
                     }
@@ -2383,7 +2383,7 @@ public class RoslynWorkspaceManager : IDisposable
                             Line = lineSpan.StartLinePosition.Line + 1,
                             Column = lineSpan.StartLinePosition.Character + 1,
                             OriginalCode = invocation.ToString(),
-                            FixedCode = $"$\"{interpolated}\"",
+                            ReplacementCode = $"$\"{interpolated}\"",
                             Description = "Convert String.Format to string interpolation"
                         });
                     }
@@ -5400,6 +5400,7 @@ public class EnclosingSymbolInfo
     public string Name { get; set; } = "";
     public string Kind { get; set; } = "";
     public string? ContainingType { get; set; }
+    public bool IsAsyncContext { get; set; }
 }
 
 public class EnclosingBlockInfo

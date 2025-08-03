@@ -65,4 +65,10 @@ public static class ToolDescriptions
     public const string LoadFSharpProject = "Load an F# project using FSharp.Compiler.Service (separate from MSBuild workspaces)";
     
     public const string FSharpFindSymbols = "Find symbols in F# code using FSharpPath queries";
+    
+    public const string QuerySyntax = "Query any syntax node using enhanced RoslynPath with full AST navigation";
+    
+    public const string Navigate = "Navigate from a position using RoslynPath axes (ancestor::, following-sibling::, etc.)";
+    
+    public const string GetAst = "Get AST structure for understanding code hierarchy";
 }
