@@ -66,6 +66,38 @@ RoslynPath provides stable code references that survive edits:
 - Survive through code edits but not file reloads
 - Built on Roslyn's SyntaxAnnotation system for reliable node tracking
 
+## Choosing the Right Tool
+
+The server offers two complementary approaches for code analysis:
+
+### Semantic Tools (find-* family)
+Use these when you need:
+- Type information and symbol resolution
+- Cross-file analysis (implementations, overrides, references)
+- Rich metadata (fully qualified names, project context)
+- Simple, task-focused queries
+- Information about inheritance and interfaces
+
+**Best for**: "Find all implementations of IDisposable", "Find methods that override BaseMethod", "Find all references to this property"
+
+### Syntactic Tools (RoslynPath-based)
+Use these when you need:
+- Complex structural patterns
+- Expression-level queries
+- Code style analysis
+- Performance (no compilation required)
+- Queries on potentially broken code
+
+**Best for**: "Find all null comparisons in if statements", "Find methods with more than 10 parameters", "Find all TODO comments in catch blocks"
+
+### Quick Decision Guide
+- **Finding a specific method by name?** → Use `find-method`
+- **Finding methods with specific patterns?** → Use `query-syntax` with RoslynPath
+- **Need type information?** → Use semantic tools
+- **Need AST navigation?** → Use syntactic tools
+- **Simple query?** → Start with find-* tools
+- **Complex query?** → Use RoslynPath
+
 ## Tool Categories
 
 ### 1. Workspace Management
@@ -1302,7 +1334,8 @@ Preview:
   "file": "/path/to/specific/file.cs",     // Optional: specific file to search
   "workspacePath": "workspace-id",         // Optional: workspace to search in
   "includeContext": true,                  // Optional: include surrounding context
-  "contextLines": 2                        // Optional: number of context lines
+  "contextLines": 2,                       // Optional: number of context lines
+  "includeSemanticInfo": true              // Optional: include semantic information (types, symbols)
 }
 ```
 
@@ -1317,7 +1350,17 @@ Preview:
         "text": "user == null",
         "location": { "line": 42, "column": 12 }
       },
-      "path": "UserService/Process/statement[stmt-123]"
+      "path": "UserService/Process/statement[stmt-123]",
+      "semanticInfo": {                    // Only if includeSemanticInfo: true
+        "type": {
+          "name": "bool",
+          "kind": "Primitive"
+        },
+        "enclosingContext": {
+          "symbol": "UserService.Process(User)",
+          "kind": "Method"
+        }
+      }
     }
   ]
 }

@@ -86,7 +86,13 @@ An XPath-inspired query language specifically for F# AST:
 - Active patterns and computation expressions support
 
 ### 5. Tool Composition
-Complex refactorings are built from simple, composable tools. The 27 implemented tools can be combined for powerful operations.
+Complex refactorings are built from simple, composable tools. The 33 implemented tools can be combined for powerful operations.
+
+### 6. Semantic vs Syntactic Tools
+The server provides two complementary tool categories:
+- **Semantic tools** (find-* family): Task-focused, return rich type information using Roslyn's semantic model
+- **Syntactic tools** (RoslynPath-based): Query-focused, provide flexible pattern matching on syntax trees
+- See `docs/design/SEMANTIC_VS_SYNTACTIC_TOOLS.md` for architectural philosophy
 
 ## Documentation Guide
 
@@ -265,3 +271,43 @@ When adding new features:
 3. Add integration tests in `tests/tools/`
 4. Consider RoslynPath integration for stability
 5. Document design decisions in `docs/design/`
+
+## F# Architecture
+
+### Why F# is Different
+
+F# requires separate handling from C#/VB.NET because:
+- **Different Compiler**: Uses FSharp.Compiler.Service instead of Roslyn
+- **Different AST**: Expression-based functional AST vs statement-based OO AST  
+- **MSBuild Limitation**: MSBuildWorkspace cannot load F# projects
+- **Type System**: Advanced type inference, discriminated unions, type providers
+
+### Implementation Strategy
+
+We maintain parallel infrastructure while providing a unified interface:
+
+```
+MCP Client Request → Unified Tool Interface → Language Router
+                                                 ├── Roslyn Engine (C#/VB.NET)
+                                                 └── F# Engine (FSharp.Compiler.Service)
+```
+
+### Key F# Components
+
+1. **FSharpWorkspaceManager**: Manages F# projects outside MSBuildWorkspace
+2. **FSharpProjectTracker**: Tracks F# projects that couldn't load in Roslyn
+3. **FSharpPath**: XPath-like query language for F# AST (like RoslynPath for C#/VB)
+4. **Symbol Mapper**: Translates between F# and Roslyn symbol formats
+
+### F# Development Guides
+
+- **Architecture**: `docs/design/FSHARP_ARCHITECTURE.md` - Why and how F# differs
+- **Implementation**: `docs/design/FSHARP_IMPLEMENTATION_GUIDE.md` - Technical details
+- **Roadmap**: `docs/design/FSHARP_ROADMAP.md` - Planned features and timeline
+
+### Current F# Status
+
+F# support is currently disabled (commented out) pending full implementation. The infrastructure is designed but not active. To work with F#:
+1. Project detection works (reports skipped F# projects)
+2. Full support requires uncommenting FSharpWorkspaceManager
+3. See roadmap for implementation timeline
