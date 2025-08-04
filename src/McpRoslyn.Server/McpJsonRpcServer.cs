@@ -97,10 +97,14 @@ public class McpJsonRpcServer
                 if (request == null) continue;
                 
                 // Process request
+                _logger.LogInformation("Processing request: {Method}, ID: {Id}", request.Method, request.Id);
                 var response = await ProcessRequestAsync(request);
+                _logger.LogInformation("ProcessRequestAsync completed, response type: {Type}, ID: {Id}", response?.GetType().Name ?? "null", response?.Id);
                 
                 // Send response
+                _logger.LogInformation("Calling SendResponseAsync for ID: {Id}", response?.Id);
                 await SendResponseAsync(writer, response);
+                _logger.LogInformation("SendResponseAsync completed for ID: {Id}", response?.Id);
             }
             catch (Exception ex)
             {
@@ -1138,7 +1142,7 @@ public class McpJsonRpcServer
                     new
                     {
                         type = "text",
-                        text = JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true })
+                        text = JsonSerializer.Serialize(result, _jsonOptions)
                     }
                 }
             };
@@ -1261,9 +1265,13 @@ public class McpJsonRpcServer
     private async Task SendResponseAsync(TextWriter writer, JsonRpcResponse response)
     {
         var json = JsonSerializer.Serialize(response, _jsonOptions);
+        _logger.LogInformation("About to send JSON response, length: {Length}, ID: {Id}", json.Length, response.Id);
+        _logger.LogInformation("JSON preview: {Preview}...", json.Length > 200 ? json.Substring(0, 200) : json);
+        
         await writer.WriteLineAsync(json);
         await writer.FlushAsync();
-        _logger.LogDebug("Sent: {Response}", json);
+        
+        _logger.LogInformation("JSON sent and flushed successfully for ID: {Id}", response.Id);
     }
     
     private async Task<object> FindClassAsync(JsonElement? args)

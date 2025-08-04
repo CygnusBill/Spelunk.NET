@@ -65,7 +65,7 @@ class TestClient:
                 stdout=subprocess.PIPE, 
                 stderr=subprocess.PIPE,
                 text=True,
-                bufsize=0,
+                bufsize=1,  # Line buffered instead of unbuffered
                 env=env,
                 preexec_fn=os.setsid  # Create new process group for better cleanup
             )
@@ -108,17 +108,29 @@ class TestClient:
     def _read_stdout(self):
         """Read responses from server stdout"""
         try:
-            for line in self.process.stdout:
-                if line.strip():
-                    # Skip build output
-                    if any(skip in line for skip in ['/bin/', '.csproj', 'warning CS', 'Determining projects', 'NETSDK']):
-                        continue
-                    print(f"Server response: {line.strip()}")
-                    try:
-                        response = json.loads(line)
-                        self.response_queue.put(response)
-                    except json.JSONDecodeError:
-                        pass  # Skip non-JSON lines
+            buffer = ""
+            while True:
+                # Read in small chunks to handle very long lines
+                chunk = self.process.stdout.read(1024)
+                if not chunk:  # EOF
+                    break
+                
+                buffer += chunk
+                
+                # Process complete lines
+                while '\n' in buffer:
+                    line, buffer = buffer.split('\n', 1)
+                    if line.strip():
+                        # Skip build output
+                        if any(skip in line for skip in ['/bin/', '.csproj', 'warning CS', 'Determining projects', 'NETSDK']):
+                            continue
+                        print(f"Server response received: {len(line)} chars")
+                        try:
+                            response = json.loads(line)
+                            self.response_queue.put(response)
+                            print(f"✅ JSON parsed and queued successfully")
+                        except json.JSONDecodeError as e:
+                            print(f"JSON parse error: {e} for line: {line.strip()[:200]}...")  # Show first 200 chars
         except Exception as e:
             # Handle broken pipe or other stdout reading errors gracefully
             print(f"stdout reader thread ended: {e}")
