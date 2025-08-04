@@ -119,8 +119,13 @@ class SimpleClient:
     def close(self):
         """Clean up"""
         if self.process:
-            self.process.terminate()
-            self.process.wait(timeout=5)
+            try:
+                self.process.terminate()
+                self.process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                # Force kill if terminate doesn't work
+                self.process.kill()
+                self.process.wait()
 
 if __name__ == "__main__":
     # Test the simple client
