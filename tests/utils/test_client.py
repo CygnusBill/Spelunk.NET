@@ -122,7 +122,7 @@ class TestClient:
         self._send_request(request)
         response = self._wait_for_response()
         
-        if "error" in response:
+        if "error" in response and response["error"] is not None:
             return {
                 "success": False,
                 "message": response["error"].get("message", "Unknown error"),

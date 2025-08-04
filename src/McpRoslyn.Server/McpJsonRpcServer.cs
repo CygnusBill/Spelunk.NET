@@ -6,7 +6,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
 using CS = Microsoft.CodeAnalysis.CSharp.Syntax;
-// using McpRoslyn.Server.FSharp; // Disabled for diagnostic PoC
+using McpRoslyn.Server.FSharp;
 
 namespace McpRoslyn.Server;
 
@@ -3409,6 +3409,25 @@ public class McpJsonRpcServer
             string? filePath = null;
             if (args.Value.TryGetProperty("file", out var fileElement))
                 filePath = fileElement.GetString();
+                
+            // Check if this is an F# file
+            if (!string.IsNullOrEmpty(filePath) && FSharpFileDetector.IsFSharpFile(filePath))
+            {
+                _logger.LogInformation("F# file detected in query-syntax: {File}", filePath);
+                // For now, return a simple F# not supported message directly
+                return new
+                {
+                    success = false,
+                    message = FSharpFileDetector.GetFSharpNotSupportedMessage("query-syntax", filePath),
+                    info = new
+                    {
+                        requestedFile = filePath,
+                        requestedQuery = roslynPath,
+                        note = "F# will use FSharpPath syntax instead of RoslynPath",
+                        documentationLink = "docs/design/FSHARP_IMPLEMENTATION_GUIDE.md#fsharppath-query-language"
+                    }
+                };
+            }
                 
             string? workspaceId = null;
             if (args.Value.TryGetProperty("workspacePath", out var workspaceElement))
