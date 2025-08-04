@@ -3525,24 +3525,22 @@ public class McpJsonRpcServer
                         object? semanticInfo = null;
                         if (includeSemanticInfo && semanticModel != null)
                         {
-                            semanticInfo = GetSemanticInfo(node, semanticModel, document.Project.Name);
+                            semanticInfo = GetSemanticInfo(node, semanticModel, document);
                         }
                         
                         var match = new
                         {
-                            node = new
-                            {
-                                type = nodeType,
-                                kind = node.Kind().ToString(),
-                                text = node.ToString(),
-                                location = new
-                                {
-                                    file = document.FilePath,
-                                    line = lineSpan.StartLinePosition.Line + 1,
-                                    column = lineSpan.StartLinePosition.Character + 1
-                                }
-                            },
+                            nodeType = nodeType,
                             path = RoslynPath.RoslynPath.GetNodePath(node),
+                            location = new
+                            {
+                                file = document.FilePath,
+                                startLine = lineSpan.StartLinePosition.Line + 1,
+                                startColumn = lineSpan.StartLinePosition.Character + 1,
+                                endLine = lineSpan.EndLinePosition.Line + 1,
+                                endColumn = lineSpan.EndLinePosition.Character + 1
+                            },
+                            text = node.ToString(),
                             context = includeContext ? await GetContextLines(document, lineSpan.StartLinePosition.Line, contextLines) : null,
                             semanticInfo = semanticInfo
                         };
@@ -3556,7 +3554,7 @@ public class McpJsonRpcServer
                 }
             }
             
-            return new { matches };
+            return new { nodes = matches };
         }
         catch (Exception ex)
         {
@@ -3665,25 +3663,28 @@ public class McpJsonRpcServer
                 var semanticModel = await document.GetSemanticModelAsync();
                 if (semanticModel != null)
                 {
-                    semanticInfo = GetSemanticInfo(targetNode, semanticModel, document.Project.Name);
+                    semanticInfo = GetSemanticInfo(targetNode, semanticModel, document);
                 }
             }
             
-            var navigatedTo = new
+            var target = new
             {
-                type = RoslynPath.EnhancedNodeTypes.GetDetailedNodeTypeName(targetNode),
+                nodeType = RoslynPath.EnhancedNodeTypes.GetDetailedNodeTypeName(targetNode),
                 name = GetNodeName(targetNode),
                 location = new
                 {
                     file = filePath,
-                    line = lineSpan.StartLinePosition.Line + 1,
-                    column = lineSpan.StartLinePosition.Character + 1
+                    startLine = lineSpan.StartLinePosition.Line + 1,
+                    startColumn = lineSpan.StartLinePosition.Character + 1,
+                    endLine = lineSpan.EndLinePosition.Line + 1,
+                    endColumn = lineSpan.EndLinePosition.Character + 1
                 },
                 path = returnPath ? BuildNodePath(targetNode) : null,
+                text = targetNode.ToString(),
                 semanticInfo = semanticInfo
             };
             
-            return new { navigatedTo };
+            return new { target };
         }
         catch (Exception ex)
         {
@@ -3875,7 +3876,9 @@ public class McpJsonRpcServer
             }
             
             // Build the AST representation
-            var ast = BuildAstNode(targetNode, depth, includeTokens, semanticModel, document.Project.Name);
+            var ast = includeSemanticInfo && semanticModel != null
+                ? await BuildAstNodeAsync(targetNode, depth, includeTokens, semanticModel, document)
+                : BuildAstNode(targetNode, depth, includeTokens, null, null);
             
             return new { ast };
         }
@@ -3884,6 +3887,68 @@ public class McpJsonRpcServer
             _logger.LogError(ex, "Error in GetAstAsync");
             return CreateErrorResponse($"Error getting AST: {ex.Message}");
         }
+    }
+    
+    private async Task<object> BuildAstNodeAsync(SyntaxNode node, int remainingDepth, bool includeTokens, SemanticModel semanticModel, Document document)
+    {
+        var nodeType = RoslynPath.EnhancedNodeTypes.GetDetailedNodeTypeName(node);
+        var result = new Dictionary<string, object>
+        {
+            ["nodeType"] = nodeType,
+            ["kind"] = node.Kind().ToString()
+        };
+        
+        // Add name if available
+        var name = GetNodeName(node);
+        if (!string.IsNullOrEmpty(name))
+            result["name"] = name;
+            
+        // Add semantic info
+        var semanticInfo = GetSemanticInfo(node, semanticModel, document);
+        if (semanticInfo != null)
+            result["semanticInfo"] = semanticInfo;
+            
+        // Add specific properties based on node type
+        if (node is CS.BinaryExpressionSyntax binary)
+        {
+            result["operator"] = RoslynPath.EnhancedNodeTypes.GetBinaryOperator(node) ?? "";
+            if (remainingDepth > 0)
+            {
+                result["left"] = await BuildAstNodeAsync(binary.Left, remainingDepth - 1, includeTokens, semanticModel, document);
+                result["right"] = await BuildAstNodeAsync(binary.Right, remainingDepth - 1, includeTokens, semanticModel, document);
+            }
+        }
+        else if (node is CS.LiteralExpressionSyntax literal)
+        {
+            result["value"] = RoslynPath.EnhancedNodeTypes.GetLiteralValue(node) ?? "";
+        }
+        else if (remainingDepth > 0)
+        {
+            // Add children for other node types
+            var children = new List<object>();
+            foreach (var child in node.ChildNodes())
+            {
+                children.Add(await BuildAstNodeAsync(child, remainingDepth - 1, includeTokens, semanticModel, document));
+            }
+            
+            if (children.Count > 0)
+                result["children"] = children;
+        }
+        
+        if (includeTokens && remainingDepth > 0)
+        {
+            var tokens = node.ChildTokens().Select(t => new
+            {
+                kind = t.Kind().ToString(),
+                text = t.Text,
+                value = t.Value?.ToString()
+            }).ToList();
+            
+            if (tokens.Count > 0)
+                result["tokens"] = tokens;
+        }
+        
+        return result;
     }
     
     private object BuildAstNode(SyntaxNode node, int remainingDepth, bool includeTokens, SemanticModel? semanticModel = null, string? projectName = null)
@@ -3903,7 +3968,9 @@ public class McpJsonRpcServer
         // Add semantic info if available
         if (semanticModel != null && projectName != null)
         {
-            var semanticInfo = GetSemanticInfo(node, semanticModel, projectName);
+            // TODO: Refactor BuildAstNode to be async and pass Document
+            // var semanticInfo = await GetSemanticInfo(node, semanticModel, document);
+            object? semanticInfo = null;
             if (semanticInfo != null)
                 result["semanticInfo"] = semanticInfo;
         }
@@ -4171,144 +4238,22 @@ public class McpJsonRpcServer
         }
     }
     
-    private static object? GetSemanticInfo(SyntaxNode node, SemanticModel semanticModel, string projectName)
+    private static object? GetSemanticInfo(SyntaxNode node, SemanticModel semanticModel, Document document)
     {
-            try
-            {
-                var symbolInfo = semanticModel.GetSymbolInfo(node);
-                var typeInfo = semanticModel.GetTypeInfo(node);
-                var declaredSymbol = semanticModel.GetDeclaredSymbol(node);
-                
-                var semanticData = new Dictionary<string, object?>();
-                
-                // Symbol information
-                if (symbolInfo.Symbol != null)
-                {
-                    semanticData["symbol"] = new
-                    {
-                        name = symbolInfo.Symbol.Name,
-                        kind = symbolInfo.Symbol.Kind.ToString(),
-                        containingType = symbolInfo.Symbol.ContainingType?.ToDisplayString(),
-                        containingNamespace = symbolInfo.Symbol.ContainingNamespace?.ToDisplayString(),
-                        isStatic = symbolInfo.Symbol.IsStatic,
-                        isAbstract = symbolInfo.Symbol.IsAbstract,
-                        isVirtual = symbolInfo.Symbol.IsVirtual,
-                        isOverride = symbolInfo.Symbol.IsOverride,
-                        accessibility = symbolInfo.Symbol.DeclaredAccessibility.ToString()
-                    };
-                }
-                else if (declaredSymbol != null)
-                {
-                    // For declarations, use the declared symbol
-                    semanticData["declaredSymbol"] = new
-                    {
-                        name = declaredSymbol.Name,
-                        kind = declaredSymbol.Kind.ToString(),
-                        fullyQualifiedName = declaredSymbol.ToDisplayString(),
-                        containingType = declaredSymbol.ContainingType?.ToDisplayString(),
-                        containingNamespace = declaredSymbol.ContainingNamespace?.ToDisplayString(),
-                        isStatic = declaredSymbol.IsStatic,
-                        isAbstract = declaredSymbol.IsAbstract,
-                        isVirtual = declaredSymbol.IsVirtual,
-                        isOverride = declaredSymbol.IsOverride,
-                        accessibility = declaredSymbol.DeclaredAccessibility.ToString(),
-                        typeParameters = declaredSymbol is INamedTypeSymbol namedType 
-                            ? namedType.TypeParameters.Select(tp => tp.Name).ToArray() 
-                            : null,
-                        interfaces = declaredSymbol is INamedTypeSymbol nt 
-                            ? nt.Interfaces.Select(i => i.ToDisplayString()).ToArray() 
-                            : null,
-                        baseType = declaredSymbol is INamedTypeSymbol nt2 && nt2.BaseType != null 
-                            ? nt2.BaseType.ToDisplayString() 
-                            : null
-                    };
-                }
-                
-                // Type information (for expressions)
-                if (typeInfo.Type != null)
-                {
-                    semanticData["type"] = new
-                    {
-                        name = typeInfo.Type.ToDisplayString(),
-                        kind = typeInfo.Type.TypeKind.ToString(),
-                        isValueType = typeInfo.Type.IsValueType,
-                        isReferenceType = typeInfo.Type.IsReferenceType,
-                        isNullable = typeInfo.Type.NullableAnnotation == NullableAnnotation.Annotated,
-                        specialType = typeInfo.Type.SpecialType != SpecialType.None 
-                            ? typeInfo.Type.SpecialType.ToString() 
-                            : null
-                    };
-                }
-                
-                // Converted type (if different from type)
-                if (typeInfo.ConvertedType != null && !SymbolEqualityComparer.Default.Equals(typeInfo.Type, typeInfo.ConvertedType))
-                {
-                    semanticData["convertedType"] = new
-                    {
-                        name = typeInfo.ConvertedType.ToDisplayString(),
-                        kind = typeInfo.ConvertedType.TypeKind.ToString()
-                    };
-                }
-                
-                // For method calls, get method-specific info
-                if (symbolInfo.Symbol is IMethodSymbol method)
-                {
-                    semanticData["methodInfo"] = new
-                    {
-                        returnType = method.ReturnType.ToDisplayString(),
-                        parameters = method.Parameters.Select(p => new
-                        {
-                            name = p.Name,
-                            type = p.Type.ToDisplayString(),
-                            isOptional = p.IsOptional,
-                            isParams = p.IsParams,
-                            hasDefaultValue = p.HasExplicitDefaultValue,
-                            defaultValue = p.HasExplicitDefaultValue ? p.ExplicitDefaultValue?.ToString() : null
-                        }).ToArray(),
-                        isAsync = method.IsAsync,
-                        isExtensionMethod = method.IsExtensionMethod,
-                        isGenericMethod = method.IsGenericMethod,
-                        typeArguments = method.TypeArguments.Select(ta => ta.ToDisplayString()).ToArray()
-                    };
-                }
-                
-                // For property access, get property-specific info
-                if (symbolInfo.Symbol is IPropertySymbol property)
-                {
-                    semanticData["propertyInfo"] = new
-                    {
-                        type = property.Type.ToDisplayString(),
-                        isReadOnly = property.IsReadOnly,
-                        isWriteOnly = property.IsWriteOnly,
-                        isIndexer = property.IsIndexer,
-                        isAutoProperty = property.GetMethod?.IsImplicitlyDeclared == true && property.SetMethod?.IsImplicitlyDeclared == true
-                    };
-                }
-                
-                // Get containing method or type context
-                var containingSymbol = semanticModel.GetEnclosingSymbol(node.SpanStart);
-                if (containingSymbol != null)
-                {
-                    semanticData["enclosingContext"] = new
-                    {
-                        symbol = containingSymbol.ToDisplayString(),
-                        kind = containingSymbol.Kind.ToString()
-                    };
-                }
-                
-                // Add project context
-                semanticData["project"] = projectName;
-                
-                return semanticData.Count > 0 ? semanticData : null;
-            }
-            catch (Exception ex)
-            {
-                // Return error info if semantic analysis fails
-                return new
-                {
-                    error = "Failed to get semantic information",
-                    message = ex.Message
-                };
-            }
+        try
+        {
+            var extractor = new SemanticInfoExtractor(semanticModel, document);
+            var info = extractor.ExtractSemanticInfo(node);
+            
+            return info.Count > 0 ? info : null;
         }
-    }
+        catch (Exception ex)
+        {
+            // Return error info if semantic analysis fails
+            return new
+            {
+                error = "Semantic analysis failed",
+                message = ex.Message
+            };
+        }
+    }}

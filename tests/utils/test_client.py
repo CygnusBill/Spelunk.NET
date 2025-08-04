@@ -23,6 +23,7 @@ class TestClient:
         self.process = None
         self.response_queue = queue.Queue()
         self.request_id = 0
+        self._initialized = False
         self._start_server()
     
     def _start_server(self):
@@ -94,9 +95,10 @@ class TestClient:
             elapsed += wait_interval
             
             # Check if we can communicate with the server by trying initialization
-            if elapsed >= 1:  # Reduced to 1 second since startup should be fast now
+            if elapsed >= 1 and not self._initialized:  # Reduced to 1 second since startup should be fast now
                 try:
                     self._initialize()
+                    self._initialized = True
                     print(f"✅ Server initialized successfully in {elapsed:.1f} seconds")
                     return  # Success!
                 except Exception as e:
@@ -182,12 +184,22 @@ class TestClient:
         except BrokenPipeError as e:
             raise RuntimeError(f"Failed to send request to server (broken pipe): {e}. Server may have crashed.")
     
-    def _wait_for_response(self, timeout=10):
-        """Wait for and return next response"""
-        try:
-            return self.response_queue.get(timeout=timeout)
-        except queue.Empty:
-            raise TimeoutError(f"No response received within {timeout} seconds")
+    def _wait_for_response(self, timeout=10, request_id=None):
+        """Wait for and return next response, optionally matching request ID"""
+        start_time = time.time()
+        
+        while time.time() - start_time < timeout:
+            try:
+                response = self.response_queue.get(timeout=0.1)
+                if request_id is None or response.get("id") == request_id:
+                    return response
+                else:
+                    # Put it back if it's not the one we're looking for
+                    self.response_queue.put(response)
+            except queue.Empty:
+                continue
+                
+        raise TimeoutError(f"No response received within {timeout} seconds for request ID {request_id}")
     
     def call_tool(self, tool_name, arguments=None, timeout=30):
         """Call an MCP tool and return the result"""
@@ -205,7 +217,7 @@ class TestClient:
         }
         
         self._send_request(request)
-        response = self._wait_for_response(timeout=timeout)  # Use configurable timeout
+        response = self._wait_for_response(timeout=timeout, request_id=request["id"])  # Use configurable timeout
         
         if "error" in response and response["error"] is not None:
             return {
