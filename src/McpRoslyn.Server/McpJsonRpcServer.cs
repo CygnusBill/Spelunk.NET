@@ -17,20 +17,20 @@ public class McpJsonRpcServer
     private readonly JsonSerializerOptions _jsonOptions;
     private List<string> _allowedPaths;
     private readonly RoslynWorkspaceManager _workspaceManager;
-    // private readonly FSharpWorkspaceManager? _fsharpWorkspaceManager; // Disabled for PoC
+    private readonly FSharpWorkspaceManager? _fsharpWorkspaceManager;
     private string? _initialWorkspace;
     private readonly object _configLock = new();
     
     public McpJsonRpcServer(
         ILogger<McpJsonRpcServer> logger,
         IOptions<McpRoslynOptions> options,
-        RoslynWorkspaceManager workspaceManager
-        // FSharpWorkspaceManager? fsharpWorkspaceManager = null // Disabled for PoC
+        RoslynWorkspaceManager workspaceManager,
+        FSharpWorkspaceManager? fsharpWorkspaceManager = null
         )
     {
         _logger = logger;
         _workspaceManager = workspaceManager;
-        // _fsharpWorkspaceManager = fsharpWorkspaceManager; // Disabled for PoC
+        _fsharpWorkspaceManager = fsharpWorkspaceManager;
         
         var optionsValue = options.Value;
         _allowedPaths = new List<string>(optionsValue.AllowedPaths);
@@ -4096,7 +4096,7 @@ public class McpJsonRpcServer
     {
         try
         {
-            if (true) // _fsharpWorkspaceManager == null - F# disabled for PoC
+            if (_fsharpWorkspaceManager == null)
             {
                 return new
                 {
@@ -4118,27 +4118,16 @@ public class McpJsonRpcServer
             }
             
             // Validate path
-            // ValidatePath(projectPath); // Disabled for PoC
-            
-            // var projectInfo = await _fsharpWorkspaceManager.LoadProjectAsync(projectPath); // Disabled for PoC
-            var projectInfo = new { ProjectName = "F# Disabled", ProjectPath = projectPath };
-            
-            var response = new System.Text.StringBuilder();
-            response.AppendLine($"F# Project: {projectInfo.ProjectName}");
-            response.AppendLine($"Path: {projectInfo.ProjectPath}");
-            response.AppendLine("F# project loading is disabled for diagnostic PoC");
-            
-            return new
+            if (!IsPathAllowed(projectPath))
             {
-                content = new[]
-                {
-                    new
-                    {
-                        type = "text",
-                        text = response.ToString()
-                    }
-                }
-            };
+                throw new UnauthorizedAccessException($"Path '{projectPath}' is not in allowed paths");
+            }
+            
+            // Create and use F# tool
+            var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+            var toolLogger = loggerFactory.CreateLogger<FSharp.Tools.FSharpLoadProjectTool>();
+            var fsharpLoadTool = new FSharp.Tools.FSharpLoadProjectTool(_fsharpWorkspaceManager, toolLogger);
+            return await fsharpLoadTool.ExecuteAsync(projectPath);
         }
         catch (Exception ex)
         {
@@ -4161,7 +4150,7 @@ public class McpJsonRpcServer
     {
         try
         {
-            if (true) // _fsharpWorkspaceManager == null - F# disabled for PoC
+            if (_fsharpWorkspaceManager == null)
             {
                 return new
                 {
@@ -4189,37 +4178,25 @@ public class McpJsonRpcServer
             }
             
             // Validate path
-            // ValidatePath(filePath); // Disabled for PoC
-            
-            // var symbols = await _fsharpWorkspaceManager.FindSymbolsAsync(filePath, query); // Disabled for PoC
-            var symbols = new List<object>(); // Empty list for PoC
-            
-            var response = new System.Text.StringBuilder();
-            response.AppendLine($"F# Symbols found with query '{query}': {symbols.Count()}");
-            response.AppendLine();
-            
-            // F# symbol display disabled for PoC
-            if (symbols.Count() == 0)
+            if (!IsPathAllowed(filePath))
             {
-                response.AppendLine("F# symbol analysis is disabled for diagnostic PoC");
+                throw new UnauthorizedAccessException($"Path '{filePath}' is not in allowed paths");
             }
             
-            if (!symbols.Any())
+            // For now, use pattern-based search (FSharpPath will be implemented later)
+            // The 'query' parameter in the tool definition suggests FSharpPath, but we'll use pattern for now
+            var pattern = query; // Extract pattern from FSharpPath query
+            if (query.Contains("//"))
             {
-                response.AppendLine("No symbols found matching the query.");
+                // Simple extraction - in full implementation, parse FSharpPath properly
+                pattern = "*"; // Default to all symbols for now
             }
             
-            return new
-            {
-                content = new[]
-                {
-                    new
-                    {
-                        type = "text",
-                        text = response.ToString()
-                    }
-                }
-            };
+            // Create and use F# tool
+            var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+            var toolLogger = loggerFactory.CreateLogger<FSharp.Tools.FSharpFindSymbolsTool>();
+            var fsharpFindTool = new FSharp.Tools.FSharpFindSymbolsTool(_fsharpWorkspaceManager, toolLogger);
+            return await fsharpFindTool.ExecuteAsync(pattern, filePath);
         }
         catch (Exception ex)
         {
