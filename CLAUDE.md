@@ -99,10 +99,14 @@ The server provides two complementary tool categories:
 ### For Quick Reference
 - **Tool usage**: `docs/TOOL_SYNOPSIS.md` - All tools with examples
 - **RoslynPath syntax**: `docs/roslyn-path/ROSLYN_PATH_INSTRUCTIONS.md`
+- **Agent tool selection**: `docs/AGENT_TOOL_SELECTION_GUIDE.md` - Decision tree for AI agents
+- **Agent examples**: `docs/AGENT_QUERY_EXAMPLES.md` - Concrete semantic vs syntactic examples
 
 ### For Understanding Design
 - **Philosophy**: `docs/design/STATEMENT_LEVEL_EDITING.md`
 - **RoslynPath rationale**: `docs/roslyn-path/ROSLYN_PATH_SYNTAX_DESIGN.md`
+- **Semantic vs Syntactic**: `docs/design/SEMANTIC_VS_SYNTACTIC_TOOLS.md`
+- **F# Architecture**: `docs/design/FSHARP_ARCHITECTURE.md`
 
 ### For Testing
 - **Integration tests**: `tests/` directory with Python test scripts

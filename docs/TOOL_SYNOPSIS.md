@@ -1382,7 +1382,8 @@ Preview:
     "column": 15
   },
   "path": "ancestor::method[1]/following-sibling::method[1]",
-  "returnPath": true  // Optional: return the RoslynPath of the target
+  "returnPath": true,  // Optional: return the RoslynPath of the target
+  "includeSemanticInfo": true  // Optional: include semantic information
 }
 ```
 
@@ -1393,7 +1394,14 @@ Preview:
     "type": "MethodDeclaration",
     "name": "ProcessNext",
     "location": { "line": 50, "column": 5 },
-    "path": "//class[UserService]/method[ProcessNext]"
+    "path": "//class[UserService]/method[ProcessNext]",
+    "semanticInfo": {                    // Only if includeSemanticInfo: true
+      "declaredSymbol": {
+        "name": "ProcessNext",
+        "kind": "Method",
+        "isAsync": false
+      }
+    }
   }
 }
 ```
@@ -1412,7 +1420,8 @@ Preview:
   "root": "//method[Process]",    // Optional: RoslynPath to root node
   "depth": 3,                     // Optional: tree depth (default: 3)
   "includeTokens": false,         // Optional: include syntax tokens
-  "format": "tree"                // Optional: output format (default: "tree")
+  "format": "tree",               // Optional: output format (default: "tree")
+  "includeSemanticInfo": true     // Optional: include semantic information
 }
 ```
 
@@ -1422,6 +1431,12 @@ Preview:
   "ast": {
     "type": "MethodDeclaration",
     "name": "Process",
+    "semanticInfo": {               // Only if includeSemanticInfo: true
+      "declaredSymbol": {
+        "name": "Process",
+        "kind": "Method"
+      }
+    },
     "children": [
       {
         "type": "ParameterList",

@@ -757,7 +757,8 @@ public class McpJsonRpcServer
                             required = new[] { "file", "line", "column" }
                         },
                         path = new { type = "string", description = "Navigation path (e.g., 'ancestor::method[1]/following-sibling::method[1]')" },
-                        returnPath = new { type = "boolean", description = "Return the RoslynPath of the target node" }
+                        returnPath = new { type = "boolean", description = "Return the RoslynPath of the target node" },
+                        includeSemanticInfo = new { type = "boolean", description = "Include semantic information (types, symbols, project context)" }
                     },
                     required = new[] { "from", "path" }
                 }
@@ -775,7 +776,8 @@ public class McpJsonRpcServer
                         root = new { type = "string", description = "Optional: RoslynPath to root node (e.g., '//method[Process]')" },
                         depth = new { type = "integer", description = "Tree depth to include (default: 3)" },
                         includeTokens = new { type = "boolean", description = "Include syntax tokens" },
-                        format = new { type = "string", description = "Output format: 'tree' (default)" }
+                        format = new { type = "string", description = "Output format: 'tree' (default)" },
+                        includeSemanticInfo = new { type = "boolean", description = "Include semantic information (types, symbols, project context)" }
                     },
                     required = new[] { "file" }
                 }
@@ -3592,6 +3594,10 @@ public class McpJsonRpcServer
             if (args.Value.TryGetProperty("returnPath", out var returnPathElement))
                 returnPath = returnPathElement.GetBoolean();
                 
+            bool includeSemanticInfo = false;
+            if (args.Value.TryGetProperty("includeSemanticInfo", out var semanticElement))
+                includeSemanticInfo = semanticElement.GetBoolean();
+                
             // Get the node at the starting position
             if (_workspaces.Count == 0)
                 return CreateErrorResponse("No workspace loaded");
@@ -3625,6 +3631,17 @@ public class McpJsonRpcServer
                 
             var lineSpan = targetNode.GetLocation().GetLineSpan();
             
+            // Get semantic info if requested
+            object? semanticInfo = null;
+            if (includeSemanticInfo)
+            {
+                var semanticModel = await document.GetSemanticModelAsync();
+                if (semanticModel != null)
+                {
+                    semanticInfo = GetSemanticInfo(targetNode, semanticModel, document.Project.Name);
+                }
+            }
+            
             var navigatedTo = new
             {
                 type = RoslynPath.EnhancedNodeTypes.GetDetailedNodeTypeName(targetNode),
@@ -3635,7 +3652,8 @@ public class McpJsonRpcServer
                     line = lineSpan.StartLinePosition.Line + 1,
                     column = lineSpan.StartLinePosition.Character + 1
                 },
-                path = returnPath ? BuildNodePath(targetNode) : null
+                path = returnPath ? BuildNodePath(targetNode) : null,
+                semanticInfo = semanticInfo
             };
             
             return new { navigatedTo };
@@ -3779,6 +3797,10 @@ public class McpJsonRpcServer
             if (args.Value.TryGetProperty("format", out var formatElement))
                 format = formatElement.GetString() ?? "tree";
                 
+            bool includeSemanticInfo = false;
+            if (args.Value.TryGetProperty("includeSemanticInfo", out var semanticElement))
+                includeSemanticInfo = semanticElement.GetBoolean();
+                
             // Get the document
             if (_workspaces.Count == 0)
                 return CreateErrorResponse("No workspace loaded");
@@ -3818,8 +3840,15 @@ public class McpJsonRpcServer
                 targetNode = results.First();
             }
             
+            // Get semantic model if needed
+            SemanticModel? semanticModel = null;
+            if (includeSemanticInfo)
+            {
+                semanticModel = await document.GetSemanticModelAsync();
+            }
+            
             // Build the AST representation
-            var ast = BuildAstNode(targetNode, depth, includeTokens);
+            var ast = BuildAstNode(targetNode, depth, includeTokens, semanticModel, document.Project.Name);
             
             return new { ast };
         }
@@ -3830,7 +3859,7 @@ public class McpJsonRpcServer
         }
     }
     
-    private object BuildAstNode(SyntaxNode node, int remainingDepth, bool includeTokens)
+    private object BuildAstNode(SyntaxNode node, int remainingDepth, bool includeTokens, SemanticModel? semanticModel = null, string? projectName = null)
     {
         var nodeType = RoslynPath.EnhancedNodeTypes.GetDetailedNodeTypeName(node);
         var result = new Dictionary<string, object>
@@ -3844,14 +3873,22 @@ public class McpJsonRpcServer
         if (!string.IsNullOrEmpty(name))
             result["name"] = name;
             
+        // Add semantic info if available
+        if (semanticModel != null && projectName != null)
+        {
+            var semanticInfo = GetSemanticInfo(node, semanticModel, projectName);
+            if (semanticInfo != null)
+                result["semanticInfo"] = semanticInfo;
+        }
+            
         // Add specific properties based on node type
         if (node is CS.BinaryExpressionSyntax binary)
         {
             result["operator"] = RoslynPath.EnhancedNodeTypes.GetBinaryOperator(node) ?? "";
             if (remainingDepth > 0)
             {
-                result["left"] = BuildAstNode(binary.Left, remainingDepth - 1, includeTokens);
-                result["right"] = BuildAstNode(binary.Right, remainingDepth - 1, includeTokens);
+                result["left"] = BuildAstNode(binary.Left, remainingDepth - 1, includeTokens, semanticModel, projectName);
+                result["right"] = BuildAstNode(binary.Right, remainingDepth - 1, includeTokens, semanticModel, projectName);
             }
         }
         else if (node is CS.LiteralExpressionSyntax literal)
@@ -3864,7 +3901,7 @@ public class McpJsonRpcServer
             var children = new List<object>();
             foreach (var child in node.ChildNodes())
             {
-                children.Add(BuildAstNode(child, remainingDepth - 1, includeTokens));
+                children.Add(BuildAstNode(child, remainingDepth - 1, includeTokens, semanticModel, projectName));
             }
             
             if (children.Count > 0)

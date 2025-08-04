@@ -48,6 +48,11 @@ The server leverages Roslyn's unique ability to seamlessly move between syntacti
 - `dotnet/replace-statement` - Replace any statement precisely
 - `dotnet/insert-statement` - Insert statements before/after existing ones
 - `dotnet/remove-statement` - Remove statements while preserving comments
+
+### RoslynPath Query Tools
+- `dotnet/query-syntax` - Query AST with XPath-style expressions
+- `dotnet/navigate` - Navigate from a position using axes
+- `dotnet/get-ast` - Get AST structure at any level
 - `dotnet/mark-statement` - Mark statements with ephemeral markers
 - `dotnet/find-marked-statements` - Find previously marked statements
 - `dotnet/unmark-statement` - Remove specific markers
@@ -233,6 +238,23 @@ The architecture supports advanced scenarios like:
 - Semantic code search
 - Data flow analysis
 - Custom code fixes
+
+## Documentation
+
+### For AI Agents
+- **[Agent Tool Selection Guide](docs/AGENT_TOOL_SELECTION_GUIDE.md)** - Decision tree for choosing between semantic and syntactic tools
+- **[Agent Query Examples](docs/AGENT_QUERY_EXAMPLES.md)** - Concrete examples comparing approaches for common tasks
+
+### Architecture & Design
+- **[Tool Synopsis](docs/TOOL_SYNOPSIS.md)** - Complete reference for all available tools
+- **[Semantic vs Syntactic Philosophy](docs/design/SEMANTIC_VS_SYNTACTIC_TOOLS.md)** - Architectural philosophy behind tool categories
+- **[Statement-Level Editing](docs/design/STATEMENT_LEVEL_EDITING.md)** - Design principles for code modification
+- **[F# Architecture](docs/design/FSHARP_ARCHITECTURE.md)** - Understanding F# support implementation
+
+### RoslynPath Documentation
+- **[RoslynPath Instructions](docs/roslyn-path/ROSLYN_PATH_INSTRUCTIONS.md)** - Quick reference for query syntax
+- **[RoslynPath Agent Guide](docs/roslyn-path/ROSLYN_PATH_AGENT_GUIDE.md)** - 5-minute introduction for AI agents
+- **[RoslynPath Syntax Design](docs/roslyn-path/ROSLYN_PATH_SYNTAX_DESIGN.md)** - Complete syntax specification
 
 ## Contributing
 
