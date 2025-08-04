@@ -66,7 +66,7 @@ class TestClient:
                 stdout=subprocess.PIPE, 
                 stderr=subprocess.PIPE,
                 text=True,
-                bufsize=1,  # Line buffered instead of unbuffered
+                bufsize=1,  # Line buffered
                 env=env,
                 preexec_fn=os.setsid  # Create new process group for better cleanup
             )
@@ -78,6 +78,9 @@ class TestClient:
         self._stderr_thread = threading.Thread(target=self._read_stderr, daemon=True)
         self._stdout_thread.start()
         self._stderr_thread.start()
+        
+        # Give threads a moment to start
+        time.sleep(0.5)
         
         # Wait for server to start - now should be much more predictable
         max_wait_time = 8  # Reduced timeout since startup should be fast
@@ -102,6 +105,7 @@ class TestClient:
                     print(f"✅ Server initialized successfully in {elapsed:.1f} seconds")
                     return  # Success!
                 except Exception as e:
+                    print(f"Initialization attempt failed: {e}")
                     # If initialization fails, continue waiting unless we've exceeded max time
                     if elapsed >= max_wait_time:
                         raise RuntimeError(f"Server failed to initialize within {max_wait_time} seconds: {e}")
@@ -109,33 +113,35 @@ class TestClient:
     
     def _read_stdout(self):
         """Read responses from server stdout"""
+        print("stdout reader: thread started")
         try:
-            buffer = ""
             while True:
-                # Read in small chunks to handle very long lines
-                chunk = self.process.stdout.read(1024)
-                if not chunk:  # EOF
+                line = self.process.stdout.readline()
+                if not line:
+                    print("stdout reader: EOF reached")
                     break
+                    
+                line = line.strip()
+                if not line:
+                    continue
                 
-                buffer += chunk
-                
-                # Process complete lines
-                while '\n' in buffer:
-                    line, buffer = buffer.split('\n', 1)
-                    if line.strip():
-                        # Skip build output
-                        if any(skip in line for skip in ['/bin/', '.csproj', 'warning CS', 'Determining projects', 'NETSDK']):
-                            continue
-                        print(f"Server response received: {len(line)} chars")
-                        try:
-                            response = json.loads(line)
-                            self.response_queue.put(response)
-                            print(f"✅ JSON parsed and queued successfully")
-                        except json.JSONDecodeError as e:
-                            print(f"JSON parse error: {e} for line: {line.strip()[:200]}...")  # Show first 200 chars
+                # Skip build output
+                if any(skip in line for skip in ['/bin/', '.csproj', 'warning CS', 'Determining projects', 'NETSDK']):
+                    continue
+                    
+                print(f"Server response received: {len(line)} chars")
+                print(f"First 100 chars: {repr(line[:100])}")
+                try:
+                    response = json.loads(line)
+                    self.response_queue.put(response)
+                    print(f"✅ JSON parsed and queued successfully - ID: {response.get('id', 'no-id')}")
+                    print(f"Queue size now: {self.response_queue.qsize()}")
+                except json.JSONDecodeError as e:
+                    print(f"JSON parse error: {e} for line: {line[:200]}...")  # Show first 200 chars
         except Exception as e:
-            # Handle broken pipe or other stdout reading errors gracefully
-            print(f"stdout reader thread ended: {e}")
+            print(f"stdout reader thread error: {e}")
+        finally:
+            print("stdout reader: thread exiting")
     
     def _read_stderr(self):
         """Read errors from server stderr"""
@@ -164,7 +170,7 @@ class TestClient:
         }
         
         self._send_request(init_request)
-        self._wait_for_response()  # Wait for initialize response
+        self._wait_for_response(request_id=init_request["id"])  # Wait for initialize response
     
     def _next_id(self):
         self.request_id += 1
@@ -187,19 +193,29 @@ class TestClient:
     def _wait_for_response(self, timeout=10, request_id=None):
         """Wait for and return next response, optionally matching request ID"""
         start_time = time.time()
+        deferred = []  # Store non-matching responses
         
-        while time.time() - start_time < timeout:
-            try:
-                response = self.response_queue.get(timeout=0.1)
-                if request_id is None or response.get("id") == request_id:
-                    return response
-                else:
-                    # Put it back if it's not the one we're looking for
-                    self.response_queue.put(response)
-            except queue.Empty:
-                continue
-                
-        raise TimeoutError(f"No response received within {timeout} seconds for request ID {request_id}")
+        try:
+            while time.time() - start_time < timeout:
+                try:
+                    response = self.response_queue.get(timeout=0.1)
+                    resp_id = response.get("id")
+                    print(f"Got response with ID {resp_id}, looking for {request_id}")
+                    if request_id is None or resp_id == request_id:
+                        print(f"✓ Found matching response for ID {request_id}")
+                        return response
+                    else:
+                        # Defer non-matching responses
+                        print(f"✗ Response ID {resp_id} doesn't match, deferring")
+                        deferred.append(response)
+                except queue.Empty:
+                    continue
+                    
+            raise TimeoutError(f"No response received within {timeout} seconds for request ID {request_id}")
+        finally:
+            # Put deferred responses back
+            for resp in deferred:
+                self.response_queue.put(resp)
     
     def call_tool(self, tool_name, arguments=None, timeout=30):
         """Call an MCP tool and return the result"""
@@ -215,6 +231,10 @@ class TestClient:
                 "arguments": arguments
             }
         }
+        
+        # Check if stdout thread is alive
+        if hasattr(self, '_stdout_thread') and not self._stdout_thread.is_alive():
+            print("WARNING: stdout thread is dead!")
         
         self._send_request(request)
         response = self._wait_for_response(timeout=timeout, request_id=request["id"])  # Use configurable timeout
