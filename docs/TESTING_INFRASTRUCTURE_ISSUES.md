@@ -99,28 +99,57 @@ if "error" in response and response["error"] is not None:
     return response["error"].get("message", "Unknown error")
 ```
 
-### 3. Broken Pipe Errors
+### 3. Server SIGKILL Termination Issue
 
 **Issue ID**: `TEST-INFRA-003`  
-**Severity**: Medium  
+**Severity**: Critical  
 **Status**: Unresolved  
 
 #### Description
-Existing tests show broken pipe errors when communicating with the server process.
+The MCP Roslyn Server process is being terminated with SIGKILL (exit code 137) immediately after startup across all test approaches, making the entire test suite unusable.
 
-#### Error
+#### Error Symptoms
+```bash
+Process terminated with code: 137
 ```
-BrokenPipeError: [Errno 32] Broken pipe
-```
 
-#### Affected Tests
-- `test-find-class.py`
-- Multiple protocol tests
+#### Technical Investigation
+- **Exit Code 137**: SIGKILL (128 + 9) - process forcibly terminated
+- **Timing**: Occurs within 1-3 seconds of process startup
+- **Consistency**: Affects all test approaches (TestClient, direct subprocess, script-based)
+- **Environment**: .NET 10.0 preview version on macOS
 
-#### Analysis Needed
-- Server process termination timing
-- Stdin/stdout buffer handling
-- Process lifecycle management
+#### Affected Systems
+- ✅ **Build**: Project builds successfully without errors
+- ❌ **Runtime**: Server process cannot start/survive in test environment  
+- ❌ **All test approaches**: TestClient, subprocess.Popen, shell scripts
+
+#### Investigation Results
+1. **Permissions**: Fixed executable permissions - no change
+2. **Command args**: Tested various argument combinations - no change  
+3. **Environment variables**: Tried MCP_ROSLYN_ALLOWED_PATHS - no change
+4. **Project paths**: Fixed incorrect paths in scripts - no change
+5. **Resource limits**: No obvious memory/CPU constraints visible
+
+#### Potential Causes
+1. **System-level resource limits** killing the process
+2. **.NET preview version instability** on this system
+3. **macOS security restrictions** on the process
+4. **Dependency conflicts** causing immediate crashes
+5. **Build artifacts corruption** (despite successful builds)
+
+#### Workaround Status
+- ❌ **TestClient approach**: Fails with SIGKILL
+- ❌ **Script-based approach**: Fails with SIGKILL  
+- ❌ **Direct dotnet run**: Fails with SIGKILL
+- ⚠️ **Manual testing**: May work but not suitable for automated tests
+
+#### Next Steps for Resolution
+1. **Try running server manually** to verify it works outside test harness
+2. **Test with different .NET version** (stable vs preview)
+3. **Check system logs** for security/resource violations
+4. **Create minimal reproduction** with basic .NET console app
+5. **Test on different environment** (different machine/OS)
 
 ## Testing Best Practices
 

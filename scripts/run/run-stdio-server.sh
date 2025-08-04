@@ -7,5 +7,5 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 echo "Starting MCP Roslyn Server (STDIO mode)..."
 echo "Project root: $PROJECT_ROOT"
 
-cd "$PROJECT_ROOT/src/McpRoslyn/McpRoslyn.Server"
-dotnet run -- --allowed-path "$PROJECT_ROOT"
+cd "$PROJECT_ROOT"
+dotnet run --project "src/McpRoslyn.Server" -- --allowed-path "$PROJECT_ROOT"
