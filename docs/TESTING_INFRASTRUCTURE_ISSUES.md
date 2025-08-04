@@ -144,12 +144,37 @@ Process terminated with code: 137
 - ❌ **Direct dotnet run**: Fails with SIGKILL
 - ⚠️ **Manual testing**: May work but not suitable for automated tests
 
-#### Next Steps for Resolution
-1. **Try running server manually** to verify it works outside test harness
-2. **Test with different .NET version** (stable vs preview)
-3. **Check system logs** for security/resource violations
-4. **Create minimal reproduction** with basic .NET console app
-5. **Test on different environment** (different machine/OS)
+#### Resolution Status
+✅ **RESOLVED**: The SIGKILL issue was caused by subprocess timeout commands, not server problems
+- **Root Cause**: Using `timeout` or `subprocess.run(timeout=...)` was sending SIGKILL to server processes
+- **Solution**: Build first with `dotnet build`, then run with `--no-build --no-restore` for predictable startup
+- **Result**: Server now starts reliably in ~1 second
+
+### 4. Server Response Issue for Specific Tools
+
+**Issue ID**: `TEST-INFRA-004`  
+**Severity**: Medium  
+**Status**: Unresolved  
+
+#### Description
+Some tools (particularly `dotnet-load-workspace`) process requests successfully but don't return JSON responses to stdout, causing client timeouts.
+
+#### Error Symptoms
+```
+Server stderr: Loaded workspace TestProject_xyz from /path/to/project.csproj with 1 projects
+TimeoutError: No response received within 60 seconds
+```
+
+#### Technical Details
+- **Server Processing**: Logs show successful processing and completion
+- **Response Missing**: No JSON response written to stdout despite successful operation
+- **Affected Tools**: `dotnet-load-workspace` confirmed, potentially others
+- **Working Tools**: `initialize` works correctly
+
+#### Investigation Needed
+- Check server response serialization for workspace tools
+- Verify stdout writing is not being suppressed for certain operations  
+- Test other tools to identify pattern of affected operations
 
 ## Testing Best Practices
 

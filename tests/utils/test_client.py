@@ -27,8 +27,27 @@ class TestClient:
     
     def _start_server(self):
         """Start the MCP server with robust error handling"""
-        # Build the command
-        cmd = ["dotnet", "run", "--project", self.server_path]
+        print("Building server project...")
+        
+        # First, ensure the project is built
+        build_cmd = ["dotnet", "build", self.server_path, "--configuration", "Debug"]
+        try:
+            build_result = subprocess.run(
+                build_cmd,
+                capture_output=True,
+                text=True,
+                timeout=60  # 1 minute timeout for build
+            )
+            if build_result.returncode != 0:
+                raise RuntimeError(f"Build failed: {build_result.stderr}")
+            print("✅ Build completed successfully")
+        except subprocess.TimeoutExpired:
+            raise RuntimeError("Build timed out after 60 seconds")
+        except Exception as e:
+            raise RuntimeError(f"Build error: {e}")
+        
+        # Now run with --no-build --no-restore for predictable startup
+        cmd = ["dotnet", "run", "--project", self.server_path, "--no-build", "--no-restore"]
         
         print(f"Starting server: {' '.join(cmd)}")
         
@@ -59,9 +78,9 @@ class TestClient:
         self._stdout_thread.start()
         self._stderr_thread.start()
         
-        # Wait for server to start with more robust checking
-        max_wait_time = 10
-        wait_interval = 0.5
+        # Wait for server to start - now should be much more predictable
+        max_wait_time = 8  # Reduced timeout since startup should be fast
+        wait_interval = 0.2  # More frequent checks
         elapsed = 0
         
         while elapsed < max_wait_time:
@@ -75,9 +94,10 @@ class TestClient:
             elapsed += wait_interval
             
             # Check if we can communicate with the server by trying initialization
-            if elapsed >= 2:  # Give it at least 2 seconds before trying to initialize
+            if elapsed >= 1:  # Reduced to 1 second since startup should be fast now
                 try:
                     self._initialize()
+                    print(f"✅ Server initialized successfully in {elapsed:.1f} seconds")
                     return  # Success!
                 except Exception as e:
                     # If initialization fails, continue waiting unless we've exceeded max time
@@ -157,7 +177,7 @@ class TestClient:
         except queue.Empty:
             raise TimeoutError(f"No response received within {timeout} seconds")
     
-    def call_tool(self, tool_name, arguments=None):
+    def call_tool(self, tool_name, arguments=None, timeout=30):
         """Call an MCP tool and return the result"""
         if arguments is None:
             arguments = {}
@@ -173,7 +193,7 @@ class TestClient:
         }
         
         self._send_request(request)
-        response = self._wait_for_response()
+        response = self._wait_for_response(timeout=timeout)  # Use configurable timeout
         
         if "error" in response and response["error"] is not None:
             return {
