@@ -136,14 +136,18 @@ public class FSharpWorkspaceManager : IDisposable
             }
 
             // Get parsing options from project options
-            var parsingOptions = _checker.GetParsingOptionsFromProjectOptions(projectOptions);
+            var parsingOptions = _checker.GetParsingOptionsFromProjectOptions(projectOptions).Item1;
             
             // Parse the file
-            var parseResults = _checker.ParseFile(
-                filePath,
-                sourceTextObj,
-                parsingOptions
-            );
+            var parseResults = await FSharpAsync.StartAsTask(
+                _checker.ParseFile(
+                    filePath,
+                    sourceTextObj,
+                    parsingOptions,
+                    cache: FSharpOption<bool>.Some(true),
+                    userOpName: FSharpOption<string>.Some("Parse")
+                ),
+                null, null);
 
             // Type check the file
             var checkAnswer = await FSharpAsync.StartAsTask(
@@ -226,7 +230,7 @@ public class FSharpWorkspaceManager : IDisposable
         return symbols;
     }
 
-    private async Task<FSharpProjectOptions?> GetProjectOptionsAsync(string projectPath)
+    private Task<FSharpProjectOptions?> GetProjectOptionsAsync(string projectPath)
     {
         try
         {
@@ -246,7 +250,7 @@ public class FSharpWorkspaceManager : IDisposable
                 $"--out:{Path.Combine(projectDirectory, "bin", "Debug", Path.GetFileNameWithoutExtension(projectPath) + ".dll")}",
             };
 
-            return new FSharpProjectOptions(
+            return Task.FromResult<FSharpProjectOptions?>(new FSharpProjectOptions(
                 projectFileName: projectPath,
                 projectId: null,
                 sourceFiles: sourceFiles,
@@ -258,12 +262,12 @@ public class FSharpWorkspaceManager : IDisposable
                 unresolvedReferences: null,
                 originalLoadReferences: ListModule.Empty<Tuple<global::FSharp.Compiler.Text.Range, string, string>>(),
                 stamp: null
-            );
+            ));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting project options for: {ProjectPath}", projectPath);
-            return null;
+            return Task.FromResult<FSharpProjectOptions?>(null);
         }
     }
 
