@@ -44,20 +44,38 @@ def test_fsharp_find_symbols(client, file_path, pattern):
     print(f"Pattern: {pattern}")
     
     result = client.call_tool("dotnet-fsharp-find-symbols", {
-        "pattern": pattern,
+        "query": pattern,  # Changed from "pattern" to "query"
         "filePath": os.path.abspath(file_path)
     })
     
     if result['success']:
         content = result['result']['content'][0]['text']
-        symbols = result['result'].get('symbols', [])
-        print(f"✅ Successfully found {len(symbols)} symbols")
         
-        for i, symbol in enumerate(symbols[:5]):  # Show first 5
-            print(f"   [{i+1}] {symbol['kind']}: {symbol['name']} @ line {symbol['startLine']}")
-        
-        if len(symbols) > 5:
-            print(f"   ... and {len(symbols) - 5} more")
+        # Extract symbol count from the text response
+        import re
+        match = re.search(r'Found (\d+) F# symbols', content)
+        if match:
+            symbol_count = int(match.group(1))
+            print(f"✅ Successfully found {symbol_count} symbols")
+            
+            # Extract first few symbol names from the formatted text
+            lines = content.split('\n')
+            shown = 0
+            for i, line in enumerate(lines):
+                if line.startswith("## ") and shown < 5:
+                    symbol_name = line[3:]  # Remove "## " prefix
+                    # Look for the location line
+                    if i + 2 < len(lines) and "Location:" in lines[i + 2]:
+                        location = lines[i + 2].split("Location:")[-1].strip()
+                        print(f"   [{shown + 1}] {symbol_name} @ {location}")
+                    else:
+                        print(f"   [{shown + 1}] {symbol_name}")
+                    shown += 1
+            
+            if symbol_count > 5:
+                print(f"   ... and {symbol_count - 5} more")
+        else:
+            print(f"✅ Query completed but no symbols found")
         return True
     else:
         print(f"❌ Failed to find symbols: {result.get('message', 'Unknown error')}")

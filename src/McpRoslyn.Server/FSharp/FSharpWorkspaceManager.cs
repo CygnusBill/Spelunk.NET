@@ -191,11 +191,24 @@ public class FSharpWorkspaceManager : IDisposable
     {
         var symbols = new List<FSharpSymbolInfo>();
 
-        var (success, _, checkResults, _) = await ParseAndCheckFileAsync(filePath);
+        _logger.LogInformation("FindSymbolsAsync: {FilePath}, Pattern: {Pattern}", filePath, pattern);
+
+        var (success, parseResults, checkResults, diagnostics) = await ParseAndCheckFileAsync(filePath);
         if (!success || checkResults == null)
         {
+            _logger.LogWarning("FindSymbolsAsync: Parse/check failed. Success: {Success}, CheckResults null: {IsNull}", 
+                success, checkResults == null);
+            if (diagnostics != null)
+            {
+                foreach (var diag in diagnostics.Take(3))
+                {
+                    _logger.LogWarning("F# diagnostic: {Message}", diag.Message);
+                }
+            }
             return symbols;
         }
+
+        _logger.LogInformation("FindSymbolsAsync: Parse/check succeeded");
 
         // Get all symbols in the file
         var symbolUses = checkResults.GetAllUsesOfAllSymbolsInFile(FSharpOption<System.Threading.CancellationToken>.None);

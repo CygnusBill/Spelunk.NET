@@ -410,6 +410,13 @@ public class FSharpPathEvaluator
         return module.longId.Last().idText;
     }
 
+    private string? GetNestedModuleName(SynModuleDecl.NestedModule nestedModule)
+    {
+        // Extract nested module name
+        var moduleInfo = nestedModule.moduleInfo;
+        return moduleInfo.longId.Last().idText;
+    }
+
     private List<object> ApplyPredicates(List<object> nodes, List<FSharpPredicate> predicates)
     {
         var result = nodes;
@@ -509,6 +516,7 @@ public class FSharpPathEvaluator
             SynBinding binding => GetBindingName(binding),
             SynTypeDefn typeDef => GetTypeDefnName(typeDef),
             SynModuleOrNamespace module => GetModuleName(module),
+            SynModuleDecl.NestedModule nestedModule => GetNestedModuleName(nestedModule),
             _ => null
         };
     }
@@ -520,6 +528,7 @@ public class FSharpPathEvaluator
             SynBinding => "binding",
             SynTypeDefn => "type",
             SynModuleOrNamespace => "module",
+            SynModuleDecl.NestedModule => "module",
             SynExpr => "expression",
             SynPat => "pattern",
             _ => node.GetType().Name
