@@ -2,6 +2,7 @@
 import json
 import subprocess
 import time
+import os
 
 def send_request(proc, request):
     """Send a JSON-RPC request and get response"""
@@ -25,9 +26,7 @@ def test_rename_safety():
     # Start the MCP server
     cmd = [
         "dotnet", "run", 
-        "--project", "./src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj",
-        "--", "--allowed-path", "."
-    ]
+        "--project", "./src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj"]
     
     print("Starting MCP server...")
     proc = subprocess.Popen(
@@ -37,7 +36,8 @@ def test_rename_safety():
         stderr=subprocess.PIPE,
         text=True,
         bufsize=0
-    )
+    ,
+        env={"MCP_ROSLYN_ALLOWED_PATHS": os.path.abspath(.)})
     
     # Give server time to start
     time.sleep(2)

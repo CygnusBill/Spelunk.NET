@@ -48,10 +48,7 @@ def run_test(title, pattern, pattern_type="roslynpath", expected_count=None):
     # Start the server
     server_cmd = [
         "dotnet", "run",
-        "--project", os.path.abspath(server_project),
-        "--",
-        "--allowed-path", os.path.abspath(test_workspace)
-    ]
+        "--project", os.path.abspath(server_project)]
     
     process = subprocess.Popen(
         server_cmd,

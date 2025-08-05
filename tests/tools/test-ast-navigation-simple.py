@@ -61,10 +61,10 @@ def test_query_syntax(process):
         }
     })
     
-    if response and "matches" in response and len(response['matches']) > 0:
-        print(f"✓ Found {len(response['matches'])} classes")
-        for match in response['matches'][:3]:  # Show first 3
-            print(f"  - Type: {match['node']['type']}, Text: {match['node']['text'][:50]}...")
+    if response and "nodes" in response and len(response['nodes']) > 0:
+        print(f"✓ Found {len(response['nodes'])} classes")
+        for node in response['nodes'][:3]:  # Show first 3
+            print(f"  - Type: {node['nodeType']}, Text: {node['text'][:50]}...")
     else:
         print("✗ Failed to find classes")
         return False
@@ -79,8 +79,8 @@ def test_query_syntax(process):
         }
     })
     
-    if response and "matches" in response:
-        print(f"✓ Found {len(response['matches'])} == comparisons")
+    if response and "nodes" in response:
+        print(f"✓ Found {len(response['nodes'])} == comparisons")
         return True
     else:
         print("✗ Failed to query binary expressions")
@@ -181,11 +181,20 @@ def main():
             }
         })
         
-        if not response or "Id" not in response:
-            print("Failed to load workspace")
+        if not response:
+            print("Failed to load workspace - no response")
             return 1
+        
+        # Extract workspace ID from the response
+        workspace_id = None
+        if isinstance(response, dict) and "id" in response:
+            workspace_id = response["id"]
+        elif isinstance(response, dict) and "Id" in response:
+            workspace_id = response["Id"]
+        else:
+            print(f"Warning: Could not extract workspace ID from response: {response}")
             
-        print(f"✓ Workspace loaded: {response['Id']}")
+        print(f"✓ Workspace loaded{': ' + str(workspace_id) if workspace_id else ''}")
         
         # Run tests
         all_passed = True

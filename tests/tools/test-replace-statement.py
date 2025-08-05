@@ -37,10 +37,7 @@ def main():
     # Start the server
     server_cmd = [
         "dotnet", "run",
-        "--project", "./src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj",
-        "--",
-        "--allowed-path", "."
-    ]
+        "--project", "./src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj"]
     
     process = subprocess.Popen(
         server_cmd,

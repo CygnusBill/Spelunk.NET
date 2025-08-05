@@ -2,6 +2,7 @@
 import json
 import subprocess
 import time
+import os
 
 def send_request(proc, request):
     """Send a JSON-RPC request and get response"""
@@ -34,18 +35,20 @@ def test_method_calls():
     # Start the MCP server
     cmd = [
         "dotnet", "run", 
-        "--project", "./src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj",
-        "--", "--allowed-path", "."
-    ]
+        "--project", "./src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj"]
     
     print("Starting MCP server...")
+    env = os.environ.copy()
+    env["MCP_ROSLYN_ALLOWED_PATHS"] = os.path.abspath(".")
+    
     proc = subprocess.Popen(
         cmd,
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
-        bufsize=0
+        bufsize=0,
+        env=env
     )
     
     # Give server time to start
