@@ -213,6 +213,7 @@ public class FSharpGetAstTool
             SynBinding binding => GetBindingName(binding),
             SynTypeDefn typeDef => GetTypeDefnName(typeDef),
             SynModuleOrNamespace module => string.Join(".", module.longId.Select(id => id.idText)),
+            SynModuleDecl.NestedModule nestedModule => GetNestedModuleName(nestedModule),
             SynExpr.Ident ident => ident.ident.idText,
             SynPat.Named named => named.ident.ident.idText,
             _ => null
@@ -276,6 +277,11 @@ public class FSharpGetAstTool
 
             case SynModuleDecl.Types types:
                 children.AddRange(types.typeDefns);
+                break;
+
+            case SynModuleDecl.NestedModule nestedModule:
+                children.Add(nestedModule.moduleInfo);
+                children.AddRange(nestedModule.decls);
                 break;
 
             case SynBinding binding:
@@ -383,6 +389,12 @@ public class FSharpGetAstTool
     {
         var typeInfo = typeDef.typeInfo;
         return typeInfo.longId.Last().idText;
+    }
+
+    private string? GetNestedModuleName(SynModuleDecl.NestedModule nestedModule)
+    {
+        var moduleInfo = nestedModule.moduleInfo;
+        return moduleInfo.longId.Last().idText;
     }
 
     private bool IsFunctionBinding(SynBinding binding)

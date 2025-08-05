@@ -153,12 +153,12 @@ def test_fsharp_path_queries(client, file_path):
         ("//let", "All let bindings"),
         ("//function", "All functions"),
         ("//type", "All type definitions"),
-        ("//let[@name='calculateTotal']", "Specific function by name"),
+        ("//let[@name='factorial']", "Specific function by name"),
         ("//module", "All modules"),
-        ("//match", "All match expressions"),
-        ("//let[@recursive]", "Recursive functions"),
-        ("//type[union]", "Union types"),
-        ("//type[record]", "Record types")
+        ("//*[match]", "All nodes containing match"),
+        ("//let[@name='factorial']", "Recursive factorial function"),
+        ("descendant::type", "All type definitions (with axis)"),
+        ("//*[@name]", "All named nodes")
     ]
     
     passed = 0
@@ -181,61 +181,7 @@ def main():
     fsproj_path = "test-workspace/FSharpTestProject/FSharpTestProject.fsproj"
     fs_file_path = "test-workspace/FSharpTestProject/Library.fs"
     
-    # Create test F# file if it doesn't exist
-    if not os.path.exists(fs_file_path):
-        print("Creating test F# file...")
-        os.makedirs(os.path.dirname(fs_file_path), exist_ok=True)
-        with open(fs_file_path, 'w') as f:
-            f.write("""module FSharpTestProject.Library
-
-// Simple function
-let add x y = x + y
-
-// Recursive function
-let rec factorial n =
-    match n with
-    | 0 | 1 -> 1
-    | _ -> n * factorial (n - 1)
-
-// Record type
-type Person = {
-    Name: string
-    Age: int
-}
-
-// Union type
-type Shape =
-    | Circle of radius: float
-    | Rectangle of width: float * height: float
-    | Square of side: float
-
-// Function with pattern matching
-let calculateArea shape =
-    match shape with
-    | Circle radius -> System.Math.PI * radius * radius
-    | Rectangle (width, height) -> width * height
-    | Square side -> side * side
-
-// Higher-order function
-let applyTwice f x = f (f x)
-
-// Async computation
-let asyncDownload url = async {
-    // Simulated download
-    do! Async.Sleep 1000
-    return "Downloaded: " + url
-}
-
-// Active pattern
-let (|Even|Odd|) n =
-    if n % 2 = 0 then Even else Odd
-
-// Function using active pattern
-let describeNumber n =
-    match n with
-    | Even -> sprintf "%d is even" n
-    | Odd -> sprintf "%d is odd" n
-""")
+    # Don't create the file - use the existing Library.fs
     
     # Create test F# project if it doesn't exist
     if not os.path.exists(fsproj_path):

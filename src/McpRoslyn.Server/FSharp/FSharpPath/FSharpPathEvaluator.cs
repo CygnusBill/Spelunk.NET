@@ -137,6 +137,7 @@ public class FSharpPathEvaluator
 
             case SynModuleDecl.NestedModule nestedModule:
                 children.Add(nestedModule.moduleInfo);
+                children.AddRange(nestedModule.decls);
                 break;
 
             case SynModuleDecl.Open open:
