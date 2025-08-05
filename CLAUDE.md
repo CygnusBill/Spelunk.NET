@@ -105,8 +105,9 @@ The server provides two complementary tool categories:
 ### For Understanding Design
 - **Philosophy**: `docs/design/STATEMENT_LEVEL_EDITING.md`
 - **RoslynPath rationale**: `docs/roslyn-path/ROSLYN_PATH_SYNTAX_DESIGN.md`
+- **F# architecture**: `docs/design/FSHARP_ARCHITECTURE.md`
+- **FSharpPath syntax**: `docs/roslyn-path/FSHARP_PATH_SYNTAX.md`
 - **Semantic vs Syntactic**: `docs/design/SEMANTIC_VS_SYNTACTIC_TOOLS.md`
-- **F# Architecture**: `docs/design/FSHARP_ARCHITECTURE.md`
 
 ### For Testing
 - **Integration tests**: `tests/` directory with Python test scripts
@@ -116,35 +117,22 @@ The server provides two complementary tool categories:
 ## Current Implementation Status
 
 ### Completed Features
-- ✅ 33 MCP tools implemented (see TOOL_SYNOPSIS.md)
+- ✅ 37 MCP tools implemented (33 Roslyn + 4 F#)
 - ✅ Multi-language support (C#, VB.NET, F#)
 - ✅ Statement-level operations (find, replace, insert, remove)
 - ✅ Ephemeral marker system for tracking statements
 - ✅ Language-agnostic RoslynPath query engine with enhanced navigation
-- ✅ F# support via FSharp.Compiler.Service
+- ✅ F# support via FSharp.Compiler.Service with all tools functional
 - ✅ Comprehensive test suite with multi-language tests
 - ✅ Advanced AST navigation and querying capabilities
 
 ### Recently Completed (Latest Session)
-- ✅ Complete VB.NET support with language-agnostic mapping
-- ✅ F# project detection and tracking
-- ✅ FSharpPath query language implementation
-- ✅ F# workspace manager and tools (dotnet-load-fsharp-project, dotnet-fsharp-find-symbols)
-- ✅ Multi-language test coverage (VB.NET and F# integration tests)
-- ✅ Documentation updates for multi-language support
-- ✅ Implemented get-statement-context tool (semantic info)
-- ✅ Implemented get-data-flow tool (comprehensive data flow analysis)
-- ✅ Refactored fix-pattern to use statement-level operations with semantic transformations
-- ✅ Enhanced RoslynPath with expression-level nodes and XPath-standard navigation axes
-- ✅ Implemented three new AST navigation tools (dotnet-query-syntax, dotnet-navigate, dotnet-get-ast)
-- ✅ Fixed all unit test failures (navigation regex patterns, boolean literal casing)
-- ✅ Added thread-safety collection attributes to prevent Roslyn concurrency issues
-- ✅ Added StatementTransformer for intelligent code transformations
-- ✅ Tool descriptions centralized in ToolDescriptions.cs
-- ✅ Enhanced RoslynPath with XPath-standard axes and low-level node types
-- ✅ Implemented dotnet-query-syntax tool for advanced AST queries
-- ✅ Implemented dotnet-navigate tool for syntax tree navigation
-- ✅ Implemented dotnet-get-ast tool for AST structure visualization
+- ✅ Complete F# implementation with all 4 tools working
+- ✅ Fixed F# symbol finding functionality (was using wrong parameter name)
+- ✅ Fixed FSharpPath attribute queries (@name) for all node types including nested modules
+- ✅ Added support for nested modules in F# AST traversal
+- ✅ All F# integration tests passing (9/9)
+- ✅ Updated documentation for F# support (README, TOOL_SYNOPSIS, new FSHARP_PATH_SYNTAX guide)
 
 ### High Priority Pending
 - None currently

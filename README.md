@@ -77,6 +77,12 @@ The server leverages Roslyn's unique ability to seamlessly move between syntacti
 - `dotnet/analyze-syntax` - Get syntax tree information
 - `dotnet/workspace-status` - Check workspace loading status
 
+### F# Support
+- `dotnet-fsharp-load-project` - Load an F# project (.fsproj)
+- `dotnet-fsharp-find-symbols` - Find F# symbols with pattern matching
+- `dotnet-fsharp-query` - Query F# AST using FSharpPath expressions
+- `dotnet-fsharp-get-ast` - Get F# abstract syntax tree structure
+
 ### Advanced AST Navigation
 - `dotnet/query-syntax` - Query AST using enhanced RoslynPath expressions
   - Support for expression-level nodes (binary-expression, literal, identifier)

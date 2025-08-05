@@ -275,29 +275,28 @@ References: 8
 **Use Case**: Enable F# code analysis when MSBuildWorkspace cannot handle F# projects
 
 #### `dotnet-fsharp-find-symbols`
-**MCP Description**: "Find symbols in F# code using FSharpPath queries"
+**MCP Description**: "Find symbols in F# code using pattern matching"
 
-**Purpose**: Search F# code using FSharpPath (XPath-style queries for F# AST).
+**Purpose**: Find F# symbols (functions, values, types) using pattern matching.
 
 **Input Format**:
 ```json
 {
   "filePath": "/path/to/file.fs",          // Required: F# source file
-  "query": "//function[@recursive]"        // Required: FSharpPath query
+  "query": "*"                             // Required: pattern (* and ? wildcards)
 }
 ```
 
-**FSharpPath Query Examples**:
-- `//function` - All functions
-- `//function[@async]` - Async functions
-- `//function[@recursive]` - Recursive functions
-- `//type[Union]` - Discriminated unions
-- `//type[Record]` - Record types
-- `//value[@mutable]` - Mutable values
+**Pattern Examples**:
+- `*` - All symbols
+- `add*` - Symbols starting with 'add'
+- `*Test` - Symbols ending with 'Test'
+- `factorial` - Exact match
+- `get?ser` - Single character wildcard
 
 **Output Format**:
 ```text
-F# Symbols found with query '//function[@recursive]': 3
+Found 67 F# symbols matching '*'
 
 Symbol: factorial
   Type: Function
@@ -313,6 +312,85 @@ Symbol: quickSort
 ```
 
 **Use Case**: Navigate and analyze F# code structures, find specific F# constructs
+
+#### `dotnet-fsharp-query`
+**MCP Description**: "Query F# AST using FSharpPath expressions"
+
+**Purpose**: Execute complex FSharpPath queries against F# abstract syntax trees.
+
+**Input Format**:
+```json
+{
+  "file": "/path/to/file.fs",              // Required: F# source file
+  "fsharpPath": "//let[@name='factorial']", // Required: FSharpPath query
+  "includeContext": true,                   // Optional: include source context
+  "contextLines": 2                         // Optional: lines of context
+}
+```
+
+**FSharpPath Examples**:
+- `//let` - All let bindings
+- `//let[@name='factorial']` - Specific function by name
+- `//function` - All functions (with parameters)
+- `//value` - All values (no parameters)
+- `//type` - All type definitions
+- `//module` - All modules
+- `//match` - All pattern matches
+- `//*[@name]` - All named nodes
+
+**Output Format**:
+```text
+Found 1 match for FSharpPath: //let[@name='factorial']
+
+[1] Binding: factorial
+    Type: let binding
+    Location: /path/to/Math.fs:15:8
+    
+    Context:
+    14:     // Recursive factorial function
+    15:     let rec factorial n =
+    16:         match n with
+    17:         | 0 | 1 -> 1
+```
+
+**Use Case**: Perform complex structural searches on F# code
+
+#### `dotnet-fsharp-get-ast`
+**MCP Description**: "Get AST structure for F# code"
+
+**Purpose**: Retrieve and visualize F# abstract syntax tree structure.
+
+**Input Format**:
+```json
+{
+  "filePath": "/path/to/file.fs",          // Required: F# source file
+  "root": "//module[MathOperations]",      // Optional: FSharpPath to root node
+  "depth": 3,                              // Optional: tree depth (default: 3)
+  "includeRange": true                     // Optional: include position info
+}
+```
+
+**Output Format**:
+```text
+# F# AST Structure
+
+File: /path/to/Math.fs
+Root: //module[MathOperations]
+Depth: 3
+
+Module [MathOperations] @ 3:0
+  NestedModule [MathOperations] @ 3:7
+    Let [add] @ 5:8
+      Function @ 5:8
+        Parameters: x, y
+    Let [factorial] @ 15:8
+      Function @ 15:12 (recursive)
+        Match @ 16:8
+          Pattern: 0 | 1
+          Pattern: _
+```
+
+**Use Case**: Understand F# code structure, debug FSharpPath queries
 
 ### 2. Code Discovery Tools (Read-Only)
 
