@@ -694,7 +694,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet-load-fsharp-project",
+                name = "dotnet-fsharp-load-project",
                 description = "Load an F# project using FSharp.Compiler.Service (separate from MSBuild workspaces)",
                 inputSchema = new
                 {
@@ -719,6 +719,40 @@ public class McpJsonRpcServer
                         query = new { type = "string", description = "FSharpPath query (e.g., '//function[startsWith(name, \"process\")]')" }
                     },
                     required = new[] { "filePath", "query" }
+                }
+            },
+            new
+            {
+                name = "dotnet-fsharp-query",
+                description = "Query F# code using FSharpPath syntax",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        fsharpPath = new { type = "string", description = "FSharpPath query (e.g., '//function[@recursive]', '//type[union]')" },
+                        file = new { type = "string", description = "Path to the F# source file" },
+                        includeContext = new { type = "boolean", description = "Include surrounding context in results" },
+                        contextLines = new { type = "integer", description = "Number of context lines to include (default: 2)" }
+                    },
+                    required = new[] { "fsharpPath", "file" }
+                }
+            },
+            new
+            {
+                name = "dotnet-fsharp-get-ast",
+                description = "Get AST structure for F# code",
+                inputSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        filePath = new { type = "string", description = "Path to the F# source file" },
+                        root = new { type = "string", description = "Optional FSharpPath to specify root node" },
+                        depth = new { type = "integer", description = "Maximum depth to traverse (default: 3)" },
+                        includeRange = new { type = "boolean", description = "Include source location information" }
+                    },
+                    required = new[] { "filePath" }
                 }
             },
             new
@@ -936,12 +970,20 @@ public class McpJsonRpcServer
                 result = await GetFSharpProjectsAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet-load-fsharp-project":
+            case "dotnet-fsharp-load-project":
                 result = await LoadFSharpProjectAsync(toolCallParams.Arguments);
                 break;
                 
             case "dotnet-fsharp-find-symbols":
                 result = await FindFSharpSymbolsAsync(toolCallParams.Arguments);
+                break;
+                
+            case "dotnet-fsharp-query":
+                result = await QueryFSharpAsync(toolCallParams.Arguments);
+                break;
+                
+            case "dotnet-fsharp-get-ast":
+                result = await GetFSharpAstAsync(toolCallParams.Arguments);
                 break;
                 
             default:
@@ -4124,8 +4166,8 @@ public class McpJsonRpcServer
             }
             
             // Create and use F# tool
-            var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
-            var toolLogger = loggerFactory.CreateLogger<FSharp.Tools.FSharpLoadProjectTool>();
+            var loggerFactory = _logger.BeginScope("FSharpLoadProject") as ILoggerFactory ?? LoggerFactory.Create(builder => {});
+            var toolLogger = _logger as ILogger<FSharp.Tools.FSharpLoadProjectTool> ?? loggerFactory.CreateLogger<FSharp.Tools.FSharpLoadProjectTool>();
             var fsharpLoadTool = new FSharp.Tools.FSharpLoadProjectTool(_fsharpWorkspaceManager, toolLogger);
             return await fsharpLoadTool.ExecuteAsync(projectPath);
         }
@@ -4193,7 +4235,7 @@ public class McpJsonRpcServer
             }
             
             // Create and use F# tool
-            var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+            var loggerFactory = LoggerFactory.Create(builder => {});
             var toolLogger = loggerFactory.CreateLogger<FSharp.Tools.FSharpFindSymbolsTool>();
             var fsharpFindTool = new FSharp.Tools.FSharpFindSymbolsTool(_fsharpWorkspaceManager, toolLogger);
             return await fsharpFindTool.ExecuteAsync(pattern, filePath);
@@ -4209,6 +4251,113 @@ public class McpJsonRpcServer
                     {
                         type = "text",
                         text = $"Error finding F# symbols: {ex.Message}"
+                    }
+                }
+            };
+        }
+    }
+    
+    private async Task<object> QueryFSharpAsync(JsonElement? args)
+    {
+        try
+        {
+            if (_fsharpWorkspaceManager == null)
+            {
+                return new
+                {
+                    content = new[]
+                    {
+                        new
+                        {
+                            type = "text",
+                            text = "F# support is not configured. FSharpWorkspaceManager is not available."
+                        }
+                    }
+                };
+            }
+
+            if (!args.HasValue)
+            {
+                throw new ArgumentException("Missing required arguments");
+            }
+
+            var fsharpPath = args.Value.GetProperty("fsharpPath").GetString() 
+                ?? throw new ArgumentException("fsharpPath is required");
+            var file = args.Value.GetProperty("file").GetString() 
+                ?? throw new ArgumentException("file is required");
+            var includeContext = args.Value.TryGetProperty("includeContext", out var ctxProp) && ctxProp.GetBoolean();
+            var contextLines = args.Value.TryGetProperty("contextLines", out var linesProp) ? linesProp.GetInt32() : 2;
+
+            // Create and use F# query tool
+            var loggerFactory = LoggerFactory.Create(builder => {});
+            var toolLogger = loggerFactory.CreateLogger<FSharp.Tools.FSharpQueryTool>();
+            var fsharpQueryTool = new FSharp.Tools.FSharpQueryTool(_fsharpWorkspaceManager, toolLogger);
+            return await fsharpQueryTool.ExecuteAsync(fsharpPath, file, includeContext, contextLines);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error querying F# code");
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = $"Error querying F# code: {ex.Message}"
+                    }
+                }
+            };
+        }
+    }
+    
+    private async Task<object> GetFSharpAstAsync(JsonElement? args)
+    {
+        try
+        {
+            if (_fsharpWorkspaceManager == null)
+            {
+                return new
+                {
+                    content = new[]
+                    {
+                        new
+                        {
+                            type = "text",
+                            text = "F# support is not configured. FSharpWorkspaceManager is not available."
+                        }
+                    }
+                };
+            }
+
+            if (!args.HasValue)
+            {
+                throw new ArgumentException("Missing required arguments");
+            }
+
+            var filePath = args.Value.GetProperty("filePath").GetString() 
+                ?? throw new ArgumentException("filePath is required");
+            var root = args.Value.TryGetProperty("root", out var rootProp) ? rootProp.GetString() : null;
+            var depth = args.Value.TryGetProperty("depth", out var depthProp) ? depthProp.GetInt32() : 3;
+            var includeRange = args.Value.TryGetProperty("includeRange", out var rangeProp) && rangeProp.GetBoolean();
+
+            // Create and use F# AST tool
+            var loggerFactory = LoggerFactory.Create(builder => {});
+            var toolLogger = loggerFactory.CreateLogger<FSharp.Tools.FSharpGetAstTool>();
+            var fsharpGetAstTool = new FSharp.Tools.FSharpGetAstTool(_fsharpWorkspaceManager, toolLogger);
+            return await fsharpGetAstTool.ExecuteAsync(filePath, root, depth, includeRange);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting F# AST");
+            return new
+            {
+                content = new[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = $"Error getting F# AST: {ex.Message}"
                     }
                 }
             };

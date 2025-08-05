@@ -20,12 +20,13 @@ class SimpleClient:
         
         # Build first
         print("Building server...")
-        build_cmd = ["dotnet", "build", self.server_path, "--configuration", "Debug"]
+        dotnet_path = "/usr/local/share/dotnet/dotnet"
+        build_cmd = [dotnet_path, "build", self.server_path, "--configuration", "Debug"]
         subprocess.run(build_cmd, check=True, capture_output=True)
         print("✅ Build completed")
         
         # Start server
-        cmd = ["dotnet", "run", "--project", self.server_path, "--no-build", "--no-restore"]
+        cmd = [dotnet_path, "run", "--project", self.server_path, "--no-build", "--no-restore"]
         env = os.environ.copy()
         env["MCP_ROSLYN_ALLOWED_PATHS"] = os.pathsep.join(os.path.abspath(p) for p in self.allowed_paths)
         
@@ -63,6 +64,24 @@ class SimpleClient:
             raise RuntimeError("No response received (EOF)")
             
         print(f"Received: {len(response_line.strip())} chars")
+        if len(response_line.strip()) < 100:
+            print(f"Short response: {response_line.strip()}")
+            # Check stderr for errors
+            stderr_lines = []
+            while True:
+                import select
+                if select.select([self.process.stderr], [], [], 0.1)[0]:
+                    line = self.process.stderr.readline()
+                    if line:
+                        stderr_lines.append(line)
+                    else:
+                        break
+                else:
+                    break
+            if stderr_lines:
+                print("Server stderr:")
+                for line in stderr_lines:
+                    print(f"  {line.strip()}")
         return json.loads(response_line)
     
     def _initialize(self):

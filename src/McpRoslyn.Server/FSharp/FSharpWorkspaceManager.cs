@@ -38,7 +38,7 @@ public class FSharpWorkspaceManager : IDisposable
             suggestNamesForErrors: FSharpOption<bool>.Some(true),
             keepAllBackgroundSymbolUses: FSharpOption<bool>.Some(true),
             enableBackgroundItemKeyStoreAndSemanticClassification: FSharpOption<bool>.Some(true),
-            enablePartialTypeChecking: FSharpOption<bool>.Some(true),
+            enablePartialTypeChecking: FSharpOption<bool>.Some(false),
             parallelReferenceResolution: FSharpOption<bool>.Some(true),
             captureIdentifiersWhenParsing: FSharpOption<bool>.Some(true),
             documentSource: null,

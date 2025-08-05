@@ -1,0 +1,20 @@
+Starting MCP Roslyn Server (STDIO mode)...
+Project root: /Users/bill/Repos/McpDotnet
+info: McpRoslyn.Server.RoslynWorkspaceManager[0]
+      MSBuild registered successfully
+info: McpRoslyn.Server.McpRoslynHostedService[0]
+      Starting MCP Roslyn Server with configuration:
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Production
+info: McpRoslyn.Server.McpRoslynHostedService[0]
+      Allowed paths: /Users/bill/Repos/McpDotnet
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: /Users/bill/Repos/McpDotnet
+info: McpRoslyn.Server.McpJsonRpcServer[0]
+      MCP Roslyn Server started - listening on stdio
+info: McpRoslyn.Server.McpJsonRpcServer[0]
+      MCP Roslyn Server shutting down
+info: Microsoft.Hosting.Lifetime[0]
+      Application is shutting down...
