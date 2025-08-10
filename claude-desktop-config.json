@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "mcp-roslyn": {
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "/Users/bill/Repos/McpDotnet/src/McpRoslyn.Server/McpRoslyn.Server.csproj"
+      ],
+      "env": {
+        "MCP_ROSLYN_ALLOWED_PATHS": "/Users/bill/Repos:/Users/bill/Projects"
+      }
+    }
+  }
+}

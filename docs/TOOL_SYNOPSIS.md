@@ -503,6 +503,15 @@ Found 4 properties/fields matching 'Is*':
 
 ### 3. Relationship Analysis Tools
 
+#### 🔍 Inheritance Hierarchy Navigation
+McpDotnet provides comprehensive tools for tracing inheritance chains and understanding type relationships:
+
+- **`dotnet-find-implementations`** - Find all classes implementing an interface or abstract class
+- **`dotnet-find-derived-types`** - Find all classes inheriting from a base class  
+- **`dotnet-find-overrides`** - Find all method overrides across the inheritance chain
+
+These tools help you understand type hierarchies, trace inheritance relationships, and analyze how types are related in your codebase.
+
 #### `dotnet-find-method-calls`
 **MCP Description**: "Find all methods called by a specific method (call tree analysis)"
 

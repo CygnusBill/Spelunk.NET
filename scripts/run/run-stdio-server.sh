@@ -3,9 +3,11 @@
 # Get the script's directory and project root
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+CURRENT_DIR="$(pwd)"
 
 echo "Starting MCP Roslyn Server (STDIO mode)..."
-echo "Project root: $PROJECT_ROOT"
+echo "Current directory: $CURRENT_DIR"
+echo "Allowed paths: $CURRENT_DIR"
 
-cd "$PROJECT_ROOT"
-dotnet run --project "src/McpRoslyn.Server" -- --allowed-path "$PROJECT_ROOT"
+# Run the server with current directory as allowed path
+MCP_ROSLYN_ALLOWED_PATHS="$CURRENT_DIR" dotnet run --project "$PROJECT_ROOT/src/McpRoslyn.Server"

@@ -5,15 +5,11 @@
       "args": [
         "run",
         "--project",
-        "./src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj",
-        "--",
-        "--allowed-path",
-        "/Users/bill/Projects",
-        "--allowed-path", 
-        "/Users/bill/Code"
+        "/path/to/McpDotnet/src/McpRoslyn.Server/McpRoslyn.Server.csproj"
       ],
       "env": {
-        "MCP_ROSLYN_WORKSPACE": "/Users/bill/Projects/MyDotNetProject/MyProject.sln"
+        "MCP_ROSLYN_ALLOWED_PATHS": "/Users/your-username/Projects:/Users/your-username/Code",
+        "MCP_ROSLYN_WORKSPACE": "/Users/your-username/Projects/MyDotNetProject/MyProject.sln"
       }
     }
   }

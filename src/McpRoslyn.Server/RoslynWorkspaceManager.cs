@@ -1095,6 +1095,15 @@ public class RoslynWorkspaceManager : IDisposable
         var results = new List<ReferenceInfo>();
         var workspacesToSearch = GetWorkspacesToSearch(workspacePath);
         
+        // Validate symbol type
+        var validTypes = new[] { "type", "class", "interface", "struct", "enum", "delegate", "method", "property", "field" };
+        if (!validTypes.Contains(symbolType.ToLower()))
+        {
+            throw new ArgumentException($"Invalid symbolType '{symbolType}'. Must be one of: {string.Join(", ", validTypes)}");
+        }
+        
+        bool symbolFound = false;
+        
         foreach (var workspace in workspacesToSearch)
         {
             var solution = workspace.CurrentSolution;
@@ -1110,7 +1119,11 @@ public class RoslynWorkspaceManager : IDisposable
                 if (compilation == null) continue;
                 
                 targetSymbol = await FindSymbolAsync(compilation, symbolName, symbolType, containerName);
-                if (targetSymbol != null) break;
+                if (targetSymbol != null) 
+                {
+                    symbolFound = true;
+                    break;
+                }
             }
             
             if (targetSymbol == null) continue;
@@ -1140,6 +1153,18 @@ public class RoslynWorkspaceManager : IDisposable
                     }
                 }
             }
+        }
+        
+        // If no symbol was found, throw a helpful error
+        if (!symbolFound && results.Count == 0)
+        {
+            var message = symbolType.ToLower() == "type" 
+                ? $"Symbol '{symbolName}' of type '{symbolType}' not found in the workspace."
+                : string.IsNullOrEmpty(containerName)
+                    ? $"Symbol '{symbolName}' of type '{symbolType}' not found. For methods, properties, and fields, you may need to specify the containerName parameter."
+                    : $"Symbol '{symbolName}' of type '{symbolType}' not found in container '{containerName}'.";
+            
+            throw new InvalidOperationException(message);
         }
         
         return results;
@@ -1399,7 +1424,12 @@ public class RoslynWorkspaceManager : IDisposable
         switch (symbolType.ToLower())
         {
             case "type":
-                // Search for type
+            case "class":
+            case "interface":
+            case "struct":
+            case "enum":
+            case "delegate":
+                // Search for type (handles all type kinds)
                 foreach (var type in compilation.Assembly.GetAllTypes())
                 {
                     if (type.Name == symbolName)

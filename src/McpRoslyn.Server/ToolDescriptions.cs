@@ -26,11 +26,11 @@ public static class ToolDescriptions
     
     public const string FindReferences = "Find all references to a type, method, property, or field";
     
-    public const string FindImplementations = "Find all implementations of an interface or abstract class";
+    public const string FindImplementations = "Find all implementations of an interface or abstract class (trace inheritance hierarchy downward)";
     
-    public const string FindOverrides = "Find all overrides of a virtual or abstract method";
+    public const string FindOverrides = "Find all overrides of a virtual or abstract method across the inheritance chain";
     
-    public const string FindDerivedTypes = "Find all types that derive from a base class";
+    public const string FindDerivedTypes = "Find all types that derive from a base class (trace class hierarchy, find all subclasses)";
     
     public const string RenameSymbol = "Rename a symbol (type, method, property, field) and update all references";
     
