@@ -302,7 +302,7 @@ End Module";
     {
         return node is SubNewStatementSyntax || 
                (node is MethodBlockSyntax methodBlock && 
-                methodBlock.SubOrFunctionStatement is SubNewStatementSyntax);
+                methodBlock.SubOrFunctionStatement.DeclarationKeyword.IsKind(SyntaxKind.NewKeyword));
     }
     
     public bool IsEventDeclaration(SyntaxNode node)

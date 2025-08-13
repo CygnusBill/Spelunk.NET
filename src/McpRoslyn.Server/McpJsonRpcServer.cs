@@ -102,9 +102,16 @@ public class McpJsonRpcServer
                 _logger.LogInformation("ProcessRequestAsync completed, response type: {Type}, ID: {Id}", response?.GetType().Name ?? "null", response?.Id);
                 
                 // Send response
-                _logger.LogInformation("Calling SendResponseAsync for ID: {Id}", response?.Id);
-                await SendResponseAsync(writer, response);
-                _logger.LogInformation("SendResponseAsync completed for ID: {Id}", response?.Id);
+                if (response != null)
+                {
+                    _logger.LogInformation("Calling SendResponseAsync for ID: {Id}", response.Id);
+                    await SendResponseAsync(writer, response);
+                    _logger.LogInformation("SendResponseAsync completed for ID: {Id}", response.Id);
+                }
+                else
+                {
+                    _logger.LogWarning("Null response returned from ProcessRequestAsync");
+                }
             }
             catch (Exception ex)
             {

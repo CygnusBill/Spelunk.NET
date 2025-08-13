@@ -787,7 +787,8 @@ public class RoslynWorkspaceManager : IDisposable
             if (targetProject != null)
             {
                 var compilation = await targetProject.GetCompilationAsync();
-                var semanticModel = compilation?.GetSemanticModel(targetMethod.Locations.First().SourceTree);
+                var sourceTree = targetMethod.Locations.First().SourceTree;
+                var semanticModel = sourceTree != null ? compilation?.GetSemanticModel(sourceTree) : null;
                 
                 if (semanticModel != null)
                 {
@@ -3655,7 +3656,7 @@ public class RoslynWorkspaceManager : IDisposable
                 {
                     ExpressionType = typeInfo.Type.ToDisplayString(),
                     ConvertedType = typeInfo.ConvertedType?.ToDisplayString() ?? typeInfo.Type.ToDisplayString(),
-                    IsImplicitConversion = typeInfo.Type != typeInfo.ConvertedType
+                    IsImplicitConversion = !SymbolEqualityComparer.Default.Equals(typeInfo.Type, typeInfo.ConvertedType)
                 };
                 break;
             }
@@ -3791,7 +3792,7 @@ public class RoslynWorkspaceManager : IDisposable
                 if (symbol != null)
                 {
                     var references = statement.Parent.DescendantNodes()
-                        .Where(n => semanticModel.GetSymbolInfo(n).Symbol?.Equals(symbol) == true)
+                        .Where(n => SymbolEqualityComparer.Default.Equals(semanticModel.GetSymbolInfo(n).Symbol, symbol))
                         .Count();
                     suggestions.CanInlineVariable = references <= 2; // Declaration + 1 use
                 }
@@ -3993,7 +3994,7 @@ public class RoslynWorkspaceManager : IDisposable
             foreach (var identifier in identifiers)
             {
                 var symbol = semanticModel.GetSymbolInfo(identifier).Symbol;
-                if (symbol?.Equals(variable) == true)
+                if (SymbolEqualityComparer.Default.Equals(symbol, variable))
                 {
                     var lineSpan = sourceText.Lines.GetLinePositionSpan(identifier.Span);
                     var location = $"{lineSpan.Start.Line + 1}:{lineSpan.Start.Character + 1}";

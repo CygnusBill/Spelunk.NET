@@ -8,6 +8,8 @@ using System.Text.Json;
 using CSSyntaxKind = Microsoft.CodeAnalysis.CSharp.SyntaxKind;
 using VBSyntaxKind = Microsoft.CodeAnalysis.VisualBasic.SyntaxKind;
 
+#pragma warning disable CS1998 // Async method lacks 'await' operators - These transformation methods may be extended to be async in the future
+
 namespace McpRoslyn.Server;
 
 /// <summary>
