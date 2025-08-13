@@ -659,7 +659,7 @@ public class TestClass
     public void DeleteUser() { }
 }";
             Assert.Equal(2, CountMatches(code, "//method[Get*]"));
-            Assert.Equal(2, CountMatches(code, "//method[*User]"));
+            Assert.Equal(3, CountMatches(code, "//method[*User]")); // GetUser, SetUser, DeleteUser
             Assert.Equal(1, CountMatches(code, "//method[*User*Id]"));
         }
 

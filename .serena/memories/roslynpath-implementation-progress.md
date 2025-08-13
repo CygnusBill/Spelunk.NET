@@ -4,8 +4,8 @@
 
 ## Current Status
 Successfully rebuilt RoslynPath parser with proper AST architecture:
-- **39 out of 56 tests passing (70% success rate)**
-- Up from initial 34 passing tests
+- **56 out of 68 tests passing (82% success rate)**
+- Down from initial 17 failures to 12 failures
 
 ## Key Fixes Implemented
 
@@ -28,6 +28,20 @@ Successfully rebuilt RoslynPath parser with proper AST architecture:
 - Special handling for @contains attribute (always does substring match)
 - Fixed @modifiers with contains operator (~=)
 - Proper boolean attribute evaluation
+- Fixed @type to return full type name
+
+### 5. Block Exclusion from Statements
+- Fixed GetStandardNodeType to not classify BlockSyntax as "statement"
+- Prevents blocks from matching statement queries inappropriately
+
+### 6. Dot Path Parsing
+- Added support for paths starting with `.` (self axis)
+- Properly parses `.//something` as self followed by descendant-or-self
+
+### 7. Path Predicate Improvements
+- Fixed bracket depth tracking in path predicates
+- Properly handles nested brackets in path predicates
+- Correctly builds path strings with quoted values
 
 ## Architecture Highlights
 
@@ -35,32 +49,35 @@ Successfully rebuilt RoslynPath parser with proper AST architecture:
 - Tokenizes patterns as single units
 - Handles operators correctly
 - Context-sensitive tokenization for predicates
+- Tracks bracket depth for nested predicates
 
 ### Parser (AST Builder)
 - Builds proper expression trees for predicates
 - Handles AND/OR/NOT with correct precedence
 - Supports nested predicates and complex expressions
+- Properly handles paths starting with `.`
 
 ### Evaluator (Graph-Based)
 - Short-circuit evaluation for boolean operators
 - Position predicates handled at collection level
 - Recursive evaluation for nested path predicates
+- Distinguishes between blocks and statements
 
-## Remaining Issues (17 failing tests)
+## Remaining Issues (12 failing tests)
 - VB.NET specific features need implementation
 - Some complex nested predicates
 - LINQ query-expression detection
-- Type attribute evaluation
+- VB.NET language mapping features
 
 ## Files Modified
 - src/McpRoslyn.Server/RoslynPath/RoslynPathParser2.cs
 - src/McpRoslyn.Server/RoslynPath/RoslynPathEvaluator2.cs
 - tests/RoslynPath/RoslynPathTests.cs (switched to new implementation)
 - tests/RoslynPath/RoslynPathVBTests.cs (switched to new implementation)
-- tests/RoslynPath/DebugTests.cs (added for debugging)
+- Multiple debug test files created for troubleshooting
 
 ## Next Steps
-1. Fix remaining test failures (mostly VB.NET support)
+1. Fix remaining VB.NET test failures (main issue)
 2. Replace old implementation with new one
 3. Add nullable type detection features
 4. Update documentation

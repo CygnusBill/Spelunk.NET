@@ -318,6 +318,24 @@ namespace McpRoslyn.Server.RoslynPath2
                 isAbsolute = true;
                 Consume(TokenType.Slash);
             }
+            // Handle paths starting with . (self)
+            else if (_current.Type == TokenType.Dot)
+            {
+                Consume(TokenType.Dot);
+                // Add a self step
+                var selfStep = new PathStep
+                {
+                    Axis = StepAxis.Self,
+                    NodeTest = ""
+                };
+                steps.Add(selfStep);
+                
+                // Check if followed by / or //
+                if (_current.Type == TokenType.Slash)
+                {
+                    Consume(TokenType.Slash);
+                }
+            }
 
             // Parse steps
             while (_current.Type != TokenType.Eof)
@@ -569,18 +587,57 @@ namespace McpRoslyn.Server.RoslynPath2
             // This is a nested path starting from current node
             var savedPos = _current.Position;
             var pathTokens = new List<Token>();
+            int bracketDepth = 0;
 
-            // Collect tokens that form the path
-            while (_current.Type != TokenType.RightBracket && _current.Type != TokenType.Eof &&
-                   _current.Type != TokenType.And && _current.Type != TokenType.Or)
+            // Collect tokens that form the path, handling nested brackets
+            while (_current.Type != TokenType.Eof)
             {
+                // Track bracket depth
+                if (_current.Type == TokenType.LeftBracket)
+                {
+                    bracketDepth++;
+                }
+                else if (_current.Type == TokenType.RightBracket)
+                {
+                    if (bracketDepth == 0)
+                        break; // End of this path predicate
+                    bracketDepth--;
+                }
+                else if (bracketDepth == 0 && (_current.Type == TokenType.And || _current.Type == TokenType.Or))
+                {
+                    break; // End of this path predicate (boolean operator at same level)
+                }
+                
                 pathTokens.Add(_current);
                 Advance();
             }
 
-            // For now, create a simple implementation
-            // TODO: Parse as actual path expression
-            var pathStr = string.Join("", pathTokens.Select(t => t.Value));
+            // Build the path string, handling special tokens
+            var pathStr = "";
+            foreach (var token in pathTokens)
+            {
+                // Add space before certain tokens if needed
+                if (pathStr.Length > 0 && (token.Type == TokenType.And || token.Type == TokenType.Or || token.Type == TokenType.Not))
+                {
+                    pathStr += " ";
+                }
+                
+                // Add the token value (strings need quotes)
+                if (token.Type == TokenType.String)
+                {
+                    pathStr += "'" + token.Value + "'";
+                }
+                else
+                {
+                    pathStr += token.Value;
+                }
+                
+                // Add space after certain tokens if needed
+                if (token.Type == TokenType.And || token.Type == TokenType.Or || token.Type == TokenType.Not)
+                {
+                    pathStr += " ";
+                }
+            }
             return new PathPredicateExpr { PathString = pathStr };
         }
 

@@ -240,7 +240,7 @@ namespace McpRoslyn.Server.RoslynPath2
             return attrName.ToLower() switch
             {
                 "name" => GetNodeName(node),
-                "type" => node.GetType().Name.Replace("Syntax", ""),
+                "type" => node.GetType().Name,
                 "kind" => node.Language == LanguageNames.CSharp 
                     ? ((CSharpSyntaxKind)node.RawKind).ToString()
                     : ((VBSyntaxKind)node.RawKind).ToString(),
@@ -418,6 +418,8 @@ namespace McpRoslyn.Server.RoslynPath2
                 CS.InterfaceDeclarationSyntax or VB.InterfaceBlockSyntax => "interface",
                 CS.StructDeclarationSyntax or VB.StructureBlockSyntax => "struct",
                 CS.EnumDeclarationSyntax or VB.EnumBlockSyntax => "enum",
+                // Exclude BlockSyntax from being classified as statement
+                CS.BlockSyntax => "block",
                 CS.StatementSyntax or VB.StatementSyntax => "statement",
                 CS.ExpressionSyntax or VB.ExpressionSyntax => "expression",
                 CS.ParameterSyntax or VB.ParameterSyntax => "parameter",
