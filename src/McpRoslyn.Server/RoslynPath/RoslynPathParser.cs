@@ -1,622 +1,754 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
+using System.Text;
 
 namespace McpRoslyn.Server.RoslynPath
 {
     /// <summary>
-    /// Parses RoslynPath expressions into an AST
+    /// Complete rewrite of RoslynPath parser with proper grammar support
     /// </summary>
     public class RoslynPathParser
     {
-        public PathExpression Parse(string path)
+        public PathExpression Parse(string input)
         {
-            if (string.IsNullOrWhiteSpace(path))
-                throw new ArgumentException("Path cannot be empty");
-
-            var lexer = new PathLexer(path);
-            var tokens = lexer.Tokenize();
-            var parser = new PathExpressionParser(tokens);
+            var lexer = new Lexer(input);
+            var parser = new Parser(lexer);
             return parser.ParsePath();
         }
     }
 
+    #region Lexer
+
     public enum TokenType
     {
+        // Operators
         Slash,              // /
         DoubleSlash,        // //
+        DotDot,             // ..
+        Dot,                // .
+        
+        // Brackets
         LeftBracket,        // [
         RightBracket,       // ]
+        LeftParen,          // (
+        RightParen,         // )
+        
+        // Predicates
         At,                 // @
         Equals,             // =
+        NotEquals,          // !=
+        Contains,           // ~=
+        LessThan,           // <
+        GreaterThan,        // >
+        LessOrEqual,        // <=
+        GreaterOrEqual,     // >=
+        
+        // Logical
         And,                // and
         Or,                 // or
         Not,                // not
+        
+        // Axis
+        AxisSeparator,      // ::
+        
+        // Values
         Identifier,         // method, class, etc.
-        String,             // 'value' or "value"
+        Pattern,            // Get*User, *Test*, etc.
+        String,             // "value" or 'value'
         Number,             // 123
-        Wildcard,           // * or ?
-        Function,           // last(), count(), etc.
-        LeftParen,          // (
-        RightParen,         // )
-        DotDot,             // ..
-        Axis,               // ancestor::, following-sibling::, etc.
+        
+        // Special
+        Minus,              // - (for last()-1)
         Eof
     }
 
     public class Token
     {
-        public TokenType Type { get; set; }
-        public string Value { get; set; } = string.Empty;
-        public int Position { get; set; }
+        public TokenType Type { get; }
+        public string Value { get; }
+        public int Position { get; }
+
+        public Token(TokenType type, string value, int position)
+        {
+            Type = type;
+            Value = value;
+            Position = position;
+        }
     }
 
-    public class PathLexer
+    public class Lexer
     {
         private readonly string _input;
-        private int _position;
+        private int _pos;
+        private readonly List<Token> _tokens = new();
 
-        public PathLexer(string input)
+        public Lexer(string input)
         {
             _input = input;
-            _position = 0;
+            _pos = 0;
+            Tokenize();
         }
 
-        public List<Token> Tokenize()
+        private void Tokenize()
         {
-            var tokens = new List<Token>();
-
-            while (_position < _input.Length)
+            while (_pos < _input.Length)
             {
                 SkipWhitespace();
-                if (_position >= _input.Length) break;
+                if (_pos >= _input.Length) break;
 
                 var token = NextToken();
                 if (token != null)
-                    tokens.Add(token);
+                    _tokens.Add(token);
             }
-
-            tokens.Add(new Token { Type = TokenType.Eof, Position = _position });
-            return tokens;
+            _tokens.Add(new Token(TokenType.Eof, "", _pos));
         }
 
-        private Token NextToken()
+        private Token? NextToken()
         {
-            var start = _position;
+            var start = _pos;
             var ch = Peek();
 
-            switch (ch)
+            return ch switch
             {
-                case '/':
-                    Advance();
-                    if (Peek() == '/')
-                    {
-                        Advance();
-                        return new Token { Type = TokenType.DoubleSlash, Value = "//", Position = start };
-                    }
-                    return new Token { Type = TokenType.Slash, Value = "/", Position = start };
-
-                case '[':
-                    Advance();
-                    return new Token { Type = TokenType.LeftBracket, Value = "[", Position = start };
-
-                case ']':
-                    Advance();
-                    return new Token { Type = TokenType.RightBracket, Value = "]", Position = start };
-
-                case '@':
-                    Advance();
-                    return new Token { Type = TokenType.At, Value = "@", Position = start };
-
-                case '=':
-                    Advance();
-                    return new Token { Type = TokenType.Equals, Value = "=", Position = start };
-
-                case '(':
-                    Advance();
-                    return new Token { Type = TokenType.LeftParen, Value = "(", Position = start };
-
-                case ')':
-                    Advance();
-                    return new Token { Type = TokenType.RightParen, Value = ")", Position = start };
-
-                case '.':
-                    if (Peek(1) == '.')
-                    {
-                        Advance(); Advance();
-                        return new Token { Type = TokenType.DotDot, Value = "..", Position = start };
-                    }
-                    else if (Peek(1) == '/')
-                    {
-                        // Single dot followed by slash is part of a path (e.g., .//foo)
-                        // For now, treat single dot as DotDot to mean "current node"
-                        Advance();
-                        return new Token { Type = TokenType.DotDot, Value = ".", Position = start };
-                    }
-                    break;
-
-                case '\'':
-                case '"':
-                    return ReadString(ch);
-
-                case '*':
-                case '?':
-                    Advance();
-                    return new Token { Type = TokenType.Wildcard, Value = ch.ToString(), Position = start };
-
-                case '~':
-                    Advance();
-                    return new Token { Type = TokenType.Equals, Value = "~=", Position = start }; // Treat ~= as contains operator
-
-                case '-':
-                    // Check if it's part of a number or identifier
-                    if (_position + 1 < _input.Length && char.IsDigit(Peek(1)))
-                    {
-                        return ReadNumber(); // Negative number
-                    }
-                    // Otherwise it's part of an identifier (like last()-1)
-                    return ReadIdentifier();
-            }
-
-            if (char.IsDigit(ch))
-            {
-                return ReadNumber();
-            }
-
-            if (char.IsLetter(ch) || ch == '_' || ch == '-')
-            {
-                return ReadIdentifier();
-            }
-
-            throw new Exception($"Unexpected character '{ch}' at position {_position}");
+                '/' when Peek(1) == '/' => Consume(TokenType.DoubleSlash, 2),
+                '/' => Consume(TokenType.Slash, 1),
+                '[' => Consume(TokenType.LeftBracket, 1),
+                ']' => Consume(TokenType.RightBracket, 1),
+                '(' => Consume(TokenType.LeftParen, 1),
+                ')' => Consume(TokenType.RightParen, 1),
+                '@' => Consume(TokenType.At, 1),
+                '.' when Peek(1) == '.' => Consume(TokenType.DotDot, 2),
+                '.' when Peek(1) == '/' => Consume(TokenType.Dot, 1),
+                '.' => Consume(TokenType.Dot, 1),
+                '=' => Consume(TokenType.Equals, 1),
+                '!' when Peek(1) == '=' => Consume(TokenType.NotEquals, 2),
+                '~' when Peek(1) == '=' => Consume(TokenType.Contains, 2),
+                '<' when Peek(1) == '=' => Consume(TokenType.LessOrEqual, 2),
+                '<' => Consume(TokenType.LessThan, 1),
+                '>' when Peek(1) == '=' => Consume(TokenType.GreaterOrEqual, 2),
+                '>' => Consume(TokenType.GreaterThan, 1),
+                '-' when IsInPredicateContext() => Consume(TokenType.Minus, 1),
+                '"' or '\'' => ReadString(ch),
+                _ when char.IsDigit(ch) => ReadNumber(),
+                _ when char.IsLetter(ch) || ch == '_' || ch == '*' || ch == '?' => ReadIdentifierOrPattern(),
+                _ => throw new Exception($"Unexpected character '{ch}' at position {_pos}")
+            };
         }
 
-        private Token ReadString(char quote)
+        private Token ReadIdentifierOrPattern()
         {
-            var start = _position;
-            Advance(); // Skip opening quote
-            var value = new System.Text.StringBuilder();
-
-            while (_position < _input.Length && Peek() != quote)
+            var start = _pos;
+            var text = new StringBuilder();
+            bool hasWildcard = false;
+            
+            // Read identifier/pattern characters
+            while (_pos < _input.Length)
             {
-                if (Peek() == '\\')
+                var ch = Peek();
+                if (char.IsLetterOrDigit(ch) || ch == '_' || ch == '*' || ch == '?')
                 {
-                    Advance();
-                    if (_position < _input.Length)
-                        value.Append(Peek());
+                    if (ch == '*' || ch == '?')
+                        hasWildcard = true;
+                    text.Append(ch);
+                    _pos++;
+                }
+                else if (ch == '-' && _pos + 1 < _input.Length && 
+                         (char.IsLetterOrDigit(Peek(1)) || Peek(1) == '_'))
+                {
+                    // Handle hyphenated names
+                    text.Append(ch);
+                    _pos++;
+                }
+                else if (ch == ':' && Peek(1) == ':')
+                {
+                    // Axis separator
+                    text.Append("::");
+                    _pos += 2;
+                    break;
                 }
                 else
                 {
-                    value.Append(Peek());
+                    break;
                 }
-                Advance();
             }
 
-            if (_position >= _input.Length)
-                throw new Exception($"Unterminated string at position {start}");
+            var value = text.ToString();
+            
+            // If we're in a predicate context and it contains wildcards, it's a pattern
+            if (hasWildcard && IsInPredicateContext())
+                return new Token(TokenType.Pattern, value, start);
+            
+            // Check for keywords (only if not a pattern)
+            if (!hasWildcard)
+            {
+                var type = value switch
+                {
+                    "and" => TokenType.And,
+                    "or" => TokenType.Or,
+                    "not" => TokenType.Not,
+                    _ when value.EndsWith("::") => TokenType.Identifier, // Axis
+                    _ => TokenType.Identifier
+                };
+                return new Token(type, value, start);
+            }
+            
+            // Wildcard outside predicate context
+            return new Token(TokenType.Pattern, value, start);
+        }
 
-            Advance(); // Skip closing quote
-            return new Token { Type = TokenType.String, Value = value.ToString(), Position = start };
+
+        private Token ReadString(char quote)
+        {
+            var start = _pos;
+            _pos++; // Skip opening quote
+            var text = new StringBuilder();
+
+            while (_pos < _input.Length && Peek() != quote)
+            {
+                if (Peek() == '\\' && _pos + 1 < _input.Length)
+                {
+                    _pos++; // Skip escape
+                    text.Append(Peek());
+                }
+                else
+                {
+                    text.Append(Peek());
+                }
+                _pos++;
+            }
+
+            if (_pos < _input.Length)
+                _pos++; // Skip closing quote
+
+            return new Token(TokenType.String, text.ToString(), start);
         }
 
         private Token ReadNumber()
         {
-            var start = _position;
-            var value = new System.Text.StringBuilder();
+            var start = _pos;
+            var text = new StringBuilder();
 
-            // Handle negative sign
-            if (Peek() == '-')
+            while (_pos < _input.Length && char.IsDigit(Peek()))
             {
-                value.Append(Peek());
-                Advance();
+                text.Append(Peek());
+                _pos++;
             }
 
-            while (_position < _input.Length && char.IsDigit(Peek()))
-            {
-                value.Append(Peek());
-                Advance();
-            }
-
-            return new Token { Type = TokenType.Number, Value = value.ToString(), Position = start };
+            return new Token(TokenType.Number, text.ToString(), start);
         }
 
-        private Token ReadIdentifier()
+        private Token Consume(TokenType type, int count)
         {
-            var start = _position;
-            var value = new System.Text.StringBuilder();
-
-            while (_position < _input.Length && (char.IsLetterOrDigit(Peek()) || Peek() == '_' || Peek() == '-' || Peek() == ':'))
-            {
-                value.Append(Peek());
-                Advance();
-            }
-
-            var identifier = value.ToString();
-
-            // Check for keywords (but not if followed by parentheses - then it's a function)
-            if (_position >= _input.Length || Peek() != '(')
-            {
-                switch (identifier)
-                {
-                    case "and":
-                        return new Token { Type = TokenType.And, Value = identifier, Position = start };
-                    case "or":
-                        return new Token { Type = TokenType.Or, Value = identifier, Position = start };
-                    case "not":
-                        return new Token { Type = TokenType.Not, Value = identifier, Position = start };
-                }
-            }
-
-            // Check for axes
-            if (identifier.EndsWith("::"))
-            {
-                return new Token { Type = TokenType.Axis, Value = identifier, Position = start };
-            }
-
-            // Check for functions
-            if (_position < _input.Length && Peek() == '(')
-            {
-                return new Token { Type = TokenType.Function, Value = identifier, Position = start };
-            }
-
-            return new Token { Type = TokenType.Identifier, Value = identifier, Position = start };
-        }
-
-        private void SkipWhitespace()
-        {
-            while (_position < _input.Length && char.IsWhiteSpace(_input[_position]))
-                _position++;
+            var start = _pos;
+            var value = _input.Substring(_pos, count);
+            _pos += count;
+            return new Token(type, value, start);
         }
 
         private char Peek(int offset = 0)
         {
-            var pos = _position + offset;
-            return pos < _input.Length ? _input[pos] : '\0';
+            var index = _pos + offset;
+            return index < _input.Length ? _input[index] : '\0';
         }
 
-        private void Advance()
+        private void SkipWhitespace()
         {
-            _position++;
+            while (_pos < _input.Length && char.IsWhiteSpace(_input[_pos]))
+                _pos++;
+        }
+
+        private bool IsInPredicateContext()
+        {
+            // Simple heuristic: we're in a predicate if we've seen a [ without matching ]
+            int brackets = 0;
+            for (int i = 0; i < _pos; i++)
+            {
+                if (_input[i] == '[') brackets++;
+                else if (_input[i] == ']') brackets--;
+            }
+            return brackets > 0;
+        }
+
+        private int _tokenIndex = 0;
+        
+        public Token Current => _tokenIndex < _tokens.Count ? _tokens[_tokenIndex] : new Token(TokenType.Eof, "", _pos);
+        
+        public Token Next()
+        {
+            if (_tokenIndex < _tokens.Count)
+            {
+                return _tokens[_tokenIndex++];
+            }
+            return new Token(TokenType.Eof, "", _pos);
+        }
+
+        public Token PeekToken(int ahead)
+        {
+            var index = _tokenIndex + ahead;
+            if (index < _tokens.Count)
+                return _tokens[index];
+            return new Token(TokenType.Eof, "", _input.Length);
         }
     }
 
-    // AST Classes
-    public abstract class PathExpression { }
+    #endregion
 
-    public class PathStep : PathExpression
+    #region Parser
+
+    public class Parser
     {
-        public StepType Type { get; set; }
-        public string Axis { get; set; } = string.Empty;
-        public string NodeTest { get; set; } = string.Empty;
-        public List<Predicate> Predicates { get; set; } = new List<Predicate>();
-    }
+        private readonly Lexer _lexer;
+        private Token _current;
 
-    public enum StepType
-    {
-        Child,          // /
-        Descendant,     // //
-        Parent,         // ..
-        Axis            // ancestor::, etc.
-    }
-
-    public class PathSequence : PathExpression
-    {
-        public List<PathStep> Steps { get; set; } = new List<PathStep>();
-    }
-
-    public abstract class Predicate { }
-
-    public class NamePredicate : Predicate
-    {
-        public string Name { get; set; } = string.Empty;
-        public bool HasWildcard { get; set; }
-    }
-
-    public class PositionPredicate : Predicate
-    {
-        public string Expression { get; set; } = string.Empty; // "1", "last()", "last()-1"
-    }
-
-    public class AttributePredicate : Predicate
-    {
-        public string Name { get; set; } = string.Empty;
-        public string Operator { get; set; } = string.Empty; // =, contains, matches
-        public string Value { get; set; } = string.Empty;
-    }
-
-    public class BooleanPredicate : Predicate
-    {
-        public string Name { get; set; } = string.Empty; // @async, @public
-    }
-
-    public class CompoundPredicate : Predicate
-    {
-        public Predicate? Left { get; set; }
-        public string Operator { get; set; } = string.Empty; // and, or
-        public Predicate? Right { get; set; }
-    }
-
-    public class NotPredicate : Predicate
-    {
-        public Predicate? Inner { get; set; }
-    }
-
-    public class PathExpressionParser
-    {
-        private readonly List<Token> _tokens;
-        private int _position;
-
-        public PathExpressionParser(List<Token> tokens)
+        public Parser(Lexer lexer)
         {
-            _tokens = tokens;
-            _position = 0;
+            _lexer = lexer;
+            _current = _lexer.Next();
         }
 
         public PathExpression ParsePath()
         {
-            var sequence = new PathSequence();
+            var steps = new List<PathStep>();
 
-            // Handle absolute vs relative paths
-            if (Current.Type == TokenType.Slash)
+            // Handle absolute vs relative
+            bool isAbsolute = false;
+            if (_current.Type == TokenType.Slash)
             {
-                Advance(); // Skip leading /
-                // Absolute path - will need to start from root
+                isAbsolute = true;
+                Consume(TokenType.Slash);
+            }
+            // Handle paths starting with . (self)
+            else if (_current.Type == TokenType.Dot)
+            {
+                Consume(TokenType.Dot);
+                // Add a self step
+                var selfStep = new PathStep
+                {
+                    Axis = StepAxis.Self,
+                    NodeTest = ""
+                };
+                steps.Add(selfStep);
+                
+                // Check if followed by / or //
+                if (_current.Type == TokenType.Slash)
+                {
+                    Consume(TokenType.Slash);
+                }
             }
 
-            while (Current.Type != TokenType.Eof)
+            // Parse steps
+            while (_current.Type != TokenType.Eof)
             {
                 var step = ParseStep();
                 if (step != null)
-                    sequence.Steps.Add(step);
+                    steps.Add(step);
+                
+                // Check for step separator
+                if (_current.Type == TokenType.Slash)
+                {
+                    Consume(TokenType.Slash);
+                }
+                else if (_current.Type != TokenType.Eof)
+                {
+                    break; // End of path
+                }
             }
 
-            return sequence;
+            return new PathExpression { IsAbsolute = isAbsolute, Steps = steps };
         }
 
         private PathStep? ParseStep()
         {
-            // Check if we're at the end or have nothing to parse
-            if (Current.Type == TokenType.Eof)
+            if (_current.Type == TokenType.Eof)
                 return null;
-                
-            var step = new PathStep();
-            bool hasContent = false;
 
-            // Check for axis or special steps
-            if (Current.Type == TokenType.DotDot)
+            var step = new PathStep();
+
+            // Handle special cases
+            if (_current.Type == TokenType.DotDot)
             {
-                step.Type = StepType.Parent;
+                step.Axis = StepAxis.Parent;
                 step.NodeTest = "..";
-                Advance();
+                Consume(TokenType.DotDot);
                 return step;
             }
 
-            if (Current.Type == TokenType.DoubleSlash)
+            if (_current.Type == TokenType.DoubleSlash)
             {
-                step.Type = StepType.Descendant;
-                Advance();
-                hasContent = true;
+                step.Axis = StepAxis.DescendantOrSelf;
+                Consume(TokenType.DoubleSlash);
             }
-            else if (Current.Type == TokenType.Slash)
+            else if (_current.Type == TokenType.Identifier && _current.Value.EndsWith("::"))
             {
-                step.Type = StepType.Child;
-                Advance();
-                hasContent = true;
+                // Explicit axis
+                step.Axis = ParseAxis(_current.Value);
+                Consume(TokenType.Identifier);
             }
-            else if (Current.Type == TokenType.Axis)
+            else
             {
-                step.Type = StepType.Axis;
-                step.Axis = Current.Value;
-                Advance();
-                hasContent = true;
+                step.Axis = StepAxis.Child; // Default
             }
 
             // Parse node test
-            if (Current.Type == TokenType.Identifier || Current.Type == TokenType.Wildcard)
+            if (_current.Type == TokenType.Identifier || _current.Type == TokenType.Pattern)
             {
-                step.NodeTest = Current.Value;
+                step.NodeTest = _current.Value;
                 Advance();
-                hasContent = true;
+            }
+            else if (_current.Value == "*")
+            {
+                step.NodeTest = "*";
+                Advance();
             }
 
             // Parse predicates
-            while (Current.Type == TokenType.LeftBracket)
+            while (_current.Type == TokenType.LeftBracket)
             {
-                Advance(); // Skip [
-                var predicate = ParsePredicate();
+                Consume(TokenType.LeftBracket);
+                var predicate = ParsePredicateExpr();
                 if (predicate != null)
                     step.Predicates.Add(predicate);
-                Expect(TokenType.RightBracket);
-                hasContent = true;
+                Consume(TokenType.RightBracket);
             }
 
-            // If we didn't parse anything, return null to signal no step
-            return hasContent ? step : null;
+            return step;
         }
 
-        private Predicate ParsePredicate()
+        private PredicateExpr? ParsePredicateExpr()
         {
-            return ParseOrPredicate();
+            return ParseOrExpr();
         }
 
-        private Predicate ParseOrPredicate()
+        private PredicateExpr? ParseOrExpr()
         {
-            var left = ParseAndPredicate();
-
-            while (Current.Type == TokenType.Or)
+            var left = ParseAndExpr();
+            
+            while (_current.Type == TokenType.Or)
             {
-                Advance();
-                var right = ParseAndPredicate();
-                left = new CompoundPredicate { Left = left, Operator = "or", Right = right };
+                Consume(TokenType.Or);
+                var right = ParseAndExpr();
+                left = new OrExpr { Left = left!, Right = right! };
             }
 
             return left;
         }
 
-        private Predicate ParseAndPredicate()
+        private PredicateExpr? ParseAndExpr()
         {
-            var left = ParseNotPredicate();
-
-            while (Current.Type == TokenType.And)
+            var left = ParseNotExpr();
+            
+            while (_current.Type == TokenType.And)
             {
-                Advance();
-                var right = ParseNotPredicate();
-                left = new CompoundPredicate { Left = left, Operator = "and", Right = right };
+                Consume(TokenType.And);
+                var right = ParseNotExpr();
+                left = new AndExpr { Left = left!, Right = right! };
             }
 
             return left;
         }
 
-        private Predicate ParseNotPredicate()
+        private PredicateExpr? ParseNotExpr()
         {
-            if (Current.Type == TokenType.Not)
+            if (_current.Type == TokenType.Not)
             {
-                Advance();
-                return new NotPredicate { Inner = ParsePrimaryPredicate() };
-            }
-            
-            // Handle not() as a function
-            if (Current.Type == TokenType.Function && Current.Value == "not")
-            {
-                Advance();
-                Expect(TokenType.LeftParen);
-                var inner = ParsePredicate();
-                Expect(TokenType.RightParen);
-                return new NotPredicate { Inner = inner };
+                Consume(TokenType.Not);
+                
+                // Handle not(...) and not @attr
+                if (_current.Type == TokenType.LeftParen)
+                {
+                    Consume(TokenType.LeftParen);
+                    var inner = ParsePredicateExpr();
+                    Consume(TokenType.RightParen);
+                    return new NotExpr { Inner = inner! };
+                }
+                else
+                {
+                    var inner = ParsePrimaryExpr();
+                    return new NotExpr { Inner = inner! };
+                }
             }
 
-            return ParsePrimaryPredicate();
+            return ParsePrimaryExpr();
         }
 
-        private Predicate ParsePrimaryPredicate()
+        private PredicateExpr? ParsePrimaryExpr()
         {
-            // Check for grouped predicate with parentheses
-            if (Current.Type == TokenType.LeftParen)
+            // Parenthesized expression
+            if (_current.Type == TokenType.LeftParen)
             {
-                Advance();
-                var predicate = ParsePredicate();
-                Expect(TokenType.RightParen);
-                return predicate;
-            }
-            
-            // Position predicate (number or function)
-            if (Current.Type == TokenType.Number)
-            {
-                var value = Current.Value;
-                Advance();
-                return new PositionPredicate { Expression = value };
-            }
-
-            if (Current.Type == TokenType.Function)
-            {
-                var func = Current.Value;
-                Advance();
-                Expect(TokenType.LeftParen);
-                // Parse function arguments if needed
-                Expect(TokenType.RightParen);
-                
-                // Check for arithmetic operations after function (e.g., last()-1)
-                var expression = func + "()";
-                if (Current.Type == TokenType.Identifier && Current.Value.StartsWith("-"))
-                {
-                    expression += Current.Value;
-                    Advance();
-                }
-                else if (Current.Type == TokenType.Number && Current.Value.StartsWith("-"))
-                {
-                    expression += Current.Value;
-                    Advance();
-                }
-                
-                return new PositionPredicate { Expression = expression };
+                Consume(TokenType.LeftParen);
+                var expr = ParsePredicateExpr();
+                Consume(TokenType.RightParen);
+                return expr;
             }
 
             // Attribute predicate
-            if (Current.Type == TokenType.At)
+            if (_current.Type == TokenType.At)
             {
-                Advance();
-                var attrName = Current.Value;
-                Advance();
-
-                // Boolean attribute like @async
-                if (Current.Type != TokenType.Equals)
-                {
-                    return new BooleanPredicate { Name = attrName };
-                }
-
-                // Attribute with value
-                Advance(); // Skip =
-                var value = Current.Value;
-                Advance();
-                return new AttributePredicate { Name = attrName, Operator = "=", Value = value };
+                return ParseAttributePredicate();
             }
 
-            // Check for nested path predicates (e.g., [.//statement])
-            if (Current.Type == TokenType.DotDot || 
-                Current.Type == TokenType.Slash || 
-                Current.Type == TokenType.DoubleSlash ||
-                (Current.Type == TokenType.Identifier && Peek() != null && 
-                 (Peek().Type == TokenType.Slash || Peek().Type == TokenType.DoubleSlash)))
+            // Position predicate (number or last())
+            if (_current.Type == TokenType.Number)
             {
-                // This is a path predicate - for now, treat it as a special case
-                // We'll parse the path and check if any descendant matches
-                var pathTokens = new List<Token>();
-                
-                // Collect all tokens that form the path
-                while (Current.Type != TokenType.RightBracket && Current.Type != TokenType.Eof &&
-                       Current.Type != TokenType.And && Current.Type != TokenType.Or)
-                {
-                    pathTokens.Add(Current);
-                    Advance();
-                }
-                
-                // For now, create a special PathPredicate (would need to add this class)
-                // As a workaround, treat it as a name predicate with the full path
-                var pathStr = string.Join("", pathTokens.Select(t => t.Value));
-                return new NamePredicate { Name = pathStr, HasWildcard = false };
-            }
-            
-            // Name predicate - can be a combination of identifiers and wildcards
-            if (Current.Type == TokenType.Identifier || Current.Type == TokenType.String || Current.Type == TokenType.Wildcard)
-            {
-                var name = Current.Value;
-                var hasWildcard = Current.Type == TokenType.Wildcard || name.Contains("*") || name.Contains("?");
-                Advance();
-                
-                // Collect additional parts of the pattern (e.g., Get* or *User*Id)
-                while (Current.Type == TokenType.Wildcard || Current.Type == TokenType.Identifier)
-                {
-                    name += Current.Value;
-                    if (Current.Type == TokenType.Wildcard)
-                        hasWildcard = true;
-                    Advance();
-                }
-                
-                return new NamePredicate { Name = name, HasWildcard = hasWildcard };
+                var pos = _current.Value;
+                Consume(TokenType.Number);
+                return new PositionExpr { Position = pos };
             }
 
-            throw new Exception($"Unexpected token in predicate: {Current.Type}");
+            // Function (last(), etc.)
+            if (_current.Type == TokenType.Identifier && _lexer.PeekToken(0).Type == TokenType.LeftParen)
+            {
+                return ParseFunctionPredicate();
+            }
+
+            // Path predicate (.//something or just .something)
+            if (_current.Type == TokenType.Dot || _current.Type == TokenType.DoubleSlash)
+            {
+                return ParsePathPredicate();
+            }
+
+            // Name predicate (identifier or pattern)
+            if (_current.Type == TokenType.Identifier || _current.Type == TokenType.Pattern)
+            {
+                var name = _current.Value;
+                Advance();
+                return new NameExpr { Pattern = name };
+            }
+
+            return null;
         }
 
-        private Token Current => _position < _tokens.Count ? _tokens[_position] : _tokens.Last();
-        
-        private Token? Peek()
+        private PredicateExpr ParseAttributePredicate()
         {
-            return (_position + 1) < _tokens.Count ? _tokens[_position + 1] : null;
+            Consume(TokenType.At);
+            var name = _current.Value;
+            Consume(TokenType.Identifier);
+
+            // Boolean attribute (just @name)
+            if (_current.Type != TokenType.Equals && _current.Type != TokenType.NotEquals &&
+                _current.Type != TokenType.Contains && _current.Type != TokenType.LessThan &&
+                _current.Type != TokenType.GreaterThan && _current.Type != TokenType.LessOrEqual &&
+                _current.Type != TokenType.GreaterOrEqual)
+            {
+                return new AttributeExpr { Name = name };
+            }
+
+            // Attribute with operator and value
+            var op = _current.Type switch
+            {
+                TokenType.Equals => "=",
+                TokenType.NotEquals => "!=",
+                TokenType.Contains => "~=",
+                TokenType.LessThan => "<",
+                TokenType.GreaterThan => ">",
+                TokenType.LessOrEqual => "<=",
+                TokenType.GreaterOrEqual => ">=",
+                _ => "="
+            };
+            Advance();
+
+            var value = _current.Value;
+            if (_current.Type == TokenType.String || _current.Type == TokenType.Number || 
+                _current.Type == TokenType.Identifier || _current.Type == TokenType.Pattern)
+            {
+                Advance();
+            }
+
+            return new AttributeExpr { Name = name, Operator = op, Value = value };
+        }
+
+        private PredicateExpr ParseFunctionPredicate()
+        {
+            var func = _current.Value;
+            Consume(TokenType.Identifier);
+            Consume(TokenType.LeftParen);
+            // TODO: Parse function arguments if needed
+            Consume(TokenType.RightParen);
+
+            // Handle last()-N
+            var expr = func + "()";
+            if (_current.Type == TokenType.Minus)
+            {
+                Consume(TokenType.Minus);
+                if (_current.Type == TokenType.Number)
+                {
+                    expr += "-" + _current.Value;
+                    Consume(TokenType.Number);
+                }
+            }
+
+            return new PositionExpr { Position = expr };
+        }
+
+        private PredicateExpr ParsePathPredicate()
+        {
+            // This is a nested path starting from current node
+            var savedPos = _current.Position;
+            var pathTokens = new List<Token>();
+            int bracketDepth = 0;
+
+            // Collect tokens that form the path, handling nested brackets
+            while (_current.Type != TokenType.Eof)
+            {
+                // Track bracket depth
+                if (_current.Type == TokenType.LeftBracket)
+                {
+                    bracketDepth++;
+                }
+                else if (_current.Type == TokenType.RightBracket)
+                {
+                    if (bracketDepth == 0)
+                        break; // End of this path predicate
+                    bracketDepth--;
+                }
+                else if (bracketDepth == 0 && (_current.Type == TokenType.And || _current.Type == TokenType.Or))
+                {
+                    break; // End of this path predicate (boolean operator at same level)
+                }
+                
+                pathTokens.Add(_current);
+                Advance();
+            }
+
+            // Build the path string, handling special tokens
+            var pathStr = "";
+            foreach (var token in pathTokens)
+            {
+                // Add space before certain tokens if needed
+                if (pathStr.Length > 0 && (token.Type == TokenType.And || token.Type == TokenType.Or || token.Type == TokenType.Not))
+                {
+                    pathStr += " ";
+                }
+                
+                // Add the token value (strings need quotes)
+                if (token.Type == TokenType.String)
+                {
+                    pathStr += "'" + token.Value + "'";
+                }
+                else
+                {
+                    pathStr += token.Value;
+                }
+                
+                // Add space after certain tokens if needed
+                if (token.Type == TokenType.And || token.Type == TokenType.Or || token.Type == TokenType.Not)
+                {
+                    pathStr += " ";
+                }
+            }
+            return new PathPredicateExpr { PathString = pathStr };
+        }
+
+        private StepAxis ParseAxis(string axisStr)
+        {
+            var axis = axisStr.TrimEnd(':');
+            return axis switch
+            {
+                "ancestor" => StepAxis.Ancestor,
+                "ancestor-or-self" => StepAxis.AncestorOrSelf,
+                "child" => StepAxis.Child,
+                "descendant" => StepAxis.Descendant,
+                "descendant-or-self" => StepAxis.DescendantOrSelf,
+                "following" => StepAxis.Following,
+                "following-sibling" => StepAxis.FollowingSibling,
+                "parent" => StepAxis.Parent,
+                "preceding" => StepAxis.Preceding,
+                "preceding-sibling" => StepAxis.PrecedingSibling,
+                "self" => StepAxis.Self,
+                _ => StepAxis.Child
+            };
         }
 
         private void Advance()
         {
-            if (_position < _tokens.Count - 1)
-                _position++;
+            _current = _lexer.Next();
         }
 
-        private void Expect(TokenType type)
+        private void Consume(TokenType expected)
         {
-            if (Current.Type != type)
-                throw new Exception($"Expected {type} but found {Current.Type}");
+            if (_current.Type != expected)
+                throw new Exception($"Expected {expected} but got {_current.Type} ('{_current.Value}') at position {_current.Position}");
             Advance();
         }
     }
+
+    #endregion
+
+    #region AST
+
+    public class PathExpression
+    {
+        public bool IsAbsolute { get; set; }
+        public List<PathStep> Steps { get; set; } = new();
+    }
+
+    public class PathStep
+    {
+        public StepAxis Axis { get; set; }
+        public string NodeTest { get; set; } = "";
+        public List<PredicateExpr> Predicates { get; set; } = new();
+    }
+
+    public enum StepAxis
+    {
+        Ancestor,
+        AncestorOrSelf,
+        Child,
+        Descendant,
+        DescendantOrSelf,
+        Following,
+        FollowingSibling,
+        Parent,
+        Preceding,
+        PrecedingSibling,
+        Self
+    }
+
+    public abstract class PredicateExpr
+    {
+    }
+
+    public class AndExpr : PredicateExpr
+    {
+        public PredicateExpr Left { get; set; } = null!;
+        public PredicateExpr Right { get; set; } = null!;
+    }
+
+    public class OrExpr : PredicateExpr
+    {
+        public PredicateExpr Left { get; set; } = null!;
+        public PredicateExpr Right { get; set; } = null!;
+    }
+
+    public class NotExpr : PredicateExpr
+    {
+        public PredicateExpr Inner { get; set; } = null!;
+    }
+
+    public class AttributeExpr : PredicateExpr
+    {
+        public string Name { get; set; } = "";
+        public string? Operator { get; set; }
+        public string? Value { get; set; }
+    }
+
+    public class NameExpr : PredicateExpr
+    {
+        public string Pattern { get; set; } = "";
+    }
+
+    public class PositionExpr : PredicateExpr
+    {
+        public string Position { get; set; } = "";
+    }
+
+    public class PathPredicateExpr : PredicateExpr
+    {
+        public string PathString { get; set; } = "";
+        // TODO: Should be PathExpression Path
+    }
+
+    #endregion
 }

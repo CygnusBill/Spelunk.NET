@@ -3553,7 +3553,7 @@ public class McpJsonRpcServer
                 if (tree == null) continue;
                 
                 var semanticModel = await document.GetSemanticModelAsync();
-                var evaluator = new RoslynPath.RoslynPathEvaluator(tree, semanticModel);
+                var evaluator = new RoslynPath.RoslynPathEvaluator(tree);
                 
                 try
                 {
@@ -3901,7 +3901,7 @@ public class McpJsonRpcServer
                 if (tree == null)
                     return CreateErrorResponse("Failed to get syntax tree");
                     
-                var evaluator = new RoslynPath.RoslynPathEvaluator(tree, null);
+                var evaluator = new RoslynPath.RoslynPathEvaluator(tree);
                 var results = evaluator.Evaluate(rootPath).ToList();
                 
                 if (results.Count == 0)

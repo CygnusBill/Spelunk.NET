@@ -2,8 +2,7 @@ using System;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-// Switch to new implementation
-using McpRoslyn.Server.RoslynPath2;
+using McpRoslyn.Server.RoslynPath;
 using Xunit;
 
 namespace McpRoslyn.Tests.RoslynPath
@@ -24,7 +23,7 @@ namespace McpRoslyn.Tests.RoslynPath
         private static int CountMatches(string code, string path)
         {
             var tree = ParseCode(code);
-            var evaluator = new RoslynPathEvaluator2(tree);
+            var evaluator = new RoslynPathEvaluator(tree);
             
             // Add timeout to prevent infinite loops
             var task = System.Threading.Tasks.Task.Run(() => evaluator.Evaluate(path).Count());
@@ -38,7 +37,7 @@ namespace McpRoslyn.Tests.RoslynPath
         private static string[] GetMatchedTexts(string code, string path, int maxLength = 50)
         {
             var tree = ParseCode(code);
-            var evaluator = new RoslynPathEvaluator2(tree);
+            var evaluator = new RoslynPathEvaluator(tree);
             
             // Add timeout to prevent infinite loops
             var task = System.Threading.Tasks.Task.Run(() => 

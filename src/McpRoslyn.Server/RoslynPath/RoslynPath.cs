@@ -21,7 +21,7 @@ namespace McpRoslyn.Server.RoslynPath
         /// <returns>Matching syntax nodes</returns>
         public static IEnumerable<SyntaxNode> Find(SyntaxTree tree, string path, SemanticModel? semanticModel = null)
         {
-            var evaluator = new RoslynPathEvaluator(tree, semanticModel);
+            var evaluator = new RoslynPathEvaluator(tree);
             return evaluator.Evaluate(path);
         }
 

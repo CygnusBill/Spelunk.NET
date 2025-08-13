@@ -3,45 +3,51 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.VisualBasic;
+using Microsoft.CodeAnalysis.VisualBasic.Syntax;
 using CS = Microsoft.CodeAnalysis.CSharp.Syntax;
 using VB = Microsoft.CodeAnalysis.VisualBasic.Syntax;
-using CSSyntaxKind = Microsoft.CodeAnalysis.CSharp.SyntaxKind;
+using CSharpSyntaxKind = Microsoft.CodeAnalysis.CSharp.SyntaxKind;
 using VBSyntaxKind = Microsoft.CodeAnalysis.VisualBasic.SyntaxKind;
 
 namespace McpRoslyn.Server.RoslynPath
 {
     /// <summary>
-    /// Evaluates RoslynPath expressions against Roslyn syntax trees
+    /// Evaluates RoslynPath expressions against syntax trees using proper AST evaluation
     /// </summary>
     public class RoslynPathEvaluator
     {
         private readonly SyntaxTree _tree;
-        private readonly SemanticModel? _semanticModel;
+        private readonly SyntaxNode _root;
 
-        public RoslynPathEvaluator(SyntaxTree tree, SemanticModel? semanticModel = null)
+        public RoslynPathEvaluator(SyntaxTree tree)
         {
             _tree = tree;
-            _semanticModel = semanticModel;
+            _root = tree.GetRoot();
         }
 
-        public IEnumerable<SyntaxNode> Evaluate(string path)
+        public IEnumerable<SyntaxNode> Evaluate(string pathString)
         {
             var parser = new RoslynPathParser();
-            var expression = parser.Parse(path);
-            
-            if (expression is PathSequence sequence)
-            {
-                return EvaluateSequence(sequence);
-            }
-
-            return Enumerable.Empty<SyntaxNode>();
+            var path = parser.Parse(pathString);
+            return Evaluate(path);
         }
 
-        private IEnumerable<SyntaxNode> EvaluateSequence(PathSequence sequence)
+        public IEnumerable<SyntaxNode> Evaluate(PathExpression path)
         {
-            IEnumerable<SyntaxNode> current = new[] { _tree.GetRoot() };
+            var context = new EvaluationContext(_root);
+            return EvaluatePath(context, path);
+        }
 
-            foreach (var step in sequence.Steps)
+        private IEnumerable<SyntaxNode> EvaluatePath(EvaluationContext context, PathExpression path)
+        {
+            IEnumerable<SyntaxNode> current = path.IsAbsolute 
+                ? new[] { _root } 
+                : new[] { context.CurrentNode };
+
+            foreach (var step in path.Steps)
             {
                 current = EvaluateStep(current, step);
             }
@@ -51,490 +57,353 @@ namespace McpRoslyn.Server.RoslynPath
 
         private IEnumerable<SyntaxNode> EvaluateStep(IEnumerable<SyntaxNode> nodes, PathStep step)
         {
-            var results = new List<SyntaxNode>();
+            // Apply axis
+            var afterAxis = nodes.SelectMany(n => ApplyAxis(n, step.Axis));
 
-            foreach (var node in nodes)
+            // Apply node test
+            var afterNodeTest = afterAxis.Where(n => MatchesNodeTest(n, step.NodeTest));
+
+            // Apply predicates
+            var result = afterNodeTest;
+            foreach (var predicate in step.Predicates)
             {
-                IEnumerable<SyntaxNode> stepResults = Enumerable.Empty<SyntaxNode>();
-
-                switch (step.Type)
-                {
-                    case StepType.Child:
-                        stepResults = GetChildren(node, step.NodeTest);
-                        break;
-
-                    case StepType.Descendant:
-                        stepResults = GetDescendants(node, step.NodeTest);
-                        break;
-
-                    case StepType.Parent:
-                        if (node.Parent != null)
-                            stepResults = new[] { node.Parent };
-                        break;
-
-                    case StepType.Axis:
-                        stepResults = EvaluateAxis(node, step.Axis, step.NodeTest);
-                        break;
-                }
-
-                // Apply predicates
-                foreach (var predicate in step.Predicates)
-                {
-                    stepResults = ApplyPredicate(stepResults, predicate);
-                }
-
-                results.AddRange(stepResults);
+                result = ApplyPredicate(result, predicate);
             }
 
-            return results.Distinct();
+            return result;
         }
 
-        private IEnumerable<SyntaxNode> GetChildren(SyntaxNode node, string nodeTest)
-        {
-            if (string.IsNullOrEmpty(nodeTest))
-                return node.ChildNodes();
-
-            return node.ChildNodes().Where(child => MatchesNodeTest(child, nodeTest));
-        }
-
-        private IEnumerable<SyntaxNode> GetDescendants(SyntaxNode node, string nodeTest)
-        {
-            if (string.IsNullOrEmpty(nodeTest))
-                return node.DescendantNodes();
-
-            return node.DescendantNodes().Where(child => MatchesNodeTest(child, nodeTest));
-        }
-
-        private bool MatchesNodeTest(SyntaxNode node, string nodeTest)
-        {
-            // Wildcard matches any node
-            if (nodeTest == "*")
-                return true;
-                
-            // First try enhanced detailed node types
-            var detailedTypeName = EnhancedNodeTypes.GetDetailedNodeTypeName(node);
-            if (detailedTypeName.Equals(nodeTest, StringComparison.OrdinalIgnoreCase))
-                return true;
-                
-            // Fall back to original high-level types for compatibility
-            var nodeTypeName = GetNodeTypeName(node);
-            return nodeTypeName.Equals(nodeTest, StringComparison.OrdinalIgnoreCase);
-        }
-
-        private string GetNodeTypeName(SyntaxNode node)
-        {
-            var language = node.Language;
-            
-            if (language == LanguageNames.CSharp)
-            {
-                return node switch
-                {
-                    CS.ClassDeclarationSyntax _ => "class",
-                    CS.InterfaceDeclarationSyntax _ => "interface",
-                    CS.StructDeclarationSyntax _ => "struct",
-                    CS.EnumDeclarationSyntax _ => "enum",
-                    CS.MethodDeclarationSyntax _ => "method",
-                    CS.PropertyDeclarationSyntax _ => "property",
-                    CS.FieldDeclarationSyntax _ => "field",
-                    CS.ConstructorDeclarationSyntax _ => "constructor",
-                    CS.NamespaceDeclarationSyntax _ => "namespace",
-                    CS.FileScopedNamespaceDeclarationSyntax _ => "namespace",
-                    CS.BlockSyntax _ => "block",
-                    CS.StatementSyntax _ => "statement",
-                    CS.ExpressionSyntax _ => "expression",
-                    _ => node.GetType().Name.Replace("Syntax", "").ToLower()
-                };
-            }
-            else if (language == LanguageNames.VisualBasic)
-            {
-                return node switch
-                {
-                    VB.ClassBlockSyntax _ => "class",
-                    VB.InterfaceBlockSyntax _ => "interface",
-                    VB.StructureBlockSyntax _ => "struct",
-                    VB.EnumBlockSyntax _ => "enum",
-                    VB.MethodBlockSyntax _ => "method",
-                    VB.PropertyBlockSyntax _ => "property",
-                    VB.FieldDeclarationSyntax _ => "field",
-                    VB.SubNewStatementSyntax _ => "constructor",
-                    VB.ConstructorBlockSyntax _ => "constructor",
-                    VB.NamespaceBlockSyntax _ => "namespace",
-                    VB.StatementSyntax _ => "statement",
-                    VB.ExpressionSyntax _ => "expression",
-                    _ => node.GetType().Name.Replace("Syntax", "").ToLower()
-                };
-            }
-            else
-            {
-                // Fallback for unknown languages
-                return node.GetType().Name.Replace("Syntax", "").ToLower();
-            }
-        }
-
-        private IEnumerable<SyntaxNode> EvaluateAxis(SyntaxNode node, string axis, string nodeTest)
+        private IEnumerable<SyntaxNode> ApplyAxis(SyntaxNode node, StepAxis axis)
         {
             return axis switch
             {
-                "ancestor::" => GetAncestors(node, nodeTest),
-                "ancestor-or-self::" => GetAncestorsOrSelf(node, nodeTest),
-                "descendant::" => GetDescendants(node, nodeTest),
-                "descendant-or-self::" => GetDescendantsOrSelf(node, nodeTest),
-                "following-sibling::" => GetFollowingSiblings(node, nodeTest),
-                "preceding-sibling::" => GetPrecedingSiblings(node, nodeTest),
-                "child::" => GetChildren(node, nodeTest),
-                "parent::" => GetParent(node, nodeTest),
-                "self::" => GetSelf(node, nodeTest),
+                StepAxis.Child => node.ChildNodes(),
+                StepAxis.Descendant => node.DescendantNodes(),
+                StepAxis.DescendantOrSelf => node.DescendantNodesAndSelf(),
+                StepAxis.Parent => node.Parent != null ? new[] { node.Parent } : Enumerable.Empty<SyntaxNode>(),
+                StepAxis.Ancestor => GetAncestors(node),
+                StepAxis.AncestorOrSelf => GetAncestorsAndSelf(node),
+                StepAxis.Following => GetFollowing(node),
+                StepAxis.FollowingSibling => GetFollowingSiblings(node),
+                StepAxis.Preceding => GetPreceding(node),
+                StepAxis.PrecedingSibling => GetPrecedingSiblings(node),
+                StepAxis.Self => new[] { node },
                 _ => Enumerable.Empty<SyntaxNode>()
             };
         }
 
-        private IEnumerable<SyntaxNode> GetAncestors(SyntaxNode node, string nodeTest)
+        private bool MatchesNodeTest(SyntaxNode node, string nodeTest)
         {
-            var parent = node.Parent;
-            while (parent != null)
+            if (string.IsNullOrEmpty(nodeTest) || nodeTest == "*")
+                return true;
+
+            // Check for wildcard pattern
+            if (nodeTest.Contains('*') || nodeTest.Contains('?'))
             {
-                if (string.IsNullOrEmpty(nodeTest) || MatchesNodeTest(parent, nodeTest))
-                    yield return parent;
-                parent = parent.Parent;
+                var nodeName = GetNodeName(node) ?? "";
+                return MatchesWildcard(nodeName, nodeTest);
             }
+
+            // Check enhanced node types
+            var enhancedType = GetEnhancedNodeType(node);
+            if (enhancedType == nodeTest)
+                return true;
+
+            // Check standard node types
+            var standardType = GetStandardNodeType(node);
+            if (standardType == nodeTest)
+                return true;
+
+            // Check node name
+            var name = GetNodeName(node);
+            return name != null && name.Equals(nodeTest, StringComparison.OrdinalIgnoreCase);
         }
 
-        private IEnumerable<SyntaxNode> GetAncestorsOrSelf(SyntaxNode node, string nodeTest)
+        private IEnumerable<SyntaxNode> ApplyPredicate(IEnumerable<SyntaxNode> nodes, PredicateExpr predicate)
         {
-            if (string.IsNullOrEmpty(nodeTest) || MatchesNodeTest(node, nodeTest))
-                yield return node;
-
-            foreach (var ancestor in GetAncestors(node, nodeTest))
-                yield return ancestor;
-        }
-
-        private IEnumerable<SyntaxNode> GetFollowingSiblings(SyntaxNode node, string nodeTest)
-        {
-            if (node.Parent == null) yield break;
-
-            var siblings = node.Parent.ChildNodes().ToList();
-            var index = siblings.IndexOf(node);
-
-            for (int i = index + 1; i < siblings.Count; i++)
+            // Position predicates need special handling at collection level
+            if (predicate is PositionExpr pos)
             {
-                if (string.IsNullOrEmpty(nodeTest) || MatchesNodeTest(siblings[i], nodeTest))
-                    yield return siblings[i];
-            }
-        }
-
-        private IEnumerable<SyntaxNode> GetPrecedingSiblings(SyntaxNode node, string nodeTest)
-        {
-            if (node.Parent == null) yield break;
-
-            var siblings = node.Parent.ChildNodes().ToList();
-            var index = siblings.IndexOf(node);
-
-            for (int i = index - 1; i >= 0; i--)
-            {
-                if (string.IsNullOrEmpty(nodeTest) || MatchesNodeTest(siblings[i], nodeTest))
-                    yield return siblings[i];
-            }
-        }
-        
-        private IEnumerable<SyntaxNode> GetDescendantsOrSelf(SyntaxNode node, string nodeTest)
-        {
-            if (string.IsNullOrEmpty(nodeTest) || MatchesNodeTest(node, nodeTest))
-                yield return node;
+                var nodeList = nodes.ToList();
                 
-            foreach (var descendant in GetDescendants(node, nodeTest))
-                yield return descendant;
-        }
-        
-        private IEnumerable<SyntaxNode> GetParent(SyntaxNode node, string nodeTest)
-        {
-            if (node.Parent != null && (string.IsNullOrEmpty(nodeTest) || MatchesNodeTest(node.Parent, nodeTest)))
-                yield return node.Parent;
-        }
-        
-        private IEnumerable<SyntaxNode> GetSelf(SyntaxNode node, string nodeTest)
-        {
-            if (string.IsNullOrEmpty(nodeTest) || MatchesNodeTest(node, nodeTest))
-                yield return node;
+                if (int.TryParse(pos.Position, out var position))
+                {
+                    // 1-based index
+                    var index = position - 1;
+                    if (index >= 0 && index < nodeList.Count)
+                        return new[] { nodeList[index] };
+                    return Enumerable.Empty<SyntaxNode>();
+                }
+                
+                if (pos.Position == "last()")
+                {
+                    return nodeList.Count > 0 ? new[] { nodeList.Last() } : Enumerable.Empty<SyntaxNode>();
+                }
+                
+                if (pos.Position.StartsWith("last()-"))
+                {
+                    var offset = int.Parse(pos.Position.Substring(7));
+                    var index = nodeList.Count - 1 - offset;
+                    if (index >= 0 && index < nodeList.Count)
+                        return new[] { nodeList[index] };
+                    return Enumerable.Empty<SyntaxNode>();
+                }
+                
+                return Enumerable.Empty<SyntaxNode>();
+            }
+            
+            return nodes.Where(node => EvaluatePredicate(node, predicate));
         }
 
-        private IEnumerable<SyntaxNode> ApplyPredicate(IEnumerable<SyntaxNode> nodes, Predicate predicate)
+        private bool EvaluatePredicate(SyntaxNode node, PredicateExpr predicate)
         {
+            var context = new EvaluationContext(node);
             return predicate switch
             {
-                NamePredicate namePred => ApplyNamePredicate(nodes, namePred),
-                PositionPredicate posPred => ApplyPositionPredicate(nodes, posPred),
-                AttributePredicate attrPred => ApplyAttributePredicate(nodes, attrPred),
-                BooleanPredicate boolPred => ApplyBooleanPredicate(nodes, boolPred),
-                CompoundPredicate compPred => ApplyCompoundPredicate(nodes, compPred),
-                NotPredicate notPred => ApplyNotPredicate(nodes, notPred),
-                _ => nodes
+                AndExpr and => EvaluatePredicate(node, and.Left) && EvaluatePredicate(node, and.Right),
+                OrExpr or => EvaluatePredicate(node, or.Left) || EvaluatePredicate(node, or.Right),
+                NotExpr not => !EvaluatePredicate(node, not.Inner),
+                AttributeExpr attr => EvaluateAttribute(node, attr),
+                NameExpr name => EvaluateName(node, name),
+                PositionExpr pos => false, // Position predicates need special handling at collection level
+                PathPredicateExpr path => EvaluatePathPredicate(node, path),
+                _ => false
             };
         }
 
-        private IEnumerable<SyntaxNode> ApplyNamePredicate(IEnumerable<SyntaxNode> nodes, NamePredicate predicate)
+        private bool EvaluateAttribute(SyntaxNode node, AttributeExpr attr)
         {
-            return nodes.Where(node =>
+            var value = GetAttributeValue(node, attr.Name);
+            if (value == null)
+                return false;
+
+            // Boolean attribute (no operator)
+            if (attr.Operator == null)
+                return value.Equals("true", StringComparison.OrdinalIgnoreCase);
+
+            // Special handling for @contains - always do contains check
+            if (attr.Name.Equals("contains", StringComparison.OrdinalIgnoreCase))
             {
-                var name = GetNodeName(node);
-                if (string.IsNullOrEmpty(name)) return false;
+                var expectedValue = attr.Value ?? "";
+                return value.Contains(expectedValue, StringComparison.OrdinalIgnoreCase);
+            }
 
-                if (predicate.HasWildcard)
+            // Compare with operator
+            var expectedVal = attr.Value ?? "";
+            return attr.Operator switch
+            {
+                "=" => value.Equals(expectedVal, StringComparison.OrdinalIgnoreCase),
+                "!=" => !value.Equals(expectedVal, StringComparison.OrdinalIgnoreCase),
+                "~=" => value.Contains(expectedVal, StringComparison.OrdinalIgnoreCase),
+                "<" => string.Compare(value, expectedVal, StringComparison.OrdinalIgnoreCase) < 0,
+                ">" => string.Compare(value, expectedVal, StringComparison.OrdinalIgnoreCase) > 0,
+                "<=" => string.Compare(value, expectedVal, StringComparison.OrdinalIgnoreCase) <= 0,
+                ">=" => string.Compare(value, expectedVal, StringComparison.OrdinalIgnoreCase) >= 0,
+                _ => false
+            };
+        }
+
+        private bool EvaluateName(SyntaxNode node, NameExpr name)
+        {
+            var nodeName = GetNodeName(node);
+            if (nodeName == null)
+                return false;
+
+            // Check for wildcard pattern
+            if (name.Pattern.Contains('*') || name.Pattern.Contains('?'))
+            {
+                return MatchesWildcard(nodeName, name.Pattern);
+            }
+
+            return nodeName.Equals(name.Pattern, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private bool EvaluatePathPredicate(SyntaxNode node, PathPredicateExpr pathExpr)
+        {
+            // Parse and evaluate the nested path from current node context
+            try
+            {
+                var parser = new RoslynPathParser();
+                var path = parser.Parse(pathExpr.PathString);
+                var context = new EvaluationContext(node);
+                var results = EvaluatePath(context, path);
+                return results.Any();
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private string? GetAttributeValue(SyntaxNode node, string attrName)
+        {
+            return attrName.ToLower() switch
+            {
+                "name" => GetNodeName(node),
+                "type" => node.GetType().Name,
+                "kind" => node.Language == LanguageNames.CSharp 
+                    ? ((CSharpSyntaxKind)node.RawKind).ToString()
+                    : ((VBSyntaxKind)node.RawKind).ToString(),
+                "text" => node.ToString(),
+                "contains" => node.ToString(),
+                "async" => IsAsync(node) ? "true" : "false",
+                "public" => HasModifier(node, "public") ? "true" : "false",
+                "private" => HasModifier(node, "private") ? "true" : "false",
+                "protected" => HasModifier(node, "protected") ? "true" : "false",
+                "internal" => HasModifier(node, "internal") ? "true" : "false",
+                "static" => HasModifier(node, "static") ? "true" : "false",
+                "virtual" => HasModifier(node, "virtual") ? "true" : "false",
+                "abstract" => HasModifier(node, "abstract") ? "true" : "false",
+                "override" => HasModifier(node, "override") ? "true" : "false",
+                "sealed" => HasModifier(node, "sealed") ? "true" : "false",
+                "readonly" => HasModifier(node, "readonly") ? "true" : "false",
+                "modifiers" => GetModifiers(node),
+                "returns" => GetReturnType(node),
+                "operator" => GetBinaryOperator(node),
+                "literal-value" => GetLiteralValue(node),
+                "right-text" => GetRightOperandText(node),
+                "left-text" => GetLeftOperandText(node),
+                "methodtype" => GetMethodType(node),
+                "has-getter" => HasPropertyGetter(node) ? "true" : "false",
+                "has-setter" => HasPropertySetter(node) ? "true" : "false",
+                _ => null
+            };
+        }
+
+        private bool MatchesWildcard(string text, string pattern)
+        {
+            var regexPattern = "^" + Regex.Escape(pattern)
+                .Replace("\\*", ".*")
+                .Replace("\\?", ".") + "$";
+            return Regex.IsMatch(text, regexPattern, RegexOptions.IgnoreCase);
+        }
+
+        #region Helper Methods
+
+        private IEnumerable<SyntaxNode> GetAncestors(SyntaxNode node)
+        {
+            var current = node.Parent;
+            while (current != null)
+            {
+                yield return current;
+                current = current.Parent;
+            }
+        }
+
+        private IEnumerable<SyntaxNode> GetAncestorsAndSelf(SyntaxNode node)
+        {
+            yield return node;
+            foreach (var ancestor in GetAncestors(node))
+                yield return ancestor;
+        }
+
+        private IEnumerable<SyntaxNode> GetFollowing(SyntaxNode node)
+        {
+            // Get all nodes that come after this one in document order
+            var parent = node.Parent;
+            if (parent == null)
+                return Enumerable.Empty<SyntaxNode>();
+
+            bool foundNode = false;
+            return parent.DescendantNodes().Where(n =>
+            {
+                if (n == node)
                 {
-                    var pattern = "^" + Regex.Escape(predicate.Name)
-                        .Replace("\\*", ".*")
-                        .Replace("\\?", ".") + "$";
-                    return Regex.IsMatch(name, pattern);
+                    foundNode = true;
+                    return false;
                 }
-
-                return name.Equals(predicate.Name, StringComparison.Ordinal);
+                return foundNode;
             });
+        }
+
+        private IEnumerable<SyntaxNode> GetFollowingSiblings(SyntaxNode node)
+        {
+            var parent = node.Parent;
+            if (parent == null)
+                return Enumerable.Empty<SyntaxNode>();
+
+            bool foundNode = false;
+            return parent.ChildNodes().Where(n =>
+            {
+                if (n == node)
+                {
+                    foundNode = true;
+                    return false;
+                }
+                return foundNode;
+            });
+        }
+
+        private IEnumerable<SyntaxNode> GetPreceding(SyntaxNode node)
+        {
+            var parent = node.Parent;
+            if (parent == null)
+                return Enumerable.Empty<SyntaxNode>();
+
+            return parent.DescendantNodes().TakeWhile(n => n != node);
+        }
+
+        private IEnumerable<SyntaxNode> GetPrecedingSiblings(SyntaxNode node)
+        {
+            var parent = node.Parent;
+            if (parent == null)
+                return Enumerable.Empty<SyntaxNode>();
+
+            return parent.ChildNodes().TakeWhile(n => n != node);
         }
 
         private string? GetNodeName(SyntaxNode node)
         {
-            var language = node.Language;
-            
-            if (language == LanguageNames.CSharp)
+            return node switch
             {
-                return node switch
-                {
-                    CS.ClassDeclarationSyntax classDecl => classDecl.Identifier.Text,
-                    CS.InterfaceDeclarationSyntax interfaceDecl => interfaceDecl.Identifier.Text,
-                    CS.StructDeclarationSyntax structDecl => structDecl.Identifier.Text,
-                    CS.EnumDeclarationSyntax enumDecl => enumDecl.Identifier.Text,
-                    CS.MethodDeclarationSyntax methodDecl => methodDecl.Identifier.Text,
-                    CS.PropertyDeclarationSyntax propDecl => propDecl.Identifier.Text,
-                    CS.FieldDeclarationSyntax fieldDecl => fieldDecl.Declaration.Variables.FirstOrDefault()?.Identifier.Text,
-                    CS.ConstructorDeclarationSyntax ctorDecl => ctorDecl.Identifier.Text,
-                    CS.NamespaceDeclarationSyntax nsDecl => GetNamespaceName(nsDecl.Name),
-                    CS.FileScopedNamespaceDeclarationSyntax fsNsDecl => GetNamespaceName(fsNsDecl.Name),
-                    _ => null
-                };
-            }
-            else if (language == LanguageNames.VisualBasic)
-            {
-                return node switch
-                {
-                    VB.ClassBlockSyntax classBlock => classBlock.ClassStatement.Identifier.Text,
-                    VB.InterfaceBlockSyntax interfaceBlock => interfaceBlock.InterfaceStatement.Identifier.Text,
-                    VB.StructureBlockSyntax structBlock => structBlock.StructureStatement.Identifier.Text,
-                    VB.EnumBlockSyntax enumBlock => enumBlock.EnumStatement.Identifier.Text,
-                    VB.MethodBlockSyntax methodBlock => methodBlock.SubOrFunctionStatement.Identifier.Text,
-                    VB.PropertyBlockSyntax propBlock => propBlock.PropertyStatement.Identifier.Text,
-                    VB.FieldDeclarationSyntax fieldDecl => fieldDecl.Declarators.FirstOrDefault()?.Names.FirstOrDefault()?.Identifier.Text,
-                    VB.SubNewStatementSyntax ctorStmt => "New",
-                    VB.ConstructorBlockSyntax ctorBlock => "New",
-                    VB.NamespaceBlockSyntax nsBlock => GetVBNamespaceName(nsBlock.NamespaceStatement.Name),
-                    _ => null
-                };
-            }
-            else
-            {
-                return null;
-            }
+                CS.ClassDeclarationSyntax cs => cs.Identifier.Text,
+                CS.MethodDeclarationSyntax method => method.Identifier.Text,
+                CS.PropertyDeclarationSyntax prop => prop.Identifier.Text,
+                CS.FieldDeclarationSyntax field => field.Declaration.Variables.FirstOrDefault()?.Identifier.Text,
+                VB.ClassBlockSyntax vbClass => vbClass.ClassStatement.Identifier.Text,
+                VB.MethodBlockSyntax vbMethod => vbMethod.SubOrFunctionStatement.Identifier.Text,
+                VB.MethodStatementSyntax vbMethodStmt => vbMethodStmt.Identifier.Text,
+                VB.PropertyBlockSyntax vbProp => vbProp.PropertyStatement.Identifier.Text,
+                VB.PropertyStatementSyntax vbPropStmt => vbPropStmt.Identifier.Text,
+                _ => null
+            };
         }
 
-        private string? GetNamespaceName(CS.NameSyntax name)
-        {
-            return name?.ToString();
-        }
-        
-        private string? GetVBNamespaceName(VB.NameSyntax name)
-        {
-            return name?.ToString();
-        }
-
-        private IEnumerable<SyntaxNode> ApplyPositionPredicate(IEnumerable<SyntaxNode> nodes, PositionPredicate predicate)
-        {
-            var nodeList = nodes.ToList();
-            
-            if (predicate.Expression == "last()")
-            {
-                return nodeList.Count > 0 ? new[] { nodeList.Last() } : Enumerable.Empty<SyntaxNode>();
-            }
-            
-            if (predicate.Expression.StartsWith("last()-"))
-            {
-                var offset = int.Parse(predicate.Expression.Substring(7));
-                var index = nodeList.Count - 1 - offset;
-                return index >= 0 && index < nodeList.Count 
-                    ? new[] { nodeList[index] } 
-                    : Enumerable.Empty<SyntaxNode>();
-            }
-            
-            if (int.TryParse(predicate.Expression, out var position))
-            {
-                // Convert to 0-based index
-                var index = position - 1;
-                return index >= 0 && index < nodeList.Count 
-                    ? new[] { nodeList[index] } 
-                    : Enumerable.Empty<SyntaxNode>();
-            }
-
-            return Enumerable.Empty<SyntaxNode>();
-        }
-
-        private IEnumerable<SyntaxNode> ApplyAttributePredicate(IEnumerable<SyntaxNode> nodes, AttributePredicate predicate)
-        {
-            return nodes.Where(node =>
-            {
-                switch (predicate.Name)
-                {
-                    case "type":
-                        var typeName = node.GetType().Name.Replace("Syntax", "");
-                        return MatchesValue(typeName, predicate.Value, predicate.Operator);
-
-                    case "contains":
-                        var text = node.ToString();
-                        return text.Contains(predicate.Value);
-
-                    case "matches":
-                        var nodeText = node.ToString();
-                        return Regex.IsMatch(nodeText, predicate.Value);
-                        
-                    case "language":
-                        return MatchesValue(node.Language, predicate.Value, predicate.Operator);
-                        
-                    case "modifiers":
-                        return CheckModifiers(node, predicate.Value, predicate.Operator);
-                        
-                    case "returns":
-                        return CheckReturnType(node, predicate.Value, predicate.Operator);
-                        
-                    case "methodtype":
-                        return CheckMethodType(node, predicate.Value, predicate.Operator);
-                        
-                    // Enhanced node properties
-                    case "name":
-                        var name = GetNodeName(node);
-                        return !string.IsNullOrEmpty(name) && MatchesValue(name, predicate.Value, predicate.Operator);
-                        
-                    case "kind":
-                        var kind = node.RawKind.ToString();
-                        return MatchesValue(kind, predicate.Value, predicate.Operator);
-                        
-                    case "text":
-                        return MatchesValue(node.ToString(), predicate.Value, predicate.Operator);
-                        
-                    case "line":
-                        var lineSpan = node.GetLocation().GetLineSpan();
-                        return MatchesValue((lineSpan.StartLinePosition.Line + 1).ToString(), predicate.Value, predicate.Operator);
-                        
-                    case "column":
-                        var colSpan = node.GetLocation().GetLineSpan();
-                        return MatchesValue((colSpan.StartLinePosition.Character + 1).ToString(), predicate.Value, predicate.Operator);
-                        
-                    // Expression properties
-                    case "operator":
-                        var op = EnhancedNodeTypes.GetBinaryOperator(node);
-                        return !string.IsNullOrEmpty(op) && MatchesValue(op, predicate.Value, predicate.Operator);
-                        
-                    case "literal-value":
-                        var literalValue = EnhancedNodeTypes.GetLiteralValue(node);
-                        return !string.IsNullOrEmpty(literalValue) && MatchesValue(literalValue, predicate.Value, predicate.Operator);
-                        
-                    case "right-text":
-                        if (node is CS.BinaryExpressionSyntax csBinary)
-                            return MatchesValue(csBinary.Right.ToString(), predicate.Value, predicate.Operator);
-                        if (node is VB.BinaryExpressionSyntax vbBinary)
-                            return MatchesValue(vbBinary.Right.ToString(), predicate.Value, predicate.Operator);
-                        return false;
-                        
-                    case "left-text":
-                        if (node is CS.BinaryExpressionSyntax csLeftBinary)
-                            return MatchesValue(csLeftBinary.Left.ToString(), predicate.Value, predicate.Operator);
-                        if (node is VB.BinaryExpressionSyntax vbLeftBinary)
-                            return MatchesValue(vbLeftBinary.Left.ToString(), predicate.Value, predicate.Operator);
-                        return false;
-
-                    default:
-                        return false;
-                }
-            });
-        }
-
-        private bool MatchesValue(string actual, string expected, string op)
-        {
-            switch (op)
-            {
-                case "=":
-                    // Handle wildcards in type matching
-                    if (expected.Contains("*") || expected.Contains("?"))
-                    {
-                        var pattern = "^" + Regex.Escape(expected)
-                            .Replace("\\*", ".*")
-                            .Replace("\\?", ".") + "$";
-                        return Regex.IsMatch(actual, pattern, RegexOptions.IgnoreCase);
-                    }
-                    return actual.Equals(expected, StringComparison.OrdinalIgnoreCase);
-                    
-                case "~=":  // Contains operator
-                    return actual.Contains(expected, StringComparison.OrdinalIgnoreCase);
-                    
-                default:
-                    return false;
-            }
-        }
-        
-        private bool CheckModifiers(SyntaxNode node, string value, string op)
-        {
-            var modifiers = GetModifiers(node);
-            if (modifiers == null) return false;
-            
-            if (op == "~=") // contains
-            {
-                return modifiers.Any(m => m.Equals(value, StringComparison.OrdinalIgnoreCase));
-            }
-            
-            return false;
-        }
-        
-        private bool CheckReturnType(SyntaxNode node, string value, string op)
-        {
-            var returnType = GetReturnType(node);
-            if (returnType == null) return false;
-            
-            if (op == "=")
-            {
-                return returnType.Equals(value, StringComparison.OrdinalIgnoreCase);
-            }
-            else if (op == "~=") // contains
-            {
-                return returnType.Contains(value, StringComparison.OrdinalIgnoreCase);
-            }
-            
-            return false;
-        }
-        
-        private bool CheckMethodType(SyntaxNode node, string value, string op)
-        {
-            // Only applicable to VB.NET methods
-            if (node.Language != LanguageNames.VisualBasic) return false;
-            
-            if (node is VB.MethodBlockSyntax methodBlock)
-            {
-                var isSubMethod = methodBlock.SubOrFunctionStatement.SubOrFunctionKeyword.IsKind(VBSyntaxKind.SubKeyword);
-                var methodType = isSubMethod ? "sub" : "function";
-                
-                if (op == "=")
-                {
-                    return methodType.Equals(value, StringComparison.OrdinalIgnoreCase);
-                }
-            }
-            
-            return false;
-        }
-        
-        private List<string>? GetModifiers(SyntaxNode node)
+        private string? GetEnhancedNodeType(SyntaxNode node)
         {
             if (node.Language == LanguageNames.CSharp)
             {
                 return node switch
                 {
-                    CS.ClassDeclarationSyntax classDecl => classDecl.Modifiers.Select(m => m.Text).ToList(),
-                    CS.MethodDeclarationSyntax methodDecl => methodDecl.Modifiers.Select(m => m.Text).ToList(),
-                    CS.PropertyDeclarationSyntax propDecl => propDecl.Modifiers.Select(m => m.Text).ToList(),
-                    CS.FieldDeclarationSyntax fieldDecl => fieldDecl.Modifiers.Select(m => m.Text).ToList(),
+                    CS.IfStatementSyntax => "if-statement",
+                    CS.WhileStatementSyntax => "while-statement",
+                    CS.ForStatementSyntax => "for-statement",
+                    CS.ForEachStatementSyntax => "foreach-statement",
+                    CS.DoStatementSyntax => "do-statement",
+                    CS.SwitchStatementSyntax => "switch-statement",
+                    CS.TryStatementSyntax => "try-statement",
+                    CS.ThrowStatementSyntax => "throw-statement",
+                    CS.ReturnStatementSyntax => "return-statement",
+                    CS.UsingStatementSyntax => "using-statement",
+                    CS.LockStatementSyntax => "lock-statement",
+                    CS.BinaryExpressionSyntax => "binary-expression",
+                    CS.PrefixUnaryExpressionSyntax or CS.PostfixUnaryExpressionSyntax => "unary-expression",
+                    CS.LiteralExpressionSyntax => "literal",
+                    CS.InvocationExpressionSyntax => "invocation",
+                    CS.MemberAccessExpressionSyntax => "member-access",
+                    CS.AssignmentExpressionSyntax => "assignment",
+                    CS.ConditionalExpressionSyntax => "conditional",
+                    CS.LambdaExpressionSyntax => "lambda",
+                    CS.AwaitExpressionSyntax => "await-expression",
+                    CS.ObjectCreationExpressionSyntax => "object-creation",
+                    CS.ArrayCreationExpressionSyntax => "array-creation",
+                    CS.ElementAccessExpressionSyntax => "element-access",
+                    CS.CastExpressionSyntax => "cast-expression",
+                    CS.TypeOfExpressionSyntax => "typeof-expression",
+                    CS.QueryExpressionSyntax => "query-expression",
+                    CS.LocalDeclarationStatementSyntax => "local-declaration",
+                    CS.ExpressionStatementSyntax => "expression-statement",
+                    CS.BlockSyntax => "block",
                     _ => null
                 };
             }
@@ -542,140 +411,266 @@ namespace McpRoslyn.Server.RoslynPath
             {
                 return node switch
                 {
-                    VB.ClassBlockSyntax classBlock => classBlock.ClassStatement.Modifiers.Select(m => m.Text).ToList(),
-                    VB.MethodBlockSyntax methodBlock => methodBlock.SubOrFunctionStatement.Modifiers.Select(m => m.Text).ToList(),
-                    VB.PropertyBlockSyntax propBlock => propBlock.PropertyStatement.Modifiers.Select(m => m.Text).ToList(),
-                    VB.FieldDeclarationSyntax fieldDecl => fieldDecl.Modifiers.Select(m => m.Text).ToList(),
+                    VB.MultiLineIfBlockSyntax or VB.SingleLineIfStatementSyntax => "if-statement",
+                    VB.WhileBlockSyntax => "while-statement",
+                    VB.ForBlockSyntax => "for-statement",
+                    VB.ForEachBlockSyntax => "foreach-statement",
+                    VB.DoLoopBlockSyntax => "do-statement",
+                    VB.SelectBlockSyntax => "switch-statement", // VB Select Case -> switch
+                    VB.TryBlockSyntax => "try-statement",
+                    VB.ThrowStatementSyntax => "throw-statement",
+                    VB.ReturnStatementSyntax => "return-statement",
+                    VB.UsingBlockSyntax => "using-statement",
+                    VB.SyncLockBlockSyntax => "lock-statement", // VB SyncLock -> lock
+                    VB.BinaryExpressionSyntax => "binary-expression",
+                    VB.UnaryExpressionSyntax => "unary-expression",
+                    VB.LiteralExpressionSyntax => "literal",
+                    VB.InvocationExpressionSyntax => "invocation",
+                    VB.MemberAccessExpressionSyntax => "member-access",
+                    VB.AssignmentStatementSyntax => "assignment",
+                    VB.TernaryConditionalExpressionSyntax => "conditional",
+                    VB.LambdaExpressionSyntax => "lambda",
+                    VB.AwaitExpressionSyntax => "await-expression",
+                    VB.ObjectCreationExpressionSyntax => "object-creation",
+                    VB.ArrayCreationExpressionSyntax => "array-creation",
+                    VB.QueryExpressionSyntax => "query-expression",
+                    VB.LocalDeclarationStatementSyntax => "local-declaration",
+                    VB.ExpressionStatementSyntax => "expression-statement",
                     _ => null
                 };
             }
-            
             return null;
         }
-        
+
+        private string GetStandardNodeType(SyntaxNode node)
+        {
+            return node switch
+            {
+                CS.ClassDeclarationSyntax or VB.ClassBlockSyntax => "class",
+                CS.MethodDeclarationSyntax or VB.MethodBlockSyntax => "method",
+                // Only standalone MethodStatementSyntax (abstract methods) should be methods
+                VB.MethodStatementSyntax vbMethodStmt when vbMethodStmt.Parent is not VB.MethodBlockBaseSyntax => "method",
+                CS.PropertyDeclarationSyntax or VB.PropertyBlockSyntax => "property",
+                // Only standalone PropertyStatementSyntax (auto properties) should be properties
+                VB.PropertyStatementSyntax vbPropStmt when vbPropStmt.Parent is not VB.PropertyBlockSyntax => "property",
+                CS.FieldDeclarationSyntax or VB.FieldDeclarationSyntax => "field",
+                CS.NamespaceDeclarationSyntax or VB.NamespaceBlockSyntax => "namespace",
+                CS.InterfaceDeclarationSyntax or VB.InterfaceBlockSyntax => "interface",
+                CS.StructDeclarationSyntax or VB.StructureBlockSyntax => "struct",
+                CS.EnumDeclarationSyntax or VB.EnumBlockSyntax => "enum",
+                // Exclude BlockSyntax from being classified as statement
+                CS.BlockSyntax => "block",
+                CS.StatementSyntax or VB.StatementSyntax => "statement",
+                CS.ExpressionSyntax or VB.ExpressionSyntax => "expression",
+                CS.ParameterSyntax or VB.ParameterSyntax => "parameter",
+                CS.AttributeSyntax or VB.AttributeSyntax => "attribute",
+                _ => ""
+            };
+        }
+
+        private bool IsAsync(SyntaxNode node)
+        {
+            return node switch
+            {
+                CS.MethodDeclarationSyntax method => method.Modifiers.Any(m => m.IsKind(CSharpSyntaxKind.AsyncKeyword)),
+                VB.MethodBlockSyntax vbMethod => vbMethod.SubOrFunctionStatement.Modifiers.Any(m => m.IsKind(VBSyntaxKind.AsyncKeyword)),
+                _ => false
+            };
+        }
+
+        private bool HasModifier(SyntaxNode node, string modifier)
+        {
+            var modifiers = GetModifierTokens(node);
+            
+            // For VB.NET, we need to map modifiers
+            if (node.Language == LanguageNames.VisualBasic)
+            {
+                return modifier.ToLower() switch
+                {
+                    "static" => modifiers.Any(m => m.IsKind(VBSyntaxKind.SharedKeyword)),
+                    "virtual" => modifiers.Any(m => m.IsKind(VBSyntaxKind.OverridableKeyword)),
+                    "abstract" => modifiers.Any(m => m.IsKind(VBSyntaxKind.MustOverrideKeyword)),
+                    "override" => modifiers.Any(m => m.IsKind(VBSyntaxKind.OverridesKeyword)),
+                    "sealed" => modifiers.Any(m => m.IsKind(VBSyntaxKind.NotOverridableKeyword)),
+                    _ => modifiers.Any(m => m.ToString().Equals(modifier, StringComparison.OrdinalIgnoreCase))
+                };
+            }
+            
+            return modifiers.Any(m => m.ToString().Equals(modifier, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private IEnumerable<SyntaxToken> GetModifierTokens(SyntaxNode node)
+        {
+            return node switch
+            {
+                CS.BaseMethodDeclarationSyntax method => method.Modifiers,
+                CS.BaseTypeDeclarationSyntax type => type.Modifiers,
+                CS.BasePropertyDeclarationSyntax prop => prop.Modifiers,
+                CS.BaseFieldDeclarationSyntax field => field.Modifiers,
+                VB.MethodBlockSyntax vbMethod => vbMethod.SubOrFunctionStatement.Modifiers,
+                VB.MethodStatementSyntax vbMethodStmt => vbMethodStmt.Modifiers,
+                VB.TypeBlockSyntax vbType => vbType.BlockStatement.Modifiers,
+                VB.PropertyBlockSyntax vbProp => vbProp.PropertyStatement.Modifiers,
+                VB.PropertyStatementSyntax vbPropStmt => vbPropStmt.Modifiers,
+                _ => Enumerable.Empty<SyntaxToken>()
+            };
+        }
+
+        private string GetModifiers(SyntaxNode node)
+        {
+            var modifiers = GetModifierTokens(node);
+            return string.Join(" ", modifiers.Select(m => m.ToString().ToLower()));
+        }
+
         private string? GetReturnType(SyntaxNode node)
         {
-            if (node.Language == LanguageNames.CSharp)
+            return node switch
             {
-                if (node is CS.MethodDeclarationSyntax methodDecl)
-                {
-                    return methodDecl.ReturnType.ToString();
-                }
-            }
-            else if (node.Language == LanguageNames.VisualBasic)
+                CS.MethodDeclarationSyntax method => method.ReturnType.ToString(),
+                VB.MethodBlockSyntax vbMethod => 
+                    vbMethod.SubOrFunctionStatement.DeclarationKeyword.IsKind(VBSyntaxKind.SubKeyword) 
+                        ? "void"  // VB Sub always returns void
+                        : vbMethod.SubOrFunctionStatement.AsClause?.Type?.ToString() ?? "Object",
+                VB.MethodStatementSyntax vbMethodStmt => 
+                    vbMethodStmt.DeclarationKeyword.IsKind(VBSyntaxKind.SubKeyword) 
+                        ? "void"  // VB Sub always returns void
+                        : vbMethodStmt.AsClause?.Type?.ToString() ?? "Object",
+                _ => null
+            };
+        }
+
+        private string? GetBinaryOperator(SyntaxNode node)
+        {
+            if (node is CS.BinaryExpressionSyntax csBinary)
             {
-                if (node is VB.MethodBlockSyntax methodBlock)
+                return csBinary.Kind() switch
                 {
-                    // Check if it's a Sub (void) or Function
-                    if (methodBlock.SubOrFunctionStatement.SubOrFunctionKeyword.IsKind(VBSyntaxKind.SubKeyword))
-                    {
-                        return "void"; // Map VB Sub to C# void concept
-                    }
-                    else if (methodBlock.SubOrFunctionStatement.AsClause is VB.SimpleAsClauseSyntax asClause)
-                    {
-                        return asClause.Type.ToString();
-                    }
-                }
+                    CSharpSyntaxKind.EqualsExpression => "==",
+                    CSharpSyntaxKind.NotEqualsExpression => "!=",
+                    CSharpSyntaxKind.LogicalAndExpression => "&&",
+                    CSharpSyntaxKind.LogicalOrExpression => "||",
+                    CSharpSyntaxKind.AddExpression => "+",
+                    CSharpSyntaxKind.SubtractExpression => "-",
+                    CSharpSyntaxKind.MultiplyExpression => "*",
+                    CSharpSyntaxKind.DivideExpression => "/",
+                    _ => csBinary.OperatorToken.Text
+                };
             }
-            
+            else if (node is VB.BinaryExpressionSyntax vbBinary)
+            {
+                return vbBinary.Kind() switch
+                {
+                    VBSyntaxKind.EqualsExpression => "=",
+                    VBSyntaxKind.NotEqualsExpression => "<>",
+                    VBSyntaxKind.AndAlsoExpression => "AndAlso",
+                    VBSyntaxKind.OrElseExpression => "OrElse",
+                    VBSyntaxKind.AddExpression => "+",
+                    VBSyntaxKind.SubtractExpression => "-",
+                    VBSyntaxKind.MultiplyExpression => "*",
+                    VBSyntaxKind.DivideExpression => "/",
+                    VBSyntaxKind.IsExpression => "Is",
+                    VBSyntaxKind.IsNotExpression => "IsNot",
+                    _ => vbBinary.OperatorToken.Text
+                };
+            }
             return null;
         }
 
-        private IEnumerable<SyntaxNode> ApplyBooleanPredicate(IEnumerable<SyntaxNode> nodes, BooleanPredicate predicate)
+        private string? GetLiteralValue(SyntaxNode node)
         {
-            return nodes.Where(node =>
+            if (node is CS.LiteralExpressionSyntax literal)
             {
-                var modifiers = GetModifiers(node);
-                if (modifiers == null) return false;
-                
-                switch (predicate.Name)
-                {
-                    case "async":
-                        return modifiers.Any(m => m.Equals("async", StringComparison.OrdinalIgnoreCase));
-
-                    case "public":
-                        return modifiers.Any(m => m.Equals("public", StringComparison.OrdinalIgnoreCase));
-
-                    case "private":
-                        return modifiers.Any(m => m.Equals("private", StringComparison.OrdinalIgnoreCase));
-
-                    case "static":
-                        return modifiers.Any(m => m.Equals("static", StringComparison.OrdinalIgnoreCase) || 
-                                               m.Equals("shared", StringComparison.OrdinalIgnoreCase)); // VB.NET uses "Shared"
-
-                    case "abstract":
-                        return modifiers.Any(m => m.Equals("abstract", StringComparison.OrdinalIgnoreCase) ||
-                                               m.Equals("mustinherit", StringComparison.OrdinalIgnoreCase)); // VB.NET uses "MustInherit"
-
-                    case "virtual":
-                        return modifiers.Any(m => m.Equals("virtual", StringComparison.OrdinalIgnoreCase) ||
-                                               m.Equals("overridable", StringComparison.OrdinalIgnoreCase)); // VB.NET uses "Overridable"
-
-                    case "override":
-                        return modifiers.Any(m => m.Equals("override", StringComparison.OrdinalIgnoreCase) ||
-                                               m.Equals("overrides", StringComparison.OrdinalIgnoreCase)); // VB.NET uses "Overrides"
-                        
-                    case "has-getter":
-                        return CheckHasGetter(node);
-                        
-                    case "has-setter":
-                        return CheckHasSetter(node);
-
-                    default:
-                        return false;
-                }
-            });
+                return literal.Token.Text;
+            }
+            else if (node is VB.LiteralExpressionSyntax vbLiteral)
+            {
+                return vbLiteral.Token.Text;
+            }
+            return null;
         }
-        
-        private bool CheckHasGetter(SyntaxNode node)
+
+        private string? GetRightOperandText(SyntaxNode node)
         {
-            if (node.Language == LanguageNames.CSharp && node is CS.PropertyDeclarationSyntax csProp)
+            if (node is CS.BinaryExpressionSyntax binary)
             {
-                return csProp.AccessorList?.Accessors.Any(a => a.IsKind(CSSyntaxKind.GetAccessorDeclaration)) ?? false;
+                return binary.Right.ToString();
             }
-            else if (node.Language == LanguageNames.VisualBasic && node is VB.PropertyBlockSyntax vbProp)
+            else if (node is VB.BinaryExpressionSyntax vbBinary)
             {
-                return vbProp.Accessors.Any(a => a.IsKind(VBSyntaxKind.GetAccessorBlock));
+                return vbBinary.Right.ToString();
             }
-            
-            return false;
+            return null;
         }
-        
-        private bool CheckHasSetter(SyntaxNode node)
+
+        private string? GetLeftOperandText(SyntaxNode node)
         {
-            if (node.Language == LanguageNames.CSharp && node is CS.PropertyDeclarationSyntax csProp)
+            if (node is CS.BinaryExpressionSyntax binary)
             {
-                return csProp.AccessorList?.Accessors.Any(a => a.IsKind(CSSyntaxKind.SetAccessorDeclaration)) ?? false;
+                return binary.Left.ToString();
             }
-            else if (node.Language == LanguageNames.VisualBasic && node is VB.PropertyBlockSyntax vbProp)
+            else if (node is VB.BinaryExpressionSyntax vbBinary)
             {
-                return vbProp.Accessors.Any(a => a.IsKind(VBSyntaxKind.SetAccessorBlock));
+                return vbBinary.Left.ToString();
             }
-            
+            return null;
+        }
+
+        private string? GetMethodType(SyntaxNode node)
+        {
+            // VB-specific attribute for Sub vs Function
+            if (node is VB.MethodBlockSyntax vbMethod)
+            {
+                return vbMethod.SubOrFunctionStatement.DeclarationKeyword.IsKind(VBSyntaxKind.SubKeyword) 
+                    ? "sub" 
+                    : "function";
+            }
+            else if (node is VB.MethodStatementSyntax vbMethodStmt)
+            {
+                return vbMethodStmt.DeclarationKeyword.IsKind(VBSyntaxKind.SubKeyword) 
+                    ? "sub" 
+                    : "function";
+            }
+            return null;
+        }
+
+        private bool HasPropertyGetter(SyntaxNode node)
+        {
+            if (node is VB.PropertyBlockSyntax vbProp)
+            {
+                return vbProp.Accessors.Any(a => a.AccessorStatement.AccessorKeyword.IsKind(VBSyntaxKind.GetKeyword));
+            }
+            else if (node is CS.PropertyDeclarationSyntax csProp)
+            {
+                // For C#, check if there's a get accessor
+                return csProp.AccessorList?.Accessors.Any(a => a.IsKind(CSharpSyntaxKind.GetAccessorDeclaration)) ?? false;
+            }
             return false;
         }
 
-        private IEnumerable<SyntaxNode> ApplyCompoundPredicate(IEnumerable<SyntaxNode> nodes, CompoundPredicate predicate)
+        private bool HasPropertySetter(SyntaxNode node)
         {
-            if (predicate.Operator == "and")
+            if (node is VB.PropertyBlockSyntax vbProp)
             {
-                var leftResults = ApplyPredicate(nodes, predicate.Left);
-                return ApplyPredicate(leftResults, predicate.Right);
+                return vbProp.Accessors.Any(a => a.AccessorStatement.AccessorKeyword.IsKind(VBSyntaxKind.SetKeyword));
             }
-            else if (predicate.Operator == "or")
+            else if (node is CS.PropertyDeclarationSyntax csProp)
             {
-                var leftResults = ApplyPredicate(nodes, predicate.Left).ToList();
-                var rightResults = ApplyPredicate(nodes, predicate.Right).ToList();
-                return leftResults.Union(rightResults).Distinct();
+                // For C#, check if there's a set accessor
+                return csProp.AccessorList?.Accessors.Any(a => a.IsKind(CSharpSyntaxKind.SetAccessorDeclaration)) ?? false;
             }
-
-            return nodes;
+            return false;
         }
 
-        private IEnumerable<SyntaxNode> ApplyNotPredicate(IEnumerable<SyntaxNode> nodes, NotPredicate predicate)
+        #endregion
+
+        private class EvaluationContext
         {
-            var matching = ApplyPredicate(nodes, predicate.Inner).ToList();
-            return nodes.Where(n => !matching.Contains(n));
+            public SyntaxNode CurrentNode { get; }
+
+            public EvaluationContext(SyntaxNode currentNode)
+            {
+                CurrentNode = currentNode;
+            }
         }
     }
 }
