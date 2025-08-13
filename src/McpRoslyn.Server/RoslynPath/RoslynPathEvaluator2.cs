@@ -360,7 +360,9 @@ namespace McpRoslyn.Server.RoslynPath2
                 CS.FieldDeclarationSyntax field => field.Declaration.Variables.FirstOrDefault()?.Identifier.Text,
                 VB.ClassBlockSyntax vbClass => vbClass.ClassStatement.Identifier.Text,
                 VB.MethodBlockSyntax vbMethod => vbMethod.SubOrFunctionStatement.Identifier.Text,
+                VB.MethodStatementSyntax vbMethodStmt => vbMethodStmt.Identifier.Text,
                 VB.PropertyBlockSyntax vbProp => vbProp.PropertyStatement.Identifier.Text,
+                VB.PropertyStatementSyntax vbPropStmt => vbPropStmt.Identifier.Text,
                 _ => null
             };
         }
@@ -443,8 +445,12 @@ namespace McpRoslyn.Server.RoslynPath2
             return node switch
             {
                 CS.ClassDeclarationSyntax or VB.ClassBlockSyntax => "class",
-                CS.MethodDeclarationSyntax or VB.MethodBlockSyntax or VB.MethodStatementSyntax => "method",
-                CS.PropertyDeclarationSyntax or VB.PropertyBlockSyntax or VB.PropertyStatementSyntax => "property",
+                CS.MethodDeclarationSyntax or VB.MethodBlockSyntax => "method",
+                // Only standalone MethodStatementSyntax (abstract methods) should be methods
+                VB.MethodStatementSyntax vbMethodStmt when vbMethodStmt.Parent is not VB.MethodBlockBaseSyntax => "method",
+                CS.PropertyDeclarationSyntax or VB.PropertyBlockSyntax => "property",
+                // Only standalone PropertyStatementSyntax (auto properties) should be properties
+                VB.PropertyStatementSyntax vbPropStmt when vbPropStmt.Parent is not VB.PropertyBlockSyntax => "property",
                 CS.FieldDeclarationSyntax or VB.FieldDeclarationSyntax => "field",
                 CS.NamespaceDeclarationSyntax or VB.NamespaceBlockSyntax => "namespace",
                 CS.InterfaceDeclarationSyntax or VB.InterfaceBlockSyntax => "interface",

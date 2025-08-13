@@ -130,7 +130,7 @@ public class UserService
 }";
             Assert.Equal(1, CountMatches(code, "//method[GetUser]"));
             Assert.Equal(2, CountMatches(code, "//method[GetUser*]")); // Wildcard in name
-            Assert.Equal(2, CountMatches(code, "//method[*User]")); // Methods ending with User
+            Assert.Equal(3, CountMatches(code, "//method[*User]")); // GetUser, UpdateUser, DeleteUser
         }
 
         [Fact]

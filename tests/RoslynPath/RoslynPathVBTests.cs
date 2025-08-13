@@ -176,7 +176,7 @@ Public Class TestClass
     
     Public MustOverride Sub AbstractMethod()
 End Class";
-            Assert.Equal(2, CountVBMatches(code, "//method[@public]"));
+            Assert.Equal(3, CountVBMatches(code, "//method[@public]")); // PublicMethod, StaticMethod, AbstractMethod
             Assert.Equal(1, CountVBMatches(code, "//method[@private]"));
             Assert.Equal(1, CountVBMatches(code, "//method[@virtual]")); // Overridable -> virtual
             Assert.Equal(1, CountVBMatches(code, "//method[@static]")); // Shared -> static
