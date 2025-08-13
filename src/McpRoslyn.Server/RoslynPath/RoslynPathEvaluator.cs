@@ -455,18 +455,25 @@ namespace McpRoslyn.Server.RoslynPath
 
         private bool MatchesValue(string actual, string expected, string op)
         {
-            if (op != "=") return false;
-
-            // Handle wildcards in type matching
-            if (expected.Contains("*") || expected.Contains("?"))
+            switch (op)
             {
-                var pattern = "^" + Regex.Escape(expected)
-                    .Replace("\\*", ".*")
-                    .Replace("\\?", ".") + "$";
-                return Regex.IsMatch(actual, pattern, RegexOptions.IgnoreCase);
+                case "=":
+                    // Handle wildcards in type matching
+                    if (expected.Contains("*") || expected.Contains("?"))
+                    {
+                        var pattern = "^" + Regex.Escape(expected)
+                            .Replace("\\*", ".*")
+                            .Replace("\\?", ".") + "$";
+                        return Regex.IsMatch(actual, pattern, RegexOptions.IgnoreCase);
+                    }
+                    return actual.Equals(expected, StringComparison.OrdinalIgnoreCase);
+                    
+                case "~=":  // Contains operator
+                    return actual.Contains(expected, StringComparison.OrdinalIgnoreCase);
+                    
+                default:
+                    return false;
             }
-
-            return actual.Equals(expected, StringComparison.OrdinalIgnoreCase);
         }
         
         private bool CheckModifiers(SyntaxNode node, string value, string op)

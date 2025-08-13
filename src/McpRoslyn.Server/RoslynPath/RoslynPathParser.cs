@@ -127,6 +127,13 @@ namespace McpRoslyn.Server.RoslynPath
                         Advance(); Advance();
                         return new Token { Type = TokenType.DotDot, Value = "..", Position = start };
                     }
+                    else if (Peek(1) == '/')
+                    {
+                        // Single dot followed by slash is part of a path (e.g., .//foo)
+                        // For now, treat single dot as DotDot to mean "current node"
+                        Advance();
+                        return new Token { Type = TokenType.DotDot, Value = ".", Position = start };
+                    }
                     break;
 
                 case '\'':
@@ -137,6 +144,19 @@ namespace McpRoslyn.Server.RoslynPath
                 case '?':
                     Advance();
                     return new Token { Type = TokenType.Wildcard, Value = ch.ToString(), Position = start };
+
+                case '~':
+                    Advance();
+                    return new Token { Type = TokenType.Equals, Value = "~=", Position = start }; // Treat ~= as contains operator
+
+                case '-':
+                    // Check if it's part of a number or identifier
+                    if (_position + 1 < _input.Length && char.IsDigit(Peek(1)))
+                    {
+                        return ReadNumber(); // Negative number
+                    }
+                    // Otherwise it's part of an identifier (like last()-1)
+                    return ReadIdentifier();
             }
 
             if (char.IsDigit(ch))
@@ -144,7 +164,7 @@ namespace McpRoslyn.Server.RoslynPath
                 return ReadNumber();
             }
 
-            if (char.IsLetter(ch) || ch == '_')
+            if (char.IsLetter(ch) || ch == '_' || ch == '-')
             {
                 return ReadIdentifier();
             }
@@ -185,6 +205,13 @@ namespace McpRoslyn.Server.RoslynPath
             var start = _position;
             var value = new System.Text.StringBuilder();
 
+            // Handle negative sign
+            if (Peek() == '-')
+            {
+                value.Append(Peek());
+                Advance();
+            }
+
             while (_position < _input.Length && char.IsDigit(Peek()))
             {
                 value.Append(Peek());
@@ -207,15 +234,18 @@ namespace McpRoslyn.Server.RoslynPath
 
             var identifier = value.ToString();
 
-            // Check for keywords
-            switch (identifier)
+            // Check for keywords (but not if followed by parentheses - then it's a function)
+            if (_position >= _input.Length || Peek() != '(')
             {
-                case "and":
-                    return new Token { Type = TokenType.And, Value = identifier, Position = start };
-                case "or":
-                    return new Token { Type = TokenType.Or, Value = identifier, Position = start };
-                case "not":
-                    return new Token { Type = TokenType.Not, Value = identifier, Position = start };
+                switch (identifier)
+                {
+                    case "and":
+                        return new Token { Type = TokenType.And, Value = identifier, Position = start };
+                    case "or":
+                        return new Token { Type = TokenType.Or, Value = identifier, Position = start };
+                    case "not":
+                        return new Token { Type = TokenType.Not, Value = identifier, Position = start };
+                }
             }
 
             // Check for axes
@@ -445,12 +475,31 @@ namespace McpRoslyn.Server.RoslynPath
                 Advance();
                 return new NotPredicate { Inner = ParsePrimaryPredicate() };
             }
+            
+            // Handle not() as a function
+            if (Current.Type == TokenType.Function && Current.Value == "not")
+            {
+                Advance();
+                Expect(TokenType.LeftParen);
+                var inner = ParsePredicate();
+                Expect(TokenType.RightParen);
+                return new NotPredicate { Inner = inner };
+            }
 
             return ParsePrimaryPredicate();
         }
 
         private Predicate ParsePrimaryPredicate()
         {
+            // Check for grouped predicate with parentheses
+            if (Current.Type == TokenType.LeftParen)
+            {
+                Advance();
+                var predicate = ParsePredicate();
+                Expect(TokenType.RightParen);
+                return predicate;
+            }
+            
             // Position predicate (number or function)
             if (Current.Type == TokenType.Number)
             {
@@ -466,7 +515,21 @@ namespace McpRoslyn.Server.RoslynPath
                 Expect(TokenType.LeftParen);
                 // Parse function arguments if needed
                 Expect(TokenType.RightParen);
-                return new PositionPredicate { Expression = func + "()" };
+                
+                // Check for arithmetic operations after function (e.g., last()-1)
+                var expression = func + "()";
+                if (Current.Type == TokenType.Identifier && Current.Value.StartsWith("-"))
+                {
+                    expression += Current.Value;
+                    Advance();
+                }
+                else if (Current.Type == TokenType.Number && Current.Value.StartsWith("-"))
+                {
+                    expression += Current.Value;
+                    Advance();
+                }
+                
+                return new PositionPredicate { Expression = expression };
             }
 
             // Attribute predicate
@@ -489,12 +552,47 @@ namespace McpRoslyn.Server.RoslynPath
                 return new AttributePredicate { Name = attrName, Operator = "=", Value = value };
             }
 
-            // Name predicate
+            // Check for nested path predicates (e.g., [.//statement])
+            if (Current.Type == TokenType.DotDot || 
+                Current.Type == TokenType.Slash || 
+                Current.Type == TokenType.DoubleSlash ||
+                (Current.Type == TokenType.Identifier && Peek() != null && 
+                 (Peek().Type == TokenType.Slash || Peek().Type == TokenType.DoubleSlash)))
+            {
+                // This is a path predicate - for now, treat it as a special case
+                // We'll parse the path and check if any descendant matches
+                var pathTokens = new List<Token>();
+                
+                // Collect all tokens that form the path
+                while (Current.Type != TokenType.RightBracket && Current.Type != TokenType.Eof &&
+                       Current.Type != TokenType.And && Current.Type != TokenType.Or)
+                {
+                    pathTokens.Add(Current);
+                    Advance();
+                }
+                
+                // For now, create a special PathPredicate (would need to add this class)
+                // As a workaround, treat it as a name predicate with the full path
+                var pathStr = string.Join("", pathTokens.Select(t => t.Value));
+                return new NamePredicate { Name = pathStr, HasWildcard = false };
+            }
+            
+            // Name predicate - can be a combination of identifiers and wildcards
             if (Current.Type == TokenType.Identifier || Current.Type == TokenType.String || Current.Type == TokenType.Wildcard)
             {
                 var name = Current.Value;
                 var hasWildcard = Current.Type == TokenType.Wildcard || name.Contains("*") || name.Contains("?");
                 Advance();
+                
+                // Collect additional parts of the pattern (e.g., Get* or *User*Id)
+                while (Current.Type == TokenType.Wildcard || Current.Type == TokenType.Identifier)
+                {
+                    name += Current.Value;
+                    if (Current.Type == TokenType.Wildcard)
+                        hasWildcard = true;
+                    Advance();
+                }
+                
                 return new NamePredicate { Name = name, HasWildcard = hasWildcard };
             }
 
@@ -502,6 +600,11 @@ namespace McpRoslyn.Server.RoslynPath
         }
 
         private Token Current => _position < _tokens.Count ? _tokens[_position] : _tokens.Last();
+        
+        private Token? Peek()
+        {
+            return (_position + 1) < _tokens.Count ? _tokens[_position + 1] : null;
+        }
 
         private void Advance()
         {
