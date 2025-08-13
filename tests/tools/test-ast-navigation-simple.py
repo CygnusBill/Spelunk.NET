@@ -163,7 +163,7 @@ def main():
         # Initialize
         print("Initializing server...")
         response = send_request(process, "initialize", {
-            "protocolVersion": "0.1.0",
+            "protocolVersion": "2024-11-05",
             "capabilities": {"tools": {}},
             "clientInfo": {"name": "test-ast-navigation", "version": "1.0.0"}
         })

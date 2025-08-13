@@ -64,7 +64,7 @@ def run_test(title, pattern, pattern_type="roslynpath", expected_count=None):
         
         # Initialize
         response = send_request(process, "initialize", {
-            "protocolVersion": "0.1.0",
+            "protocolVersion": "2024-11-05",
             "capabilities": {
                 "tools": {}
             },
