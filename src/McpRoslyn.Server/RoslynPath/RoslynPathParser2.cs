@@ -82,7 +82,6 @@ namespace McpRoslyn.Server.RoslynPath2
         private readonly string _input;
         private int _pos;
         private readonly List<Token> _tokens = new();
-        private Token? _current;
 
         public Lexer(string input)
         {
@@ -129,63 +128,35 @@ namespace McpRoslyn.Server.RoslynPath2
                 '<' => Consume(TokenType.LessThan, 1),
                 '>' when Peek(1) == '=' => Consume(TokenType.GreaterOrEqual, 2),
                 '>' => Consume(TokenType.GreaterThan, 1),
-                '-' when IsInPredicateContext() && char.IsDigit(Peek(1)) => ReadNumber(),
                 '-' when IsInPredicateContext() => Consume(TokenType.Minus, 1),
                 '"' or '\'' => ReadString(ch),
                 _ when char.IsDigit(ch) => ReadNumber(),
-                _ when char.IsLetter(ch) || ch == '_' => ReadIdentifierOrKeyword(),
-                _ when ch == '*' || ch == '?' => ReadPattern(),
+                _ when char.IsLetter(ch) || ch == '_' || ch == '*' || ch == '?' => ReadIdentifierOrPattern(),
                 _ => throw new Exception($"Unexpected character '{ch}' at position {_pos}")
             };
         }
 
-        private Token ReadPattern()
+        private Token ReadIdentifierOrPattern()
         {
             var start = _pos;
-            var pattern = new StringBuilder();
+            var text = new StringBuilder();
+            bool hasWildcard = false;
             
-            // Read pattern characters (identifiers, wildcards)
+            // Read identifier/pattern characters
             while (_pos < _input.Length)
             {
                 var ch = Peek();
                 if (char.IsLetterOrDigit(ch) || ch == '_' || ch == '*' || ch == '?')
                 {
-                    pattern.Append(ch);
+                    if (ch == '*' || ch == '?')
+                        hasWildcard = true;
+                    text.Append(ch);
                     _pos++;
                 }
                 else if (ch == '-' && _pos + 1 < _input.Length && 
                          (char.IsLetterOrDigit(Peek(1)) || Peek(1) == '_'))
                 {
-                    // Handle hyphenated names in patterns
-                    pattern.Append(ch);
-                    _pos++;
-                }
-                else
-                {
-                    break;
-                }
-            }
-
-            var value = pattern.ToString();
-            
-            // If it contains wildcards, it's a pattern
-            if (value.Contains('*') || value.Contains('?'))
-                return new Token(TokenType.Pattern, value, start);
-            
-            // Otherwise it's an identifier that we'll handle normally
-            return new Token(TokenType.Identifier, value, start);
-        }
-
-        private Token ReadIdentifierOrKeyword()
-        {
-            var start = _pos;
-            var text = new StringBuilder();
-
-            while (_pos < _input.Length)
-            {
-                var ch = Peek();
-                if (char.IsLetterOrDigit(ch) || ch == '_' || ch == '-')
-                {
+                    // Handle hyphenated names
                     text.Append(ch);
                     _pos++;
                 }
@@ -194,7 +165,7 @@ namespace McpRoslyn.Server.RoslynPath2
                     // Axis separator
                     text.Append("::");
                     _pos += 2;
-                    return new Token(TokenType.Identifier, text.ToString(), start);
+                    break;
                 }
                 else
                 {
@@ -204,18 +175,28 @@ namespace McpRoslyn.Server.RoslynPath2
 
             var value = text.ToString();
             
-            // Check for keywords
-            var type = value switch
+            // If we're in a predicate context and it contains wildcards, it's a pattern
+            if (hasWildcard && IsInPredicateContext())
+                return new Token(TokenType.Pattern, value, start);
+            
+            // Check for keywords (only if not a pattern)
+            if (!hasWildcard)
             {
-                "and" => TokenType.And,
-                "or" => TokenType.Or,
-                "not" => TokenType.Not,
-                _ when value.EndsWith("::") => TokenType.Identifier, // Axis
-                _ => TokenType.Identifier
-            };
-
-            return new Token(type, value, start);
+                var type = value switch
+                {
+                    "and" => TokenType.And,
+                    "or" => TokenType.Or,
+                    "not" => TokenType.Not,
+                    _ when value.EndsWith("::") => TokenType.Identifier, // Axis
+                    _ => TokenType.Identifier
+                };
+                return new Token(type, value, start);
+            }
+            
+            // Wildcard outside predicate context
+            return new Token(TokenType.Pattern, value, start);
         }
+
 
         private Token ReadString(char quote)
         {
@@ -247,12 +228,6 @@ namespace McpRoslyn.Server.RoslynPath2
         {
             var start = _pos;
             var text = new StringBuilder();
-
-            if (Peek() == '-')
-            {
-                text.Append('-');
-                _pos++;
-            }
 
             while (_pos < _input.Length && char.IsDigit(Peek()))
             {
@@ -295,22 +270,24 @@ namespace McpRoslyn.Server.RoslynPath2
             return brackets > 0;
         }
 
-        public Token Current => _current ?? _tokens[0];
+        private int _tokenIndex = 0;
+        
+        public Token Current => _tokenIndex < _tokens.Count ? _tokens[_tokenIndex] : new Token(TokenType.Eof, "", _pos);
         
         public Token Next()
         {
-            if (_tokens.Count == 0)
-                return new Token(TokenType.Eof, "", _pos);
-            
-            _current = _tokens[0];
-            _tokens.RemoveAt(0);
-            return _current;
+            if (_tokenIndex < _tokens.Count)
+            {
+                return _tokens[_tokenIndex++];
+            }
+            return new Token(TokenType.Eof, "", _pos);
         }
 
         public Token PeekToken(int ahead)
         {
-            if (ahead < _tokens.Count)
-                return _tokens[ahead];
+            var index = _tokenIndex + ahead;
+            if (index < _tokens.Count)
+                return _tokens[index];
             return new Token(TokenType.Eof, "", _input.Length);
         }
     }
@@ -635,7 +612,7 @@ namespace McpRoslyn.Server.RoslynPath2
         private void Consume(TokenType expected)
         {
             if (_current.Type != expected)
-                throw new Exception($"Expected {expected} but got {_current.Type} at position {_current.Position}");
+                throw new Exception($"Expected {expected} but got {_current.Type} ('{_current.Value}') at position {_current.Position}");
             Advance();
         }
     }

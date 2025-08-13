@@ -121,6 +121,37 @@ namespace McpRoslyn.Server.RoslynPath2
 
         private IEnumerable<SyntaxNode> ApplyPredicate(IEnumerable<SyntaxNode> nodes, PredicateExpr predicate)
         {
+            // Position predicates need special handling at collection level
+            if (predicate is PositionExpr pos)
+            {
+                var nodeList = nodes.ToList();
+                
+                if (int.TryParse(pos.Position, out var position))
+                {
+                    // 1-based index
+                    var index = position - 1;
+                    if (index >= 0 && index < nodeList.Count)
+                        return new[] { nodeList[index] };
+                    return Enumerable.Empty<SyntaxNode>();
+                }
+                
+                if (pos.Position == "last()")
+                {
+                    return nodeList.Count > 0 ? new[] { nodeList.Last() } : Enumerable.Empty<SyntaxNode>();
+                }
+                
+                if (pos.Position.StartsWith("last()-"))
+                {
+                    var offset = int.Parse(pos.Position.Substring(7));
+                    var index = nodeList.Count - 1 - offset;
+                    if (index >= 0 && index < nodeList.Count)
+                        return new[] { nodeList[index] };
+                    return Enumerable.Empty<SyntaxNode>();
+                }
+                
+                return Enumerable.Empty<SyntaxNode>();
+            }
+            
             return nodes.Where(node => EvaluatePredicate(node, predicate));
         }
 
@@ -150,17 +181,24 @@ namespace McpRoslyn.Server.RoslynPath2
             if (attr.Operator == null)
                 return value.Equals("true", StringComparison.OrdinalIgnoreCase);
 
+            // Special handling for @contains - always do contains check
+            if (attr.Name.Equals("contains", StringComparison.OrdinalIgnoreCase))
+            {
+                var expectedValue = attr.Value ?? "";
+                return value.Contains(expectedValue, StringComparison.OrdinalIgnoreCase);
+            }
+
             // Compare with operator
-            var expectedValue = attr.Value ?? "";
+            var expectedVal = attr.Value ?? "";
             return attr.Operator switch
             {
-                "=" => value.Equals(expectedValue, StringComparison.OrdinalIgnoreCase),
-                "!=" => !value.Equals(expectedValue, StringComparison.OrdinalIgnoreCase),
-                "~=" => value.Contains(expectedValue, StringComparison.OrdinalIgnoreCase),
-                "<" => string.Compare(value, expectedValue, StringComparison.OrdinalIgnoreCase) < 0,
-                ">" => string.Compare(value, expectedValue, StringComparison.OrdinalIgnoreCase) > 0,
-                "<=" => string.Compare(value, expectedValue, StringComparison.OrdinalIgnoreCase) <= 0,
-                ">=" => string.Compare(value, expectedValue, StringComparison.OrdinalIgnoreCase) >= 0,
+                "=" => value.Equals(expectedVal, StringComparison.OrdinalIgnoreCase),
+                "!=" => !value.Equals(expectedVal, StringComparison.OrdinalIgnoreCase),
+                "~=" => value.Contains(expectedVal, StringComparison.OrdinalIgnoreCase),
+                "<" => string.Compare(value, expectedVal, StringComparison.OrdinalIgnoreCase) < 0,
+                ">" => string.Compare(value, expectedVal, StringComparison.OrdinalIgnoreCase) > 0,
+                "<=" => string.Compare(value, expectedVal, StringComparison.OrdinalIgnoreCase) <= 0,
+                ">=" => string.Compare(value, expectedVal, StringComparison.OrdinalIgnoreCase) >= 0,
                 _ => false
             };
         }
@@ -206,7 +244,8 @@ namespace McpRoslyn.Server.RoslynPath2
                 "kind" => node.Language == LanguageNames.CSharp 
                     ? ((CSharpSyntaxKind)node.RawKind).ToString()
                     : ((VBSyntaxKind)node.RawKind).ToString(),
-                "text" or "contains" => node.ToString(),
+                "text" => node.ToString(),
+                "contains" => node.ToString(),
                 "async" => IsAsync(node) ? "true" : "false",
                 "public" => HasModifier(node, "public") ? "true" : "false",
                 "private" => HasModifier(node, "private") ? "true" : "false",
