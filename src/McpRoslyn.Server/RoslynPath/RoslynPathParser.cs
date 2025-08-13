@@ -344,9 +344,14 @@ namespace McpRoslyn.Server.RoslynPath
             return sequence;
         }
 
-        private PathStep ParseStep()
+        private PathStep? ParseStep()
         {
+            // Check if we're at the end or have nothing to parse
+            if (Current.Type == TokenType.Eof)
+                return null;
+                
             var step = new PathStep();
+            bool hasContent = false;
 
             // Check for axis or special steps
             if (Current.Type == TokenType.DotDot)
@@ -361,24 +366,28 @@ namespace McpRoslyn.Server.RoslynPath
             {
                 step.Type = StepType.Descendant;
                 Advance();
+                hasContent = true;
             }
             else if (Current.Type == TokenType.Slash)
             {
                 step.Type = StepType.Child;
                 Advance();
+                hasContent = true;
             }
             else if (Current.Type == TokenType.Axis)
             {
                 step.Type = StepType.Axis;
                 step.Axis = Current.Value;
                 Advance();
+                hasContent = true;
             }
 
             // Parse node test
-            if (Current.Type == TokenType.Identifier)
+            if (Current.Type == TokenType.Identifier || Current.Type == TokenType.Wildcard)
             {
                 step.NodeTest = Current.Value;
                 Advance();
+                hasContent = true;
             }
 
             // Parse predicates
@@ -389,9 +398,11 @@ namespace McpRoslyn.Server.RoslynPath
                 if (predicate != null)
                     step.Predicates.Add(predicate);
                 Expect(TokenType.RightBracket);
+                hasContent = true;
             }
 
-            return step;
+            // If we didn't parse anything, return null to signal no step
+            return hasContent ? step : null;
         }
 
         private Predicate ParsePredicate()

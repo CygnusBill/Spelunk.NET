@@ -107,6 +107,10 @@ namespace McpRoslyn.Server.RoslynPath
 
         private bool MatchesNodeTest(SyntaxNode node, string nodeTest)
         {
+            // Wildcard matches any node
+            if (nodeTest == "*")
+                return true;
+                
             // First try enhanced detailed node types
             var detailedTypeName = EnhancedNodeTypes.GetDetailedNodeTypeName(node);
             if (detailedTypeName.Equals(nodeTest, StringComparison.OrdinalIgnoreCase))
