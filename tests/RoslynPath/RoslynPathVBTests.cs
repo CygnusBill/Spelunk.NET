@@ -340,7 +340,7 @@ public class TestClass
             
             var csTree = Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree.ParseText(csCode);
             var csEvaluator = new RoslynPathEvaluator(csTree);
-            Assert.Equal(1, csEvaluator.Evaluate("//if-statement[.//throw-statement]").Count());
+            Assert.Single(csEvaluator.Evaluate("//if-statement[.//throw-statement]"));
         }
 
         #endregion
