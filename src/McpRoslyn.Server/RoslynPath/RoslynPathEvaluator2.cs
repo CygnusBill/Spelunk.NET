@@ -263,6 +263,7 @@ namespace McpRoslyn.Server.RoslynPath2
                 "literal-value" => GetLiteralValue(node),
                 "right-text" => GetRightOperandText(node),
                 "left-text" => GetLeftOperandText(node),
+                "methodtype" => GetMethodType(node),
                 _ => null
             };
         }
@@ -402,7 +403,38 @@ namespace McpRoslyn.Server.RoslynPath2
                     _ => null
                 };
             }
-            // TODO: Add VB support
+            else if (node.Language == LanguageNames.VisualBasic)
+            {
+                return node switch
+                {
+                    VB.MultiLineIfBlockSyntax or VB.SingleLineIfStatementSyntax => "if-statement",
+                    VB.WhileBlockSyntax => "while-statement",
+                    VB.ForBlockSyntax => "for-statement",
+                    VB.ForEachBlockSyntax => "foreach-statement",
+                    VB.DoLoopBlockSyntax => "do-statement",
+                    VB.SelectBlockSyntax => "switch-statement", // VB Select Case -> switch
+                    VB.TryBlockSyntax => "try-statement",
+                    VB.ThrowStatementSyntax => "throw-statement",
+                    VB.ReturnStatementSyntax => "return-statement",
+                    VB.UsingBlockSyntax => "using-statement",
+                    VB.SyncLockBlockSyntax => "lock-statement", // VB SyncLock -> lock
+                    VB.BinaryExpressionSyntax => "binary-expression",
+                    VB.UnaryExpressionSyntax => "unary-expression",
+                    VB.LiteralExpressionSyntax => "literal",
+                    VB.InvocationExpressionSyntax => "invocation",
+                    VB.MemberAccessExpressionSyntax => "member-access",
+                    VB.AssignmentStatementSyntax => "assignment",
+                    VB.TernaryConditionalExpressionSyntax => "conditional",
+                    VB.LambdaExpressionSyntax => "lambda",
+                    VB.AwaitExpressionSyntax => "await-expression",
+                    VB.ObjectCreationExpressionSyntax => "object-creation",
+                    VB.ArrayCreationExpressionSyntax => "array-creation",
+                    VB.QueryExpressionSyntax => "query-expression",
+                    VB.LocalDeclarationStatementSyntax => "local-declaration",
+                    VB.ExpressionStatementSyntax => "expression-statement",
+                    _ => null
+                };
+            }
             return null;
         }
 
@@ -411,8 +443,8 @@ namespace McpRoslyn.Server.RoslynPath2
             return node switch
             {
                 CS.ClassDeclarationSyntax or VB.ClassBlockSyntax => "class",
-                CS.MethodDeclarationSyntax or VB.MethodBlockSyntax => "method",
-                CS.PropertyDeclarationSyntax or VB.PropertyBlockSyntax => "property",
+                CS.MethodDeclarationSyntax or VB.MethodBlockSyntax or VB.MethodStatementSyntax => "method",
+                CS.PropertyDeclarationSyntax or VB.PropertyBlockSyntax or VB.PropertyStatementSyntax => "property",
                 CS.FieldDeclarationSyntax or VB.FieldDeclarationSyntax => "field",
                 CS.NamespaceDeclarationSyntax or VB.NamespaceBlockSyntax => "namespace",
                 CS.InterfaceDeclarationSyntax or VB.InterfaceBlockSyntax => "interface",
@@ -441,6 +473,21 @@ namespace McpRoslyn.Server.RoslynPath2
         private bool HasModifier(SyntaxNode node, string modifier)
         {
             var modifiers = GetModifierTokens(node);
+            
+            // For VB.NET, we need to map modifiers
+            if (node.Language == LanguageNames.VisualBasic)
+            {
+                return modifier.ToLower() switch
+                {
+                    "static" => modifiers.Any(m => m.IsKind(VBSyntaxKind.SharedKeyword)),
+                    "virtual" => modifiers.Any(m => m.IsKind(VBSyntaxKind.OverridableKeyword)),
+                    "abstract" => modifiers.Any(m => m.IsKind(VBSyntaxKind.MustOverrideKeyword)),
+                    "override" => modifiers.Any(m => m.IsKind(VBSyntaxKind.OverridesKeyword)),
+                    "sealed" => modifiers.Any(m => m.IsKind(VBSyntaxKind.NotOverridableKeyword)),
+                    _ => modifiers.Any(m => m.ToString().Equals(modifier, StringComparison.OrdinalIgnoreCase))
+                };
+            }
+            
             return modifiers.Any(m => m.ToString().Equals(modifier, StringComparison.OrdinalIgnoreCase));
         }
 
@@ -453,8 +500,10 @@ namespace McpRoslyn.Server.RoslynPath2
                 CS.BasePropertyDeclarationSyntax prop => prop.Modifiers,
                 CS.BaseFieldDeclarationSyntax field => field.Modifiers,
                 VB.MethodBlockSyntax vbMethod => vbMethod.SubOrFunctionStatement.Modifiers,
+                VB.MethodStatementSyntax vbMethodStmt => vbMethodStmt.Modifiers,
                 VB.TypeBlockSyntax vbType => vbType.BlockStatement.Modifiers,
                 VB.PropertyBlockSyntax vbProp => vbProp.PropertyStatement.Modifiers,
+                VB.PropertyStatementSyntax vbPropStmt => vbPropStmt.Modifiers,
                 _ => Enumerable.Empty<SyntaxToken>()
             };
         }
@@ -470,7 +519,14 @@ namespace McpRoslyn.Server.RoslynPath2
             return node switch
             {
                 CS.MethodDeclarationSyntax method => method.ReturnType.ToString(),
-                VB.MethodBlockSyntax vbMethod => vbMethod.SubOrFunctionStatement.AsClause?.Type?.ToString() ?? "void",
+                VB.MethodBlockSyntax vbMethod => 
+                    vbMethod.SubOrFunctionStatement.DeclarationKeyword.IsKind(VBSyntaxKind.SubKeyword) 
+                        ? "void"  // VB Sub always returns void
+                        : vbMethod.SubOrFunctionStatement.AsClause?.Type?.ToString() ?? "Object",
+                VB.MethodStatementSyntax vbMethodStmt => 
+                    vbMethodStmt.DeclarationKeyword.IsKind(VBSyntaxKind.SubKeyword) 
+                        ? "void"  // VB Sub always returns void
+                        : vbMethodStmt.AsClause?.Type?.ToString() ?? "Object",
                 _ => null
             };
         }
@@ -492,7 +548,23 @@ namespace McpRoslyn.Server.RoslynPath2
                     _ => csBinary.OperatorToken.Text
                 };
             }
-            // TODO: Add VB support
+            else if (node is VB.BinaryExpressionSyntax vbBinary)
+            {
+                return vbBinary.Kind() switch
+                {
+                    VBSyntaxKind.EqualsExpression => "=",
+                    VBSyntaxKind.NotEqualsExpression => "<>",
+                    VBSyntaxKind.AndAlsoExpression => "AndAlso",
+                    VBSyntaxKind.OrElseExpression => "OrElse",
+                    VBSyntaxKind.AddExpression => "+",
+                    VBSyntaxKind.SubtractExpression => "-",
+                    VBSyntaxKind.MultiplyExpression => "*",
+                    VBSyntaxKind.DivideExpression => "/",
+                    VBSyntaxKind.IsExpression => "Is",
+                    VBSyntaxKind.IsNotExpression => "IsNot",
+                    _ => vbBinary.OperatorToken.Text
+                };
+            }
             return null;
         }
 
@@ -502,7 +574,10 @@ namespace McpRoslyn.Server.RoslynPath2
             {
                 return literal.Token.Text;
             }
-            // TODO: Add VB support
+            else if (node is VB.LiteralExpressionSyntax vbLiteral)
+            {
+                return vbLiteral.Token.Text;
+            }
             return null;
         }
 
@@ -512,7 +587,10 @@ namespace McpRoslyn.Server.RoslynPath2
             {
                 return binary.Right.ToString();
             }
-            // TODO: Add VB support
+            else if (node is VB.BinaryExpressionSyntax vbBinary)
+            {
+                return vbBinary.Right.ToString();
+            }
             return null;
         }
 
@@ -522,7 +600,28 @@ namespace McpRoslyn.Server.RoslynPath2
             {
                 return binary.Left.ToString();
             }
-            // TODO: Add VB support
+            else if (node is VB.BinaryExpressionSyntax vbBinary)
+            {
+                return vbBinary.Left.ToString();
+            }
+            return null;
+        }
+
+        private string? GetMethodType(SyntaxNode node)
+        {
+            // VB-specific attribute for Sub vs Function
+            if (node is VB.MethodBlockSyntax vbMethod)
+            {
+                return vbMethod.SubOrFunctionStatement.DeclarationKeyword.IsKind(VBSyntaxKind.SubKeyword) 
+                    ? "sub" 
+                    : "function";
+            }
+            else if (node is VB.MethodStatementSyntax vbMethodStmt)
+            {
+                return vbMethodStmt.DeclarationKeyword.IsKind(VBSyntaxKind.SubKeyword) 
+                    ? "sub" 
+                    : "function";
+            }
             return null;
         }
 
