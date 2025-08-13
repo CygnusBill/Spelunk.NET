@@ -264,6 +264,8 @@ namespace McpRoslyn.Server.RoslynPath2
                 "right-text" => GetRightOperandText(node),
                 "left-text" => GetLeftOperandText(node),
                 "methodtype" => GetMethodType(node),
+                "has-getter" => HasPropertyGetter(node) ? "true" : "false",
+                "has-setter" => HasPropertySetter(node) ? "true" : "false",
                 _ => null
             };
         }
@@ -629,6 +631,34 @@ namespace McpRoslyn.Server.RoslynPath2
                     : "function";
             }
             return null;
+        }
+
+        private bool HasPropertyGetter(SyntaxNode node)
+        {
+            if (node is VB.PropertyBlockSyntax vbProp)
+            {
+                return vbProp.Accessors.Any(a => a.AccessorStatement.AccessorKeyword.IsKind(VBSyntaxKind.GetKeyword));
+            }
+            else if (node is CS.PropertyDeclarationSyntax csProp)
+            {
+                // For C#, check if there's a get accessor
+                return csProp.AccessorList?.Accessors.Any(a => a.IsKind(CSharpSyntaxKind.GetAccessorDeclaration)) ?? false;
+            }
+            return false;
+        }
+
+        private bool HasPropertySetter(SyntaxNode node)
+        {
+            if (node is VB.PropertyBlockSyntax vbProp)
+            {
+                return vbProp.Accessors.Any(a => a.AccessorStatement.AccessorKeyword.IsKind(VBSyntaxKind.SetKeyword));
+            }
+            else if (node is CS.PropertyDeclarationSyntax csProp)
+            {
+                // For C#, check if there's a set accessor
+                return csProp.AccessorList?.Accessors.Any(a => a.IsKind(CSharpSyntaxKind.SetAccessorDeclaration)) ?? false;
+            }
+            return false;
         }
 
         #endregion
