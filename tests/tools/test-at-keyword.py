@@ -31,7 +31,8 @@ def test_at_keywords():
     # Start the MCP server
     cmd = [
         "dotnet", "run", 
-        "--project", "./src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj"]
+        "--project", "./src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj",
+        "--no-build"]
     
     print("Starting MCP server...")
     proc = subprocess.Popen(
@@ -40,9 +41,8 @@ def test_at_keywords():
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
-        bufsize=0
-    ,
-        env={"MCP_ROSLYN_ALLOWED_PATHS": os.path.abspath(.)})
+        bufsize=0,
+        env={"MCP_ROSLYN_ALLOWED_PATHS": os.path.abspath(".")})
     
     # Give server time to start and check stderr
     time.sleep(3)

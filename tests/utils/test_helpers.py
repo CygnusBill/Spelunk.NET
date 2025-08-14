@@ -20,6 +20,10 @@ class TestRunner:
         """Call a tool and return the result"""
         return self.client.call_tool(tool_name, arguments)
     
+    def send_request(self, method: str, params: Dict[str, Any] = None) -> Dict[str, Any]:
+        """Send a raw request to the server"""
+        return self.client.send_request(method, params or {})
+    
     def close(self):
         """Close the client"""
         self.client.close()

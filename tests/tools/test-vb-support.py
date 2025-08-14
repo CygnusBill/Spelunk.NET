@@ -23,6 +23,18 @@ def main():
         print(f"Server not found at {server_path}. Please build the project first.")
         return
     
+    # Set environment variable for allowed paths
+
+    
+    env = os.environ.copy()
+
+    
+    env["MCP_ROSLYN_ALLOWED_PATHS"] = os.path.abspath(".")
+
+    
+    
+
+    
     process = subprocess.Popen(
         [server_path],
         stdin=subprocess.PIPE,
@@ -30,7 +42,8 @@ def main():
         stderr=subprocess.PIPE,
         text=True,
         bufsize=0
-    )
+    ,
+        env=env)
     
     try:
         # Initialize

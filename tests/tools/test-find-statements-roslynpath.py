@@ -50,6 +50,18 @@ def run_test(title, pattern, pattern_type="roslynpath", expected_count=None):
         "dotnet", "run",
         "--project", os.path.abspath(server_project)]
     
+    # Set environment variable for allowed paths
+
+    
+    env = os.environ.copy()
+
+    
+    env["MCP_ROSLYN_ALLOWED_PATHS"] = os.path.abspath(".")
+
+    
+    
+
+    
     process = subprocess.Popen(
         server_cmd,
         stdin=subprocess.PIPE,
@@ -57,7 +69,8 @@ def run_test(title, pattern, pattern_type="roslynpath", expected_count=None):
         stderr=subprocess.PIPE,
         text=True,
         preexec_fn=os.setsid if sys.platform != "win32" else None
-    )
+    ,
+        env=env)
     
     try:
         time.sleep(3)  # Give server time to start

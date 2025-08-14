@@ -19,11 +19,16 @@ def run_test(test_path):
     """Run a single test and return (success, duration, output)"""
     start_time = time.time()
     try:
+        # Set environment for test
+        env = os.environ.copy()
+        env['MCP_ROSLYN_ALLOWED_PATHS'] = str(Path(__file__).parent.parent)
+        
         result = subprocess.run(
             [sys.executable, test_path],
             capture_output=True,
             text=True,
-            timeout=30
+            timeout=30,
+            env=env
         )
         duration = time.time() - start_time
         success = result.returncode == 0
@@ -35,6 +40,20 @@ def run_test(test_path):
         return False, 0.0, f"Error running test: {e}"
 
 def main():
+    # Build the server once before running tests
+    print(f"{Colors.BLUE}Building server project...{Colors.RESET}")
+    server_path = Path(__file__).parent.parent / 'src' / 'McpRoslyn.Server'
+    build_result = subprocess.run(
+        ['dotnet', 'build', str(server_path), '--configuration', 'Debug'],
+        capture_output=True,
+        text=True
+    )
+    if build_result.returncode != 0:
+        print(f"{Colors.RED}Build failed:{Colors.RESET}")
+        print(build_result.stderr)
+        return 1
+    print(f"{Colors.GREEN}✓ Build successful{Colors.RESET}\n")
+    
     # Find all test files
     test_dir = Path(__file__).parent
     test_files = []

@@ -45,17 +45,22 @@ def test_get_symbols():
     
     # Start the server
     server_path = os.path.join(workspace_dir, 'src', 'McpRoslyn', 'McpRoslyn.Server')
-    cmd = ['dotnet', 'run', '--project', server_path, '--', '--allowed-path', workspace_dir]
+    cmd = ['dotnet', 'run', '--project', server_path, '--no-build', '--', '--allowed-path', workspace_dir]
     
     print(f"Starting server with command: {' '.join(cmd)}")
+    
+    # Set environment variable for allowed paths
+    env = os.environ.copy()
+    env["MCP_ROSLYN_ALLOWED_PATHS"] = os.path.abspath(".")
+    
     process = subprocess.Popen(
         cmd,
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
-        bufsize=1
-    )
+        bufsize=1,
+        env=env)
     
     # Give server time to start
     time.sleep(2)

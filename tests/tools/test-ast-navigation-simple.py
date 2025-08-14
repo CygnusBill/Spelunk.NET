@@ -146,14 +146,19 @@ def main():
     """Run tests for AST navigation tools"""
     # Start the server
     print("Starting MCP Roslyn Server...")
+    
+    # Set environment variable for allowed paths
+    env = os.environ.copy()
+    env['MCP_ROSLYN_ALLOWED_PATHS'] = os.path.abspath(".")
+    
     process = subprocess.Popen(
-        ["dotnet", "run", "--project", "src/McpRoslyn.Server/McpRoslyn.Server.csproj"],
+        ["dotnet", "run", "--project", "src/McpRoslyn.Server/McpRoslyn.Server.csproj", "--no-build"],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
         bufsize=1,
-        preexec_fn=os.setsid
+        env=env
     )
     
     try:
@@ -212,11 +217,12 @@ def main():
     finally:
         # Clean up
         print("\nShutting down server...")
+        process.terminate()
         try:
-            os.killpg(os.getpgid(process.pid), signal.SIGTERM)
-        except:
-            process.terminate()
-        process.wait()
+            process.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait()
 
 if __name__ == "__main__":
     sys.exit(main())

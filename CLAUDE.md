@@ -127,12 +127,12 @@ The server provides two complementary tool categories:
 - ✅ Advanced AST navigation and querying capabilities
 
 ### Recently Completed (Latest Session)
-- ✅ Complete F# implementation with all 4 tools working
-- ✅ Fixed F# symbol finding functionality (was using wrong parameter name)
-- ✅ Fixed FSharpPath attribute queries (@name) for all node types including nested modules
-- ✅ Added support for nested modules in F# AST traversal
-- ✅ All F# integration tests passing (9/9)
-- ✅ Updated documentation for F# support (README, TOOL_SYNOPSIS, new FSHARP_PATH_SYNTAX guide)
+- ✅ Implemented XPath-style statement search with structural paths
+- ✅ Added Path property showing full AST location from solution to statement
+- ✅ Standardized depth calculation (always from method/class boundary)
+- ✅ Removed "smart" container filtering - returns all matches in document order
+- ✅ Fixed parameter consistency (file parameter, workspacePath/path parameters)
+- ✅ Documented XPath conventions in docs/design/XPATH_STATEMENT_SEARCH.md
 
 ### High Priority Pending
 - None currently

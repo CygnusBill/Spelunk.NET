@@ -45,7 +45,7 @@ def test_analyze_syntax():
     
     # Start the server
     server_path = os.path.join(workspace_dir, 'src', 'McpRoslyn.Server')
-    cmd = ['dotnet', 'run', '--project', server_path]
+    cmd = ['dotnet', 'run', '--project', server_path, '--no-build']
     
     # Set environment variable for allowed paths
     env = os.environ.copy()
@@ -104,7 +104,7 @@ def test_analyze_syntax():
         response = send_request(process, "tools/call", {
             "name": "dotnet-analyze-syntax",
             "arguments": {
-                "filePath": os.path.join(workspace_dir, "test-workspace", "Calculator.cs"),
+                "filePath": os.path.join(workspace_dir, "test-workspace", "Program.cs"),
                 "includeTrivia": True
             }
         })
@@ -118,7 +118,11 @@ def test_analyze_syntax():
     finally:
         print("\nShutting down server...")
         process.terminate()
-        process.wait(timeout=5)
+        try:
+            process.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait()
 
 if __name__ == "__main__":
     test_analyze_syntax()

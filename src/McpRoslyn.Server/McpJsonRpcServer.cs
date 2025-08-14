@@ -286,11 +286,11 @@ public class McpJsonRpcServer
                     type = "object",
                     properties = new
                     {
-                        methodPattern = new { type = "string", description = "Method name pattern (e.g., 'Get*', '*Async', 'Load?')" },
+                        pattern = new { type = "string", description = "Method name pattern (e.g., 'Get*', '*Async', 'Load?')" },
                         classPattern = new { type = "string", description = "Optional class name pattern to filter by (e.g., '*Controller', 'Base*')" },
                         workspacePath = new { type = "string", description = "Optional workspace path to search in" }
                     },
-                    required = new[] { "methodPattern" }
+                    required = new[] { "pattern" }
                 }
             },
             new
@@ -302,11 +302,11 @@ public class McpJsonRpcServer
                     type = "object",
                     properties = new
                     {
-                        propertyPattern = new { type = "string", description = "Property/field name pattern (e.g., 'Is*', '*Count', '_*')" },
+                        pattern = new { type = "string", description = "Property/field name pattern (e.g., 'Is*', '*Count', '_*')" },
                         classPattern = new { type = "string", description = "Optional class name pattern to filter by" },
                         workspacePath = new { type = "string", description = "Optional workspace path to search in" }
                     },
-                    required = new[] { "propertyPattern" }
+                    required = new[] { "pattern" }
                 }
             },
             new
@@ -1163,7 +1163,16 @@ public class McpJsonRpcServer
     
     private async Task<object> LoadWorkspaceToolAsync(JsonElement? args)
     {
-        var path = args?.GetProperty("path").GetString();
+        // Support both "workspacePath" and "path" for consistency
+        string? path = null;
+        if (args?.TryGetProperty("workspacePath", out var wp) == true)
+        {
+            path = wp.GetString();
+        }
+        else if (args?.TryGetProperty("path", out var p) == true)
+        {
+            path = p.GetString();
+        }
         if (string.IsNullOrEmpty(path))
         {
             return new
@@ -1173,7 +1182,7 @@ public class McpJsonRpcServer
                     new
                     {
                         type = "text",
-                        text = "Error: 'path' parameter is required"
+                        text = "Error: 'workspacePath' or 'path' parameter is required"
                     }
                 }
             };
@@ -1407,7 +1416,7 @@ public class McpJsonRpcServer
     
     private async Task<object> FindMethodAsync(JsonElement? args)
     {
-        var methodPattern = args?.GetProperty("methodPattern").GetString();
+        var methodPattern = args?.GetProperty("pattern").GetString();
         if (string.IsNullOrEmpty(methodPattern))
         {
             return new
@@ -1417,7 +1426,7 @@ public class McpJsonRpcServer
                     new
                     {
                         type = "text",
-                        text = "Error: Method pattern is required"
+                        text = "Error: Pattern is required"
                     }
                 }
             };
@@ -1494,7 +1503,7 @@ public class McpJsonRpcServer
     
     private async Task<object> FindPropertyAsync(JsonElement? args)
     {
-        var propertyPattern = args?.GetProperty("propertyPattern").GetString();
+        var propertyPattern = args?.GetProperty("pattern").GetString();
         if (string.IsNullOrEmpty(propertyPattern))
         {
             return new
@@ -1504,7 +1513,7 @@ public class McpJsonRpcServer
                     new
                     {
                         type = "text",
-                        text = "Error: Property pattern is required"
+                        text = "Error: Pattern is required"
                     }
                 }
             };
@@ -2544,6 +2553,15 @@ public class McpJsonRpcServer
         
         // Parse optional parameters
         Dictionary<string, string>? scope = null;
+        
+        // Check for direct file parameter first (convenience)
+        if (args?.TryGetProperty("file", out var directFile) == true)
+        {
+            scope = new Dictionary<string, string>();
+            scope["file"] = directFile.GetString() ?? "";
+        }
+        
+        // Then check for scope object (overrides direct file if present)
         if (args?.TryGetProperty("scope", out var scopeElement) == true)
         {
             scope = new Dictionary<string, string>();
@@ -2587,9 +2605,10 @@ public class McpJsonRpcServer
             foreach (var stmt in result.Statements)
             {
                 response.AppendLine($"Statement ID: {stmt.StatementId}");
+                response.AppendLine($"Path: {stmt.Path}");
                 response.AppendLine($"Type: {stmt.Type}");
+                response.AppendLine($"Depth: {stmt.Depth}");
                 response.AppendLine($"Location: {stmt.Location.File}:{stmt.Location.Line}:{stmt.Location.Column}");
-                response.AppendLine($"Class: {stmt.ContainingClass}, Method: {stmt.ContainingMethod}");
                 response.AppendLine($"Code: {stmt.Text}");
                 if (stmt.SemanticTags.Any())
                 {
@@ -3462,6 +3481,25 @@ public class McpJsonRpcServer
             if (string.IsNullOrEmpty(roslynPath))
                 return CreateErrorResponse("RoslynPath cannot be empty");
                 
+            // Check for common problematic patterns and provide helpful guidance
+            if (System.Text.RegularExpressions.Regex.IsMatch(roslynPath, @"//method\[[^\]]+\]//statement"))
+            {
+                return CreateErrorResponse(
+                    "The pattern '//method[name]//statement' will not find statements inside the method. " +
+                    "In C#, method bodies are BlockSyntax nodes that contain statements. " +
+                    "Use '//method[name]/block/statement' to find direct statements in the method body, " +
+                    "or '//method[name]//block/statement' to find statements in any nested block. " +
+                    "This prevents duplicate results from nested statements.");
+            }
+            
+            if (System.Text.RegularExpressions.Regex.IsMatch(roslynPath, @"//class\[[^\]]+\]//statement"))
+            {
+                return CreateErrorResponse(
+                    "The pattern '//class[name]//statement' will not find statements inside the class methods. " +
+                    "Statements exist inside method bodies (BlockSyntax). " +
+                    "Use '//class[name]//method/block/statement' to find statements in all methods of the class.");
+            }
+                
             // Extract optional parameters
             string? filePath = null;
             if (args.Value.TryGetProperty("file", out var fileElement))
@@ -3522,9 +3560,14 @@ public class McpJsonRpcServer
                 if (workspace == null)
                     return CreateErrorResponse("Workspace not found");
                     
+                // Convert to absolute path if relative
+                var absolutePath = Path.IsPathRooted(filePath) 
+                    ? filePath 
+                    : Path.GetFullPath(filePath);
+                    
                 var document = workspace.CurrentSolution.Projects
                     .SelectMany(p => p.Documents)
-                    .FirstOrDefault(d => d.FilePath == filePath);
+                    .FirstOrDefault(d => d.FilePath == absolutePath);
                     
                 if (document != null)
                     documentsToSearch.Add(document);

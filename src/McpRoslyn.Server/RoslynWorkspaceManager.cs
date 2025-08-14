@@ -2560,8 +2560,10 @@ public class RoslynWorkspaceManager : IDisposable
                 
                 foreach (var statement in statements)
                 {
+                    // For RoslynPath, calculate traversal depth from the query root
                     await AddStatementToResult(statement, sourceText, semanticModel, 
-                        document.FilePath ?? "", result, statementIdCounter, language, workspaceId);
+                        document.FilePath ?? "", result, statementIdCounter, language, workspaceId, 
+                        searchType: "roslynpath");
                 }
             }
             catch (Exception ex)
@@ -2591,6 +2593,7 @@ public class RoslynWorkspaceManager : IDisposable
                 statements = statements.Where(stmt => !IsNestedStatement(stmt, language));
             }
             
+            // Process all matching statements (no filtering - XPath style)
             foreach (var statement in statements)
             {
                 var statementText = statement.ToString();
@@ -2619,7 +2622,8 @@ public class RoslynWorkspaceManager : IDisposable
         FindStatementsResult result,
         StatementIdCounter statementIdCounter,
         string language,
-        string workspaceId)
+        string workspaceId,
+        string searchType = "text")
     {
         var handler = LanguageHandlerFactory.GetHandler(language);
         if (handler == null) return;
@@ -2628,7 +2632,46 @@ public class RoslynWorkspaceManager : IDisposable
         var containingMethod = statement.Ancestors().FirstOrDefault(n => handler.IsMethodDeclaration(n));
         var containingClass = statement.Ancestors().FirstOrDefault(n => handler.IsTypeDeclaration(n));
         
+        // Check if this is a top-level statement
+        bool isTopLevel = false;
+        if (language == LanguageNames.CSharp && containingMethod == null && containingClass == null)
+        {
+            // Check if any ancestor is a GlobalStatementSyntax or if we're directly under CompilationUnit
+            var parent = statement.Parent;
+            while (parent != null)
+            {
+                if (parent is CS.GlobalStatementSyntax || parent is CS.CompilationUnitSyntax)
+                {
+                    isTopLevel = true;
+                    break;
+                }
+                parent = parent.Parent;
+            }
+        }
+        
         var statementId = $"stmt-{++statementIdCounter.Value}";
+        
+        // Calculate depth: count statement ancestors up to containing method or class
+        int depth = 0;
+        SyntaxNode? currentParent = statement.Parent;
+        SyntaxNode? boundary = containingMethod ?? containingClass;
+        
+        // For top-level statements, use CompilationUnit as boundary
+        if (isTopLevel && boundary == null)
+        {
+            boundary = statement.Ancestors().FirstOrDefault(n => n is CS.CompilationUnitSyntax);
+        }
+        
+        // Count how many statement nodes are between this statement and the boundary
+        while (currentParent != null && currentParent != boundary)
+        {
+            // Count statements and blocks as depth levels
+            if (handler.IsStatement(currentParent) || currentParent is CS.BlockSyntax)
+            {
+                depth++;
+            }
+            currentParent = currentParent.Parent;
+        }
         
         var statementInfo = new StatementInfo
         {
@@ -2641,10 +2684,19 @@ public class RoslynWorkspaceManager : IDisposable
                 Line = lineSpan.Start.Line + 1,
                 Column = lineSpan.Start.Character + 1
             },
-            ContainingMethod = containingMethod != null ? handler.GetMethodDeclarationName(containingMethod) ?? "" : "",
-            ContainingClass = containingClass != null ? handler.GetTypeDeclarationName(containingClass) ?? "" : "",
-            SyntaxTag = $"syntax-{statementIdCounter.Value}"
+            ContainingMethod = containingMethod != null ? handler.GetMethodDeclarationName(containingMethod) ?? "" : 
+                               isTopLevel ? "Main" : "",  // Top-level statements are in synthetic Main
+            ContainingClass = containingClass != null ? handler.GetTypeDeclarationName(containingClass) ?? "" : 
+                             isTopLevel ? "Program" : "",  // Top-level statements are in synthetic Program class
+            SyntaxTag = $"syntax-{statementIdCounter.Value}",
+            Depth = depth,  // Add the calculated depth
+            Path = ""  // Will be set below
         };
+        
+        // Build structural path (XPath-style)
+        var pathBuilder = BuildStatementPath(statement, containingClass, containingMethod, 
+            handler, language, filePath, workspaceId);
+        statementInfo.Path = pathBuilder;
         
         // Add semantic tags for symbols in the statement
         var symbols = statement.DescendantNodes()
@@ -2666,6 +2718,164 @@ public class RoslynWorkspaceManager : IDisposable
         result.Statements.Add(statementInfo);
     }
 
+    private string BuildStatementPath(SyntaxNode statement, SyntaxNode? containingClass, 
+        SyntaxNode? containingMethod, ILanguageHandler handler, string language, 
+        string filePath, string workspaceId)
+    {
+        var pathBuilder = new System.Text.StringBuilder();
+        
+        // Get workspace and project info
+        if (_workspaces.TryGetValue(workspaceId, out var workspaceInfo))
+        {
+            // Add solution name if available
+            if (!string.IsNullOrEmpty(workspaceInfo.Path))
+            {
+                var solutionName = Path.GetFileNameWithoutExtension(workspaceInfo.Path);
+                pathBuilder.Append($"/{solutionName}");
+            }
+            
+            // Try to find the project containing this file
+            var workspace = workspaceInfo.Workspace;
+            if (workspace != null)
+            {
+                var solution = workspace.CurrentSolution;
+                var document = solution.GetDocumentIdsWithFilePath(filePath).FirstOrDefault();
+                if (document != null)
+                {
+                    var project = solution.GetProject(document.ProjectId);
+                    if (project != null)
+                    {
+                        pathBuilder.Append($"/{project.Name}");
+                    }
+                }
+            }
+        }
+        
+        // Add file name (just the name, not full path)
+        pathBuilder.Append($"/{Path.GetFileName(filePath)}");
+        
+        // Add class if present
+        if (containingClass != null)
+        {
+            var className = handler.GetTypeDeclarationName(containingClass);
+            if (!string.IsNullOrEmpty(className))
+            {
+                pathBuilder.Append($"/{className}");
+            }
+        }
+        
+        // Add method if present
+        if (containingMethod != null)
+        {
+            var methodName = handler.GetMethodDeclarationName(containingMethod);
+            if (!string.IsNullOrEmpty(methodName))
+            {
+                pathBuilder.Append($"/{methodName}");
+            }
+        }
+        
+        // Build the statement path with positions
+        BuildNodePath(statement, containingMethod ?? containingClass, pathBuilder, handler, language);
+        
+        return pathBuilder.ToString();
+    }
+    
+    private void BuildNodePath(SyntaxNode node, SyntaxNode? boundary, 
+        System.Text.StringBuilder pathBuilder, ILanguageHandler handler, string language)
+    {
+        var path = new List<string>();
+        var current = node;
+        
+        // Walk up from statement to boundary, collecting path segments
+        while (current != null && current != boundary)
+        {
+            var nodeType = GetNodeTypeForPath(current, language);
+            if (!string.IsNullOrEmpty(nodeType))
+            {
+                // Count position among siblings of same type
+                var position = GetPositionAmongSiblings(current, nodeType);
+                path.Add($"{nodeType}[{position}]");
+            }
+            current = current.Parent;
+        }
+        
+        // Reverse to get top-down path and append
+        path.Reverse();
+        foreach (var segment in path)
+        {
+            pathBuilder.Append($"/{segment}");
+        }
+    }
+    
+    private string GetNodeTypeForPath(SyntaxNode node, string language)
+    {
+        // Use short, readable node type names
+        if (language == LanguageNames.CSharp)
+        {
+            return node switch
+            {
+                CS.IfStatementSyntax => "if",
+                CS.WhileStatementSyntax => "while",
+                CS.ForStatementSyntax => "for",
+                CS.ForEachStatementSyntax => "foreach",
+                CS.DoStatementSyntax => "do",
+                CS.SwitchStatementSyntax => "switch",
+                CS.TryStatementSyntax => "try",
+                CS.BlockSyntax => "block",
+                CS.ExpressionStatementSyntax => "expression",
+                CS.LocalDeclarationStatementSyntax => "local",
+                CS.ReturnStatementSyntax => "return",
+                CS.ThrowStatementSyntax => "throw",
+                CS.UsingStatementSyntax => "using",
+                CS.LockStatementSyntax => "lock",
+                CS.StatementSyntax => "statement",
+                _ => ""
+            };
+        }
+        else if (language == LanguageNames.VisualBasic)
+        {
+            return node switch
+            {
+                VB.MultiLineIfBlockSyntax => "if",
+                VB.SingleLineIfStatementSyntax => "if",
+                VB.WhileBlockSyntax => "while",
+                VB.ForBlockSyntax => "for",
+                VB.ForEachBlockSyntax => "foreach",
+                VB.DoLoopBlockSyntax => "do",
+                VB.SelectBlockSyntax => "select",
+                VB.TryBlockSyntax => "try",
+                VB.ExpressionStatementSyntax => "expression",
+                VB.LocalDeclarationStatementSyntax => "local",
+                VB.ReturnStatementSyntax => "return",
+                VB.ThrowStatementSyntax => "throw",
+                VB.UsingBlockSyntax => "using",
+                VB.SyncLockBlockSyntax => "synclock",
+                VB.StatementSyntax => "statement",
+                _ => ""
+            };
+        }
+        return "";
+    }
+    
+    private int GetPositionAmongSiblings(SyntaxNode node, string nodeType)
+    {
+        if (node.Parent == null) return 1;
+        
+        int position = 1;
+        foreach (var sibling in node.Parent.ChildNodes())
+        {
+            if (sibling == node) break;
+            
+            var siblingType = GetNodeTypeForPath(sibling, node.Language);
+            if (siblingType == nodeType)
+            {
+                position++;
+            }
+        }
+        
+        return position;
+    }
+    
     // Statement ID lookup methods
     public (SyntaxNode? node, string? filePath, string? workspaceId) GetStatementById(string statementId)
     {
@@ -2702,6 +2912,38 @@ public class RoslynWorkspaceManager : IDisposable
             }
             else
             {
+                // Check if this is a top-level statement (C# 9+)
+                // Top-level statements are compiled into a synthetic Main method
+                bool isTopLevel = false;
+                if (language == LanguageNames.CSharp)
+                {
+                    // In C#, top-level statements are GlobalStatementSyntax nodes
+                    // that are direct children of CompilationUnitSyntax
+                    var parent = statement.Parent;
+                    while (parent != null)
+                    {
+                        if (parent is CS.GlobalStatementSyntax)
+                        {
+                            isTopLevel = true;
+                            break;
+                        }
+                        if (parent is CS.CompilationUnitSyntax)
+                        {
+                            // We've reached the compilation unit without finding a method
+                            isTopLevel = true;
+                            break;
+                        }
+                        parent = parent.Parent;
+                    }
+                }
+                
+                // Top-level statements are treated as being in "Main" method
+                if (isTopLevel && scope["methodName"] == "Main")
+                {
+                    // This is a top-level statement and we're looking for Main
+                    return true;
+                }
+                
                 return false;
             }
         }
@@ -2717,6 +2959,29 @@ public class RoslynWorkspaceManager : IDisposable
             }
             else
             {
+                // Check if this is a top-level statement
+                bool isTopLevel = false;
+                if (language == LanguageNames.CSharp)
+                {
+                    var parent = statement.Parent;
+                    while (parent != null)
+                    {
+                        if (parent is CS.GlobalStatementSyntax || parent is CS.CompilationUnitSyntax)
+                        {
+                            isTopLevel = true;
+                            break;
+                        }
+                        parent = parent.Parent;
+                    }
+                }
+                
+                // Top-level statements are treated as being in "Program" class
+                if (isTopLevel && scope["className"] == "Program")
+                {
+                    // This is a top-level statement and we're looking for Program class
+                    return true;
+                }
+                
                 return false;
             }
         }
@@ -5063,6 +5328,8 @@ public class StatementInfo
     public string? SyntaxTag { get; set; }
     public List<string> SemanticTags { get; set; } = new();
     public string? GroupId { get; set; }
+    public int Depth { get; set; }  // Nesting depth relative to containing method or class
+    public string Path { get; set; } = "";  // Structural path in AST (XPath-style)
 }
 
 public class Location

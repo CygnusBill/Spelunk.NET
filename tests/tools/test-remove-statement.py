@@ -4,6 +4,7 @@ Test the remove-statement tool in MCP Roslyn Server
 """
 
 import json
+import os
 import subprocess
 import time
 import signal
@@ -39,6 +40,18 @@ def main():
         "dotnet", "run",
         "--project", "./src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj"]
     
+    # Set environment variable for allowed paths
+
+    
+    env = os.environ.copy()
+
+    
+    env["MCP_ROSLYN_ALLOWED_PATHS"] = os.path.abspath(".")
+
+    
+    
+
+    
     process = subprocess.Popen(
         server_cmd,
         stdin=subprocess.PIPE,
@@ -46,7 +59,8 @@ def main():
         stderr=subprocess.PIPE,
         text=True,
         bufsize=0
-    )
+    ,
+        env=env)
     
     # Set up signal handler
     def signal_handler(sig, frame):

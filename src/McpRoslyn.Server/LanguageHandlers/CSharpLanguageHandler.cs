@@ -34,7 +34,16 @@ public class CSharpLanguageHandler : ILanguageHandler
     
     public bool IsStatement(SyntaxNode node)
     {
-        return node is StatementSyntax;
+        // Regular statements
+        if (node is StatementSyntax)
+            return true;
+            
+        // Top-level statements in C# 9+ are wrapped in GlobalStatementSyntax
+        // We want to treat the actual statement inside, not the wrapper
+        if (node is GlobalStatementSyntax)
+            return false; // The GlobalStatement itself is not a statement, its child is
+            
+        return false;
     }
     
     public string? GetTypeDeclarationName(SyntaxNode node)

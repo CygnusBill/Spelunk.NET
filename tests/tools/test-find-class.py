@@ -25,7 +25,8 @@ def test_find_patterns():
     # Start the MCP server
     cmd = [
         "dotnet", "run", 
-        "--project", "./src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj"
+        "--project", "./src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj",
+        "--no-build"
     ]
     
     # Set environment variable for allowed paths

@@ -8,6 +8,7 @@ import subprocess
 import time
 import signal
 import sys
+import os
 
 def send_request(process, method, params=None):
     """Send a JSON-RPC request and get response"""
@@ -37,7 +38,12 @@ def main():
     # Start the server
     server_cmd = [
         "dotnet", "run",
-        "--project", "./src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj"]
+        "--project", os.path.join(os.path.dirname(__file__), "..", "..", "src", "McpRoslyn.Server", "McpRoslyn.Server.csproj"),
+        "--no-build"]
+    
+    # Set environment variable for allowed paths
+    env = os.environ.copy()
+    env["MCP_ROSLYN_ALLOWED_PATHS"] = os.path.abspath(".")
     
     process = subprocess.Popen(
         server_cmd,
@@ -45,8 +51,8 @@ def main():
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
-        bufsize=0
-    )
+        bufsize=0,
+        env=env)
     
     # Set up signal handler
     def signal_handler(sig, frame):
@@ -59,6 +65,13 @@ def main():
     try:
         # Give server time to start
         time.sleep(2)
+        
+        # Check if server started properly
+        if process.poll() is not None:
+            stderr_output = process.stderr.read()
+            print(f"Server failed to start. Exit code: {process.returncode}")
+            print(f"Stderr: {stderr_output}")
+            return
         
         # Initialize
         print("\n=== Initializing ===")
