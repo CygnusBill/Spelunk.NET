@@ -3481,24 +3481,8 @@ public class McpJsonRpcServer
             if (string.IsNullOrEmpty(roslynPath))
                 return CreateErrorResponse("RoslynPath cannot be empty");
                 
-            // Check for common problematic patterns and provide helpful guidance
-            if (System.Text.RegularExpressions.Regex.IsMatch(roslynPath, @"//method\[[^\]]+\]//statement"))
-            {
-                return CreateErrorResponse(
-                    "The pattern '//method[name]//statement' will not find statements inside the method. " +
-                    "In C#, method bodies are BlockSyntax nodes that contain statements. " +
-                    "Use '//method[name]/block/statement' to find direct statements in the method body, " +
-                    "or '//method[name]//block/statement' to find statements in any nested block. " +
-                    "This prevents duplicate results from nested statements.");
-            }
-            
-            if (System.Text.RegularExpressions.Regex.IsMatch(roslynPath, @"//class\[[^\]]+\]//statement"))
-            {
-                return CreateErrorResponse(
-                    "The pattern '//class[name]//statement' will not find statements inside the class methods. " +
-                    "Statements exist inside method bodies (BlockSyntax). " +
-                    "Use '//class[name]//method/block/statement' to find statements in all methods of the class.");
-            }
+            // No restrictions needed - RoslynPath follows XPath semantics where
+            // the descendant axis (//) finds all descendants regardless of nesting
                 
             // Extract optional parameters
             string? filePath = null;
@@ -4057,15 +4041,9 @@ public class McpJsonRpcServer
         if (!string.IsNullOrEmpty(name))
             result["name"] = name;
             
-        // Add semantic info if available
-        if (semanticModel != null && projectName != null)
-        {
-            // TODO: Refactor BuildAstNode to be async and pass Document
-            // var semanticInfo = await GetSemanticInfo(node, semanticModel, document);
-            object? semanticInfo = null;
-            if (semanticInfo != null)
-                result["semanticInfo"] = semanticInfo;
-        }
+        // Semantic info is only available in the async version (BuildAstNodeAsync)
+        // which properly passes the Document parameter needed for GetSemanticInfo.
+        // This synchronous version is kept for backward compatibility when semantic info is not needed.
             
         // Add specific properties based on node type
         if (node is CS.BinaryExpressionSyntax binary)

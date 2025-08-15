@@ -41,6 +41,7 @@ namespace McpRoslyn.Server.RoslynPath
         Contains,           // ~=
         LessThan,           // <
         GreaterThan,        // >
+        Comma,              // , (for function arguments)
         LessOrEqual,        // <=
         GreaterOrEqual,     // >=
         
@@ -117,6 +118,7 @@ namespace McpRoslyn.Server.RoslynPath
                 ']' => Consume(TokenType.RightBracket, 1),
                 '(' => Consume(TokenType.LeftParen, 1),
                 ')' => Consume(TokenType.RightParen, 1),
+                ',' => Consume(TokenType.Comma, 1),
                 '@' => Consume(TokenType.At, 1),
                 '.' when Peek(1) == '.' => Consume(TokenType.DotDot, 2),
                 '.' when Peek(1) == '/' => Consume(TokenType.Dot, 1),
@@ -349,6 +351,12 @@ namespace McpRoslyn.Server.RoslynPath
                 {
                     Consume(TokenType.Slash);
                 }
+                else if (_current.Type == TokenType.DoubleSlash)
+                {
+                    // DoubleSlash is also a valid separator (it starts the next step with descendant-or-self axis)
+                    // Don't consume it here - let ParseStep handle it
+                    continue;
+                }
                 else if (_current.Type != TokenType.Eof)
                 {
                     break; // End of path
@@ -498,6 +506,7 @@ namespace McpRoslyn.Server.RoslynPath
             }
 
             // Function (last(), etc.)
+            // PeekToken(0) gets the next token after _current (since _tokenIndex already advanced)
             if (_current.Type == TokenType.Identifier && _lexer.PeekToken(0).Type == TokenType.LeftParen)
             {
                 return ParseFunctionPredicate();
@@ -564,12 +573,53 @@ namespace McpRoslyn.Server.RoslynPath
             var func = _current.Value;
             Consume(TokenType.Identifier);
             Consume(TokenType.LeftParen);
-            // TODO: Parse function arguments if needed
+            
+            // Parse function arguments if present
+            var arguments = new List<string>();
+            while (_current.Type != TokenType.RightParen && _current.Type != TokenType.Eof)
+            {
+                // Parse argument - can be a string literal, number, or identifier
+                if (_current.Type == TokenType.String)
+                {
+                    arguments.Add(_current.Value);
+                    Consume(TokenType.String);
+                }
+                else if (_current.Type == TokenType.Number)
+                {
+                    arguments.Add(_current.Value);
+                    Consume(TokenType.Number);
+                }
+                else if (_current.Type == TokenType.Identifier)
+                {
+                    arguments.Add(_current.Value);
+                    Consume(TokenType.Identifier);
+                }
+                else if (_current.Type == TokenType.Dot)
+                {
+                    // Support '.' as current node reference
+                    arguments.Add(".");
+                    Consume(TokenType.Dot);
+                }
+                
+                // Check for comma separator
+                if (_current.Type == TokenType.Comma)
+                {
+                    Consume(TokenType.Comma);
+                }
+                else if (_current.Type != TokenType.RightParen)
+                {
+                    // If not comma and not closing paren, break to avoid infinite loop
+                    break;
+                }
+            }
+            
             Consume(TokenType.RightParen);
 
-            // Handle last()-N
-            var expr = func + "()";
-            if (_current.Type == TokenType.Minus)
+            // Build function expression string
+            var expr = func + "(" + string.Join(", ", arguments) + ")";
+            
+            // Handle last()-N special case
+            if (func == "last" && arguments.Count == 0 && _current.Type == TokenType.Minus)
             {
                 Consume(TokenType.Minus);
                 if (_current.Type == TokenType.Number)
@@ -579,7 +629,20 @@ namespace McpRoslyn.Server.RoslynPath
                 }
             }
 
-            return new PositionExpr { Position = expr };
+            // For position-based functions, return PositionExpr
+            if (func == "last" || func == "first" || func == "position")
+            {
+                return new PositionExpr { Position = expr };
+            }
+            
+            // For other functions (like contains, starts-with), treat as attribute expressions
+            // This allows for future extension to support text-matching functions
+            return new AttributeExpr 
+            { 
+                Name = "function",
+                Operator = "=",
+                Value = expr
+            };
         }
 
         private PredicateExpr ParsePathPredicate()
@@ -664,6 +727,13 @@ namespace McpRoslyn.Server.RoslynPath
         private void Advance()
         {
             _current = _lexer.Next();
+        }
+        
+        private Token PeekNext()
+        {
+            // Save current lexer position
+            var savedToken = _lexer.PeekToken(1);
+            return savedToken;
         }
 
         private void Consume(TokenType expected)

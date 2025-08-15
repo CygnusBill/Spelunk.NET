@@ -679,14 +679,28 @@ public class RoslynWorkspaceManager : IDisposable
         };
     }
     
-    private List<Workspace> GetWorkspacesToSearch(string? workspaceId)
+    private List<Workspace> GetWorkspacesToSearch(string? workspaceIdOrPath)
     {
         var workspacesToSearch = new List<Workspace>();
-        if (!string.IsNullOrEmpty(workspaceId))
+        if (!string.IsNullOrEmpty(workspaceIdOrPath))
         {
-            var workspace = GetWorkspace(workspaceId);
+            // First try as workspace ID
+            var workspace = GetWorkspace(workspaceIdOrPath);
             if (workspace != null)
+            {
                 workspacesToSearch.Add(workspace);
+            }
+            else
+            {
+                // Try to find by path - check if any workspace was loaded from this path
+                var entry = _workspaces.Values.FirstOrDefault(e => 
+                    e.Path?.Equals(workspaceIdOrPath, StringComparison.OrdinalIgnoreCase) == true ||
+                    e.Path?.StartsWith(workspaceIdOrPath, StringComparison.OrdinalIgnoreCase) == true);
+                if (entry != null)
+                {
+                    workspacesToSearch.Add(entry.Workspace);
+                }
+            }
         }
         else
         {
@@ -1095,6 +1109,12 @@ public class RoslynWorkspaceManager : IDisposable
     {
         var results = new List<ReferenceInfo>();
         var workspacesToSearch = GetWorkspacesToSearch(workspacePath);
+        
+        // Check for unsupported symbol types that require special handling
+        if (symbolType.ToLower() == "local" || symbolType.ToLower() == "parameter")
+        {
+            throw new NotSupportedException($"Finding references for '{symbolType}' symbols is not currently supported. Local variables and parameters are scoped to their containing method and require specifying the method context. Consider using 'dotnet-find-statements' with a pattern to find usages within a specific scope.");
+        }
         
         // Validate symbol type
         var validTypes = new[] { "type", "class", "interface", "struct", "enum", "delegate", "method", "property", "field" };
@@ -4738,17 +4758,55 @@ public class RoslynWorkspaceManager : IDisposable
         if (semanticModel == null)
             return CreateErrorResponse("Could not get semantic model");
             
-        // Use RoslynPath to find symbols
-        var roslynPath = $"//*[@name='{symbolName}']";
-        var nodes = RoslynPath.RoslynPath.Find(syntaxTree, roslynPath, semanticModel);
+        // Use multiple RoslynPath queries to find different types of symbols
+        var queries = new[]
+        {
+            $"//class[@name='{symbolName}']",
+            $"//interface[@name='{symbolName}']",
+            $"//struct[@name='{symbolName}']",
+            $"//enum[@name='{symbolName}']",
+            $"//method[@name='{symbolName}']",
+            $"//property[@name='{symbolName}']",
+            $"//field[@name='{symbolName}']",  // This should find fields
+            $"//*[@name='{symbolName}']"       // Fallback for any named node
+        };
+        
+        var allNodes = new HashSet<SyntaxNode>();
+        foreach (var query in queries)
+        {
+            var nodes = RoslynPath.RoslynPath.Find(syntaxTree, query, semanticModel);
+            foreach (var node in nodes)
+            {
+                allNodes.Add(node);
+            }
+        }
         
         var symbols = new List<object>();
-        foreach (var node in nodes)
+        foreach (var node in allNodes)
         {
-            var symbol = semanticModel.GetDeclaredSymbol(node) ?? semanticModel.GetSymbolInfo(node).Symbol;
-            if (symbol != null)
+            // For field declarations, we need special handling
+            if (node is Microsoft.CodeAnalysis.CSharp.Syntax.FieldDeclarationSyntax fieldDecl)
             {
-                symbols.Add(FormatSymbolInfo(symbol, node, syntaxTree));
+                // Fields can have multiple variables declared in one statement
+                foreach (var variable in fieldDecl.Declaration.Variables)
+                {
+                    if (variable.Identifier.Text == symbolName)
+                    {
+                        var fieldSymbol = semanticModel.GetDeclaredSymbol(variable);
+                        if (fieldSymbol != null)
+                        {
+                            symbols.Add(FormatSymbolInfo(fieldSymbol, node, syntaxTree));
+                        }
+                    }
+                }
+            }
+            else
+            {
+                var symbol = semanticModel.GetDeclaredSymbol(node) ?? semanticModel.GetSymbolInfo(node).Symbol;
+                if (symbol != null)
+                {
+                    symbols.Add(FormatSymbolInfo(symbol, node, syntaxTree));
+                }
             }
         }
         

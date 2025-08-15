@@ -63,9 +63,8 @@ public class StatementTransformer
                 
                 if (!string.IsNullOrEmpty(objectName))
                 {
-                    // Check if null check already exists
-                    // TODO: Check if null check already exists by examining previous statements
-                    var alreadyChecked = false;
+                    // Check if null check already exists by examining previous statements
+                    var alreadyChecked = CheckIfAlreadyNullChecked(statement, objectName);
                     
                     if (!alreadyChecked)
                     {
@@ -77,6 +76,69 @@ public class StatementTransformer
         }
         
         return null;
+    }
+    
+    private bool CheckIfAlreadyNullChecked(SyntaxNode statement, string objectName)
+    {
+        // Get the containing block
+        var block = statement.Parent as CS.BlockSyntax;
+        if (block == null) return false;
+        
+        // Find the index of the current statement
+        var statements = block.Statements;
+        var currentIndex = -1;
+        
+        // Cast statement to StatementSyntax to find its index
+        if (statement is CS.StatementSyntax stmtSyntax)
+        {
+            currentIndex = statements.IndexOf(stmtSyntax);
+        }
+        
+        if (currentIndex <= 0) return false;
+        
+        // Check previous statements for null checks
+        for (int i = currentIndex - 1; i >= 0; i--)
+        {
+            var prevStatement = statements[i];
+            var prevText = prevStatement.ToString();
+            
+            // Check for ArgumentNullException.ThrowIfNull pattern
+            if (prevText.Contains($"ArgumentNullException.ThrowIfNull({objectName})") ||
+                prevText.Contains($"ArgumentNullException.ThrowIfNull({objectName},"))
+            {
+                return true;
+            }
+            
+            // Check for if-null-throw pattern
+            if (prevStatement is CS.IfStatementSyntax ifStmt)
+            {
+                var condition = ifStmt.Condition.ToString();
+                if ((condition.Contains($"{objectName} == null") || 
+                     condition.Contains($"null == {objectName}") ||
+                     condition.Contains($"{objectName} is null")) &&
+                    ifStmt.Statement.ToString().Contains("throw"))
+                {
+                    return true;
+                }
+            }
+            
+            // Check for null-coalescing throw pattern (obj ?? throw ...)
+            if (prevText.Contains($"{objectName} ??") && prevText.Contains("throw"))
+            {
+                return true;
+            }
+            
+            // Stop checking if we hit a control flow statement that might skip our code
+            if (prevStatement is CS.ReturnStatementSyntax ||
+                prevStatement is CS.ThrowStatementSyntax ||
+                prevStatement is CS.BreakStatementSyntax ||
+                prevStatement is CS.ContinueStatementSyntax)
+            {
+                break;
+            }
+        }
+        
+        return false;
     }
     
     private async Task<string?> ConvertToAsyncAsync(SyntaxNode statement, StatementContextResult context, TransformationRule rule)
