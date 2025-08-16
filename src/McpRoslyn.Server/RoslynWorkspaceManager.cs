@@ -4228,6 +4228,20 @@ public class RoslynWorkspaceManager : IDisposable
             if (includeControlFlow)
             {
                 result.ControlFlow = AnalyzeControlFlow(statements, semanticModel);
+                
+                // If control flow analysis failed, add a helpful warning
+                if (result.ControlFlow == null)
+                {
+                    result.Warnings.Add(new DataFlowWarning
+                    {
+                        Type = "ControlFlowUnavailable",
+                        Message = "Control flow analysis is not available for this region. " +
+                                  "The selected region must contain complete, consecutive statements within the same block. " +
+                                  "Try selecting an entire method body or complete control structure (if/for/while block).",
+                        Variable = "",
+                        Location = $"{startLine}:{startColumn}-{endLine}:{endColumn}"
+                    });
+                }
             }
         }
         catch (Exception ex)
@@ -4468,43 +4482,73 @@ public class RoslynWorkspaceManager : IDisposable
     
     private ControlFlowInfo? AnalyzeControlFlow(List<SyntaxNode> statements, SemanticModel semanticModel)
     {
+        if (!statements.Any())
+            return null;
+            
         var controlFlow = new ControlFlowInfo();
         
-        // Count return statements
-        controlFlow.ReturnStatements = statements
-            .SelectMany(s => s.DescendantNodesAndSelf())
-            .Count(n => n is CS.ReturnStatementSyntax || n is VB.ReturnStatementSyntax);
-            
-        // Check for yield statements
-        controlFlow.HasYieldStatements = statements
-            .SelectMany(s => s.DescendantNodesAndSelf())
-            .Any(n => n is CS.YieldStatementSyntax || n.IsKind(SyntaxKind.YieldKeyword));
-            
-        // Analyze exit points
-        foreach (var statement in statements)
+        try
         {
-            var exits = statement.DescendantNodesAndSelf()
-                .Where(n => n is CS.ReturnStatementSyntax || n is CS.ThrowStatementSyntax ||
-                           n is CS.BreakStatementSyntax || n is CS.ContinueStatementSyntax ||
-                           n is VB.ReturnStatementSyntax || n is VB.ThrowStatementSyntax ||
-                           n is VB.ExitStatementSyntax || n is VB.ContinueStatementSyntax);
-                           
-            foreach (var exit in exits)
+            // Try to use Roslyn's proper control flow analysis
+            // This requires the statements to form a valid region
+            var firstStatement = statements.First();
+            var lastStatement = statements.Last();
+            
+            Microsoft.CodeAnalysis.ControlFlowAnalysis? roslynControlFlow = null;
+            
+            // Try to analyze the control flow using Roslyn's API
+            if (firstStatement == lastStatement)
             {
-                var exitType = exit.Kind().ToString().Replace("Statement", "").Replace("Syntax", "");
-                controlFlow.ExitPoints.Add(exitType);
+                roslynControlFlow = semanticModel.AnalyzeControlFlow(firstStatement);
             }
+            else
+            {
+                roslynControlFlow = semanticModel.AnalyzeControlFlow(firstStatement, lastStatement);
+            }
+            
+            if (roslynControlFlow != null && roslynControlFlow.Succeeded)
+            {
+                // Use Roslyn's accurate analysis
+                controlFlow.StartPointIsReachable = roslynControlFlow.StartPointIsReachable;
+                controlFlow.EndPointIsReachable = roslynControlFlow.EndPointIsReachable;
+                controlFlow.ReturnStatements = roslynControlFlow.ReturnStatements.Length;
+                controlFlow.UsedRoslynAnalysis = true;
+                
+                // Analyze exit points from Roslyn's data
+                foreach (var exitPoint in roslynControlFlow.ExitPoints)
+                {
+                    var exitKind = exitPoint.Kind().ToString().Replace("Statement", "").Replace("Syntax", "");
+                    controlFlow.ExitPoints.Add(exitKind);
+                }
+                
+                // Check if method always returns (all paths lead to return)
+                controlFlow.AlwaysReturns = roslynControlFlow.ReturnStatements.Length > 0 && 
+                                           !roslynControlFlow.EndPointIsReachable;
+                
+                // Additional analysis for entry points
+                if (roslynControlFlow.EntryPoints.Length > 0)
+                {
+                    controlFlow.EntryPoints = roslynControlFlow.EntryPoints.Length;
+                }
+            }
+            else
+            {
+                // Roslyn's control flow analysis failed - the selected region doesn't form a valid control flow region
+                // Return null to indicate control flow analysis is not available for this region
+                return null;
+            }
+            
+            // Check for yield statements (indicates iterator method)
+            controlFlow.HasYieldStatements = statements
+                .SelectMany(s => s.DescendantNodesAndSelf())
+                .Any(n => n is CS.YieldStatementSyntax || n.IsKind(SyntaxKind.YieldKeyword));
+                
         }
-        
-        // Simple reachability analysis
-        var lastStatement = statements.LastOrDefault();
-        if (lastStatement != null)
+        catch (Exception)
         {
-            controlFlow.EndPointIsReachable = !IsUnconditionalExit(lastStatement);
-            controlFlow.AlwaysReturns = lastStatement is CS.ReturnStatementSyntax || lastStatement is VB.ReturnStatementSyntax;
+            // If analysis fails completely, return null to indicate no control flow available
+            return null;
         }
-        
-        controlFlow.StartPointIsReachable = true; // Assume true for now
         
         return controlFlow;
     }
@@ -5837,6 +5881,8 @@ public class ControlFlowInfo
     public int ReturnStatements { get; set; }
     public bool HasYieldStatements { get; set; }
     public List<string> ExitPoints { get; set; } = new();
+    public int EntryPoints { get; set; }  // Number of entry points (e.g., gotos into the region)
+    public bool UsedRoslynAnalysis { get; set; }  // Indicates if Roslyn's API was used vs fallback
 }
 
 public class VariableFlowInfo

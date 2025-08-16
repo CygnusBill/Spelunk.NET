@@ -173,6 +173,12 @@ namespace McpRoslyn.Server.RoslynPath
 
         private bool EvaluateAttribute(SyntaxNode node, AttributeExpr attr)
         {
+            // Special handling for function expressions
+            if (attr.Name == "function" && attr.Value != null)
+            {
+                return EvaluateFunction(node, attr.Value);
+            }
+
             var value = GetAttributeValue(node, attr.Name);
             if (value == null)
                 return false;
@@ -662,6 +668,148 @@ namespace McpRoslyn.Server.RoslynPath
         }
 
         #endregion
+
+        private bool EvaluateFunction(SyntaxNode node, string functionExpr)
+        {
+            // Parse function expression: functionName(arg1, arg2, ...)
+            var parenIndex = functionExpr.IndexOf('(');
+            if (parenIndex < 0)
+                return false;
+
+            var functionName = functionExpr.Substring(0, parenIndex).Trim();
+            var argsStr = functionExpr.Substring(parenIndex + 1);
+            if (argsStr.EndsWith(")"))
+                argsStr = argsStr.Substring(0, argsStr.Length - 1);
+
+            var args = ParseFunctionArguments(argsStr);
+
+            return functionName.ToLowerInvariant() switch
+            {
+                "contains" => EvaluateContainsFunction(node, args),
+                "starts-with" => EvaluateStartsWithFunction(node, args),
+                "ends-with" => EvaluateEndsWithFunction(node, args),
+                "substring" => EvaluateSubstringFunction(node, args),
+                "text" => EvaluateTextFunction(node, args),
+                "not" => args.Count == 1 && !EvaluateFunction(node, args[0]),
+                _ => false
+            };
+        }
+
+        private List<string> ParseFunctionArguments(string argsStr)
+        {
+            var args = new List<string>();
+            if (string.IsNullOrWhiteSpace(argsStr))
+                return args;
+
+            var current = new System.Text.StringBuilder();
+            var inQuotes = false;
+            var quoteChar = ' ';
+
+            for (int i = 0; i < argsStr.Length; i++)
+            {
+                var ch = argsStr[i];
+
+                if (!inQuotes && (ch == '\'' || ch == '"'))
+                {
+                    inQuotes = true;
+                    quoteChar = ch;
+                }
+                else if (inQuotes && ch == quoteChar)
+                {
+                    inQuotes = false;
+                }
+                else if (!inQuotes && ch == ',')
+                {
+                    args.Add(current.ToString().Trim());
+                    current.Clear();
+                }
+                else
+                {
+                    current.Append(ch);
+                }
+            }
+
+            if (current.Length > 0)
+                args.Add(current.ToString().Trim());
+
+            // Remove quotes from string arguments
+            for (int i = 0; i < args.Count; i++)
+            {
+                var arg = args[i];
+                if ((arg.StartsWith("'") && arg.EndsWith("'")) ||
+                    (arg.StartsWith("\"") && arg.EndsWith("\"")))
+                {
+                    args[i] = arg.Substring(1, arg.Length - 2);
+                }
+            }
+
+            return args;
+        }
+
+        private bool EvaluateContainsFunction(SyntaxNode node, List<string> args)
+        {
+            if (args.Count == 1)
+            {
+                // contains('text') - check node text
+                var nodeText = node.ToString();
+                return nodeText.Contains(args[0], StringComparison.OrdinalIgnoreCase);
+            }
+            else if (args.Count == 2)
+            {
+                // contains(@attribute, 'text') - check attribute value
+                var attrValue = GetAttributeValue(node, args[0].TrimStart('@'));
+                return attrValue != null && attrValue.Contains(args[1], StringComparison.OrdinalIgnoreCase);
+            }
+            return false;
+        }
+
+        private bool EvaluateStartsWithFunction(SyntaxNode node, List<string> args)
+        {
+            if (args.Count == 1)
+            {
+                // starts-with('text') - check node name
+                var nodeName = GetNodeName(node);
+                return nodeName != null && nodeName.StartsWith(args[0], StringComparison.OrdinalIgnoreCase);
+            }
+            else if (args.Count == 2)
+            {
+                // starts-with(@attribute, 'text') - check attribute value
+                var attrValue = GetAttributeValue(node, args[0].TrimStart('@'));
+                return attrValue != null && attrValue.StartsWith(args[1], StringComparison.OrdinalIgnoreCase);
+            }
+            return false;
+        }
+
+        private bool EvaluateEndsWithFunction(SyntaxNode node, List<string> args)
+        {
+            if (args.Count == 1)
+            {
+                // ends-with('text') - check node name
+                var nodeName = GetNodeName(node);
+                return nodeName != null && nodeName.EndsWith(args[0], StringComparison.OrdinalIgnoreCase);
+            }
+            else if (args.Count == 2)
+            {
+                // ends-with(@attribute, 'text') - check attribute value
+                var attrValue = GetAttributeValue(node, args[0].TrimStart('@'));
+                return attrValue != null && attrValue.EndsWith(args[1], StringComparison.OrdinalIgnoreCase);
+            }
+            return false;
+        }
+
+        private bool EvaluateSubstringFunction(SyntaxNode node, List<string> args)
+        {
+            // substring(@attribute, start, length) - not a boolean function, but we can check if it equals something
+            // For now, return false as this needs more context
+            return false;
+        }
+
+        private bool EvaluateTextFunction(SyntaxNode node, List<string> args)
+        {
+            // text() function returns the text content of the node
+            // In a predicate context, we'd check if it matches something
+            return args.Count == 0; // Return true if just checking for text existence
+        }
 
         private class EvaluationContext
         {

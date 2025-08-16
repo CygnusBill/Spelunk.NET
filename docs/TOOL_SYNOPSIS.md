@@ -1162,8 +1162,8 @@ Cleared 3 marker(s)
     "capturedInside": [],
     "unsafeAddressTaken": []
   },
-  "controlFlow": {
-    "alwaysReturns": true,
+  "controlFlow": {                          // May be null if region invalid
+    "alwaysReturns": true,                  // Uses Roslyn's control flow API
     "endPointIsReachable": false,
     "startPointIsReachable": true,
     "returnStatements": 1,
@@ -1205,6 +1205,11 @@ Cleared 3 marker(s)
   ]
 }
 ```
+
+**Notes**: 
+- Data flow analysis is robust and works on partial code regions
+- Control flow analysis returns null if region contains partial/invalid statements
+- Set `includeControlFlow: false` to skip control flow for better performance
 
 **Use Case**: Complex refactoring planning, dead code detection, dependency analysis, null safety verification
 

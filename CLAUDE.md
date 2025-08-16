@@ -126,7 +126,18 @@ The server provides two complementary tool categories:
 - ✅ Comprehensive test suite with multi-language tests
 - ✅ Advanced AST navigation and querying capabilities
 
-### Recently Completed (Latest Session)
+### Recently Completed (Latest Session - January 2025)
+- ✅ Fixed field symbol detection in `dotnet-get-symbols` (special handling for FieldDeclarationSyntax)
+- ✅ Fixed workspace parameter handling (now accepts both workspace IDs and paths)
+- ✅ Fixed RoslynPath parser to handle `//method[Name]//statement` patterns correctly
+- ✅ Removed artificial restrictions on RoslynPath patterns
+- ✅ All torture test failures resolved (field detection, data flow, statement context)
+- ✅ Enhanced control flow analysis to use Roslyn's AnalyzeControlFlow API exclusively
+- ✅ Removed misleading fallback - now returns null with clear error when analysis fails
+- ✅ Comprehensive data flow analysis testing and documentation (DATA_FLOW_ANALYSIS.md)
+- ✅ Updated CONTROL_FLOW_ANALYSIS.md to reflect error-first approach
+
+### Previously Completed
 - ✅ Implemented XPath-style statement search with structural paths
 - ✅ Added Path property showing full AST location from solution to statement
 - ✅ Standardized depth calculation (always from method/class boundary)
