@@ -12,52 +12,59 @@ If you're starting fresh with this codebase:
 
 ## Project Structure
 
-This is the MCP Roslyn Server project, which provides multi-language code analysis and manipulation tools via the Model Context Protocol (MCP). It supports C#, VB.NET, and F# with language-agnostic abstractions.
+This is Spelunk.NET (formerly MCP Roslyn/McpDotnet), which provides multi-language code analysis and manipulation tools via the Model Context Protocol (MCP). It supports C#, VB.NET, and F# with language-agnostic abstractions.
+
+Spelunk.NET is distributed as a .NET global tool (`spelunk`) with unified stdio and SSE modes.
 
 ### Directory Layout
 
 ```
 McpDotnet/
 ├── src/
-│   └── McpDotnet/
-│       ├── McpDotnet.Server/      # Main server implementation
-│       │   ├── RoslynPath/        # RoslynPath query engine
-│       │   ├── LanguageHandlers/  # C# and VB.NET language handlers
-│       │   ├── FSharp/           # F# support infrastructure
-│       │   └── *.cs              # Core server files
-│       └── McpDotnet.Server.Sse/  # SSE server (experimental)
-│           ├── Program.cs         # SSE server entry point
-│           └── Tools/            # SSE-specific tools
+│   └── McpDotnet.Server/         # Main server implementation (packaged as Spelunk.NET)
+│       ├── SpelunkPath/          # SpelunkPath query engine
+│       ├── LanguageHandlers/     # C# and VB.NET language handlers
+│       ├── FSharp/               # F# support infrastructure
+│       ├── Modes/                # IMode interface and implementations
+│       │   ├── IMode.cs          # Mode abstraction
+│       │   ├── StdioMode.cs      # Stdio mode implementation
+│       │   └── SseMode.cs        # SSE server mode
+│       ├── Process/              # Background process management
+│       │   ├── ProcessManager.cs # SSE lifecycle (start/stop/status)
+│       │   └── PidFileManager.cs # PID file I/O
+│       ├── Tools/                # MCP tool implementations
+│       └── Program.cs            # Entry point with System.CommandLine
 ├── docs/                         # Current documentation
-│   ├── TOOL_SYNOPSIS.md         # Reference for all 24 tools
-│   ├── design/                  # Design documents
+│   ├── TOOL_SYNOPSIS.md          # Reference for all tools
+│   ├── design/                   # Design documents
 │   │   ├── STATEMENT_LEVEL_EDITING.md
 │   │   └── EPHEMERAL_MARKER_DESIGN.md
-│   ├── roslyn-path/             # RoslynPath documentation
+│   ├── roslyn-path/              # SpelunkPath documentation
 │   │   ├── ROSLYN_PATH_INSTRUCTIONS.md   # Quick reference
 │   │   ├── ROSLYN_PATH_AGENT_GUIDE.md    # 5-minute guide
 │   │   ├── ROSLYN_PATH_SYNTAX_DESIGN.md  # Full syntax spec
 │   │   ├── ROSLYN_PATH_ANALYSIS_EXAMPLES.md
 │   │   ├── ROSLYN_PATH_TEST_PACKAGE.md
-│   │   └── examples/            # Demo code
-│   └── stale/                   # Archived docs (historical only)
-├── tests/                       # Python integration tests
-│   ├── tools/                   # Individual tool tests
-│   ├── protocol/                # MCP protocol tests
-│   ├── integration/             # Cross-cutting tests
-│   ├── utils/                   # Test utilities
-│   └── run-all-tests.py         # Test runner
-├── scripts/                     # Shell scripts for running/testing
-│   ├── run/                     # Server launch scripts
-│   │   ├── run-stdio-server.sh  # Primary STDIO server
-│   │   ├── run-server-debug.sh  # Debug mode server
-│   │   └── run-sse-server.sh    # SSE server (experimental)
-│   └── test/                    # Test scripts
-│       ├── test-server.sh       # Run with test-requests.jsonl
-│       └── test-mcp-server.sh   # Interactive protocol test
-├── test-workspace/              # Sample projects for testing (C#, VB.NET, F#)
-├── README.md                    # Project readme
-└── CLAUDE.md                    # This file
+│   │   └── examples/             # Demo code
+│   └── stale/                    # Archived docs (historical only)
+├── tests/                        # Test suites
+│   ├── RoslynPath/               # XUnit tests for SpelunkPath
+│   ├── tools/                    # Python integration tests
+│   ├── protocol/                 # MCP protocol tests
+│   ├── integration/              # Cross-cutting tests
+│   ├── utils/                    # Test utilities
+│   └── run-all-tests.py          # Python test runner
+├── scripts/                      # Shell scripts for development
+│   ├── run/                      # Server launch scripts
+│   │   ├── run-stdio-server.sh   # Primary STDIO server
+│   │   ├── run-server-debug.sh   # Debug mode server
+│   │   └── run-sse-server.sh     # SSE server
+│   └── test/                     # Test scripts
+│       ├── test-server.sh        # Run with test-requests.jsonl
+│       └── test-mcp-server.sh    # Interactive protocol test
+├── test-workspace/               # Sample projects for testing (C#, VB.NET, F#)
+├── README.md                     # Project readme
+└── CLAUDE.md                     # This file
 ```
 
 ## Key Concepts
@@ -70,7 +77,7 @@ All code modifications work at the statement level - this is the optimal granula
 - **VB.NET**: Full Roslyn integration with language-agnostic mapping
 - **F#**: Basic support via FSharp.Compiler.Service (separate from Roslyn)
 
-### 3. RoslynPath
+### 3. SpelunkPath
 An XPath-inspired query language for .NET code that provides stable references surviving edits:
 - Language-agnostic: works with C# and VB.NET
 - Enhanced with low-level node types (binary-expression, if-statement, literal, etc.)
@@ -91,20 +98,20 @@ Complex refactorings are built from simple, composable tools. The 33 implemented
 ### 6. Semantic vs Syntactic Tools
 The server provides two complementary tool categories:
 - **Semantic tools** (find-* family): Task-focused, return rich type information using Roslyn's semantic model
-- **Syntactic tools** (RoslynPath-based): Query-focused, provide flexible pattern matching on syntax trees
+- **Syntactic tools** (SpelunkPath-based): Query-focused, provide flexible pattern matching on syntax trees
 - See `docs/design/SEMANTIC_VS_SYNTACTIC_TOOLS.md` for architectural philosophy
 
 ## Documentation Guide
 
 ### For Quick Reference
 - **Tool usage**: `docs/TOOL_SYNOPSIS.md` - All tools with examples
-- **RoslynPath syntax**: `docs/roslyn-path/ROSLYN_PATH_INSTRUCTIONS.md`
+- **SpelunkPath syntax**: `docs/roslyn-path/ROSLYN_PATH_INSTRUCTIONS.md`
 - **Agent tool selection**: `docs/AGENT_TOOL_SELECTION_GUIDE.md` - Decision tree for AI agents
 - **Agent examples**: `docs/AGENT_QUERY_EXAMPLES.md` - Concrete semantic vs syntactic examples
 
 ### For Understanding Design
 - **Philosophy**: `docs/design/STATEMENT_LEVEL_EDITING.md`
-- **RoslynPath rationale**: `docs/roslyn-path/ROSLYN_PATH_SYNTAX_DESIGN.md`
+- **SpelunkPath rationale**: `docs/roslyn-path/ROSLYN_PATH_SYNTAX_DESIGN.md`
 - **F# architecture**: `docs/design/FSHARP_ARCHITECTURE.md`
 - **FSharpPath syntax**: `docs/roslyn-path/FSHARP_PATH_SYNTAX.md`
 - **Semantic vs Syntactic**: `docs/design/SEMANTIC_VS_SYNTACTIC_TOOLS.md`
@@ -121,16 +128,36 @@ The server provides two complementary tool categories:
 - ✅ Multi-language support (C#, VB.NET, F#)
 - ✅ Statement-level operations (find, replace, insert, remove)
 - ✅ Ephemeral marker system for tracking statements
-- ✅ Language-agnostic RoslynPath query engine with enhanced navigation
+- ✅ Language-agnostic SpelunkPath query engine with enhanced navigation
 - ✅ F# support via FSharp.Compiler.Service with all tools functional
-- ✅ Comprehensive test suite with multi-language tests
+- ✅ Comprehensive test suite with multi-language tests (XUnit + Python)
 - ✅ Advanced AST navigation and querying capabilities
+- ✅ .NET Global Tool packaging (Spelunk.NET)
+- ✅ Unified CLI with stdio and SSE modes
 
-### Recently Completed (Latest Session - January 2025)
+### Recently Completed (Latest Session - November 2025)
+- ✅ Complete rebrand from McpDotnet to Spelunk.NET
+- ✅ Renamed RoslynPath to SpelunkPath throughout codebase
+- ✅ Unified CLI architecture with System.CommandLine
+  - `spelunk stdio` - Run in stdio mode for MCP clients
+  - `spelunk sse` - Run SSE server (with start/stop/status/logs/restart)
+- ✅ Background process management for SSE server
+  - PID file tracking at `~/.spelunk/sse.pid`
+  - Log file at `~/.spelunk/sse.log`
+  - Cross-platform process spawning
+- ✅ Packaged as .NET global tool
+  - PackageId: Spelunk.NET
+  - Command: `spelunk`
+  - Version: 1.0.0-alpha-01
+- ✅ Migrated SSE server into main project (no longer separate)
+- ✅ Updated all documentation and tests
+- ✅ XUnit test suite (46/55 tests passing, 9 tests for unimplemented function argument parsing)
+
+### Previously Completed (Earlier 2025)
 - ✅ Fixed field symbol detection in `dotnet-get-symbols` (special handling for FieldDeclarationSyntax)
 - ✅ Fixed workspace parameter handling (now accepts both workspace IDs and paths)
-- ✅ Fixed RoslynPath parser to handle `//method[Name]//statement` patterns correctly
-- ✅ Removed artificial restrictions on RoslynPath patterns
+- ✅ Fixed SpelunkPath parser to handle `//method[Name]//statement` patterns correctly
+- ✅ Removed artificial restrictions on SpelunkPath patterns
 - ✅ All torture test failures resolved (field detection, data flow, statement context)
 - ✅ Enhanced control flow analysis to use Roslyn's AnalyzeControlFlow API exclusively
 - ✅ Removed misleading fallback - now returns null with clear error when analysis fails
@@ -154,25 +181,50 @@ The server provides two complementary tool categories:
 ## Development Workflow
 
 ### Running the Server
+
+#### Using the Global Tool (Recommended)
 ```bash
-# Using convenience scripts (recommended)
+# Install the global tool
+dotnet pack src/McpDotnet.Server/McpDotnet.Server.csproj
+dotnet tool install --global --add-source ./src/McpDotnet.Server/nupkg Spelunk.NET
+
+# Run in stdio mode (for MCP clients)
+spelunk stdio
+
+# Run SSE server
+spelunk sse                  # Start on port 3333
+spelunk sse -p 8080          # Start on custom port
+spelunk sse status           # Check status
+spelunk sse logs             # View logs
+spelunk sse logs -f          # Follow logs
+spelunk sse stop             # Stop server
+spelunk sse restart          # Restart server
+```
+
+#### Development Mode
+```bash
+# Using convenience scripts
 ./scripts/run/run-stdio-server.sh      # Standard mode
 ./scripts/run/run-server-debug.sh      # Debug mode
 
 # Or directly with dotnet
-dotnet run --project src/McpDotnet/McpDotnet.Server
+dotnet run --project src/McpDotnet.Server -- stdio
+dotnet run --project src/McpDotnet.Server -- sse
 ```
 
 ### Running Tests
 ```bash
-# All tests
+# XUnit tests
+dotnet test
+
+# Python integration tests
 python3 tests/run-all-tests.py
 
 # Specific test
 python3 tests/tools/test-find-statements.py
 ```
 
-### Testing RoslynPath
+### Testing SpelunkPath
 See examples in `docs/roslyn-path/examples/`:
 - `demo-roslyn-path-complex.cs` - Complex query demonstrations
 - `test-roslyn-path-simple.cs` - Simple standalone test
@@ -215,7 +267,7 @@ See `~/.config/mcp-dotnet/README.md` for detailed configuration documentation.
 
 ## Important Notes
 
-1. **Line Numbers Are Fragile**: Always prefer RoslynPath over line/column positions
+1. **Line Numbers Are Fragile**: Always prefer SpelunkPath over line/column positions
 2. **Statement Granularity**: Operations work on complete statements, not arbitrary text ranges
 3. **Markers Are Ephemeral**: They survive edits but not file reloads
 4. **Tools Are Composable**: Complex operations should combine simple tools
@@ -224,10 +276,10 @@ See `~/.config/mcp-dotnet/README.md` for detailed configuration documentation.
 
 ### Find and Replace Pattern
 ```python
-# 1. Find targets (now supports RoslynPath!)
+# 1. Find targets (now supports SpelunkPath!)
 results = find_statements(
     pattern="//statement[@contains='Console.WriteLine']",
-    patternType="roslynpath"
+    patternType="spelunkpath"
 )
 
 # 2. Replace each
@@ -251,9 +303,9 @@ for method in methods:
 
 ### Advanced AST Navigation
 ```python
-# 1. Find null comparisons using enhanced RoslynPath
+# 1. Find null comparisons using enhanced SpelunkPath
 null_checks = query_syntax(
-    roslynPath="//if-statement//binary-expression[@operator='==' and @right-text='null']"
+    spelunkPath="//if-statement//binary-expression[@operator='==' and @right-text='null']"
 )
 
 # 2. Navigate to parent method from any position
@@ -274,42 +326,61 @@ ast = get_ast(
 
 1. Use `tests/utils/debug_test.py` for interactive testing
 2. Check server logs for detailed Roslyn operations
-3. RoslynPath queries can be tested standalone with examples
+3. SpelunkPath queries can be tested standalone with examples
 4. The marker system helps track statements through transformations
 
 ## Key Implementation Files
 
 ### Core Server Components
-- `DotnetWorkspaceManager.cs` - Main workspace and tool implementations
-- `McpJsonRpcServer.cs` - MCP protocol handling
-- `Program.cs` - Server entry point and configuration
+- `src/McpDotnet.Server/DotnetWorkspaceManager.cs` - Main workspace and tool implementations
+- `src/McpDotnet.Server/McpJsonRpcServer.cs` - MCP protocol handling
+- `src/McpDotnet.Server/Program.cs` - Server entry point with System.CommandLine
 
-### RoslynPath Components
-- `RoslynPath/RoslynPath.cs` - Main query engine
-- `RoslynPath/RoslynPathParser.cs` - Query parser
-- `RoslynPath/RoslynPathEvaluator.cs` - AST evaluator
+### Mode Infrastructure
+- `src/McpDotnet.Server/Modes/IMode.cs` - Mode abstraction interface
+- `src/McpDotnet.Server/Modes/StdioMode.cs` - Stdio mode implementation
+- `src/McpDotnet.Server/Modes/SseMode.cs` - SSE server mode
 
-### Recent Changes (as of commit 56c3c24)
-- RoslynPath integrated into find-statements tool (see ProcessDocumentForStatements method)
-- All nullable reference warnings fixed
-- SSE server now shows clear error when port is in use
+### Process Management
+- `src/McpDotnet.Server/Process/ProcessManager.cs` - Background SSE lifecycle
+- `src/McpDotnet.Server/Process/PidFileManager.cs` - PID file I/O
+
+### SpelunkPath Components
+- `src/McpDotnet.Server/SpelunkPath/SpelunkPath.cs` - Main query engine
+- `src/McpDotnet.Server/SpelunkPath/SpelunkPathParser.cs` - Query parser
+- `src/McpDotnet.Server/SpelunkPath/SpelunkPathEvaluator.cs` - AST evaluator
+
+### Test Suites
+- `tests/RoslynPath/` - XUnit tests for SpelunkPath
+- `tests/tools/` - Python integration tests for MCP tools
+
+### Recent Changes (Latest Architecture Refactor - November 2025)
+- Complete rebrand to Spelunk.NET with unified CLI
+- SpelunkPath replaces RoslynPath throughout codebase
+- SSE server merged into main project with mode pattern
+- Background process management for SSE lifecycle
+- Packaged as .NET global tool
 
 ## Common Pitfalls & Gotchas
 
 1. **Test Paths**: Updated - all test files now use relative paths
-2. **Port Conflicts**: SSE server uses port 3333 - check with `lsof -i :3333`
+2. **Port Conflicts**: SSE server uses port 3333 by default - check with `lsof -i :3333`
 3. **Nullable Warnings**: Project uses nullable reference types - initialize all properties
 4. **Build Warnings**: Run clean builds to catch all warnings: `dotnet clean && dotnet build`
-5. **RoslynPath Case**: Pattern type is case-insensitive but use lowercase "roslynpath"
+5. **SpelunkPath Case**: Pattern type is case-insensitive but use lowercase "spelunkpath"
+6. **Background SSE**: Use `spelunk sse stop` before uninstalling/reinstalling the tool
+7. **PID Files**: Located at `~/.spelunk/sse.pid` - clean up manually if needed
 
 ## Contributing
 
 When adding new features:
 1. Follow statement-level granularity principle
 2. Update TOOL_SYNOPSIS.md with new tools
-3. Add integration tests in `tests/tools/`
-4. Consider RoslynPath integration for stability
+3. Add integration tests in `tests/tools/` (Python) and/or `tests/RoslynPath/` (XUnit)
+4. Consider SpelunkPath integration for stability
 5. Document design decisions in `docs/design/`
+6. Test both stdio and SSE modes
+7. Update version in McpDotnet.Server.csproj before packaging
 
 ## F# Architecture
 
@@ -335,7 +406,7 @@ MCP Client Request → Unified Tool Interface → Language Router
 
 1. **FSharpWorkspaceManager**: Manages F# projects outside MSBuildWorkspace
 2. **FSharpProjectTracker**: Tracks F# projects that couldn't load in Roslyn
-3. **FSharpPath**: XPath-like query language for F# AST (like RoslynPath for C#/VB)
+3. **FSharpPath**: XPath-like query language for F# AST (like SpelunkPath for C#/VB)
 4. **Symbol Mapper**: Translates between F# and Roslyn symbol formats
 
 ### F# Development Guides

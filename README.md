@@ -1,12 +1,12 @@
-# MCP Roslyn Server
+# Spelunk.NET
 
-A Model Context Protocol (MCP) server that provides powerful code analysis and modification tools for .NET projects using Microsoft's Roslyn compiler platform.
+A Model Context Protocol (MCP) server that provides powerful code analysis and modification tools for .NET projects using Microsoft's Roslyn compiler platform. Spelunk.NET is available as a .NET global tool for easy installation and use.
 
 ## Architecture Philosophy
 
 **Primitive Tools, Intelligent Agents**
 
-MCP Dotnet follows a **primitive tools** philosophy:
+Spelunk.NET follows a **primitive tools** philosophy:
 - Tools are simple, focused, and composable building blocks
 - Complex refactorings are **agent workflows** that orchestrate these primitives  
 - This approach provides flexibility, transparency, and adaptability
@@ -21,7 +21,7 @@ This MCP server exposes Roslyn's advanced code analysis capabilities, allowing A
 - **Navigate** code relationships and AST structure with XPath-style queries
 - **Modify** code safely using Roslyn's syntax tree manipulation
 - **Refactor** with confidence using semantic understanding
-- **Query** abstract syntax trees with enhanced RoslynPath expressions
+- **Query** abstract syntax trees with enhanced SpelunkPath expressions
 
 ## Key Capabilities
 
@@ -60,7 +60,7 @@ The server leverages Roslyn's unique ability to seamlessly move between syntacti
 - `dotnet/insert-statement` - Insert statements before/after existing ones
 - `dotnet/remove-statement` - Remove statements while preserving comments
 
-### RoslynPath Query Tools
+### SpelunkPath Query Tools
 - `dotnet/query-syntax` - Query AST with XPath-style expressions
 - `dotnet/navigate` - Navigate from a position using axes
 - `dotnet/get-ast` - Get AST structure at any level
@@ -95,41 +95,98 @@ The server leverages Roslyn's unique ability to seamlessly move between syntacti
 - `dotnet-fsharp-get-ast` - Get F# abstract syntax tree structure
 
 ### Advanced AST Navigation
-- `dotnet/query-syntax` - Query AST using enhanced RoslynPath expressions
+- `dotnet/query-syntax` - Query AST using enhanced SpelunkPath expressions
   - Support for expression-level nodes (binary-expression, literal, identifier)
   - Advanced predicates (@operator, @literal-value, @contains)
   - Find specific patterns like null checks, string comparisons
-  
+
 - `dotnet/navigate` - Navigate from any position using XPath-style axes
   - Navigate to parent, ancestor, child, descendant nodes
   - Find siblings with following-sibling:: and preceding-sibling::
   - Chain navigation paths like "parent::method/following-sibling::method"
-  
+
 - `dotnet/get-ast` - Get abstract syntax tree structure
   - Visualize code hierarchy and node relationships
-  - Debug RoslynPath queries
+  - Debug SpelunkPath queries
   - Understand AST node types for pattern matching
 
-## Building and Running
+## Installation
+
+### As a .NET Global Tool
+
+Install Spelunk.NET as a global tool (recommended):
+
+```bash
+# Install from NuGet (coming soon)
+dotnet tool install --global Spelunk.NET
+
+# Or install from local build
+dotnet pack src/McpDotnet.Server/McpDotnet.Server.csproj
+dotnet tool install --global --add-source ./src/McpDotnet.Server/nupkg Spelunk.NET
+```
 
 ### Prerequisites
 - .NET 10.0 SDK (or .NET 8.0 or later)
 - MSBuild (comes with .NET SDK)
 - **OR** Docker (if running in container)
 
-### Build
+## Usage
+
+Once installed, use the `spelunk` command:
+
 ```bash
-cd src/McpDotnet
-dotnet build
+# Run in stdio mode (for MCP clients like Claude Desktop)
+spelunk stdio
+
+# Run SSE server on default port (3333)
+spelunk sse
+
+# Run SSE server on custom port
+spelunk sse -p 8080
+
+# Check SSE server status
+spelunk sse status
+
+# View SSE server logs
+spelunk sse logs
+spelunk sse logs -f  # Follow mode
+
+# Stop SSE server
+spelunk sse stop
+
+# Restart SSE server
+spelunk sse restart
 ```
 
-### Run
-```bash
-# Standard stdio mode
-dotnet run --project McpDotnet.Server/McpDotnet.Server.csproj -- --allowed-path /path/to/code
+### Configuration
 
-# SSE mode (for HTTP-based clients)
-dotnet run --project McpDotnet.Server.Sse/McpDotnet.Server.Sse.csproj
+Configure allowed directories in `~/.config/mcp-dotnet/config.json`:
+
+```json
+{
+  "McpDotnet": {
+    "AllowedPaths": [
+      "/Users/yourname/Repos",
+      "/path/to/your/projects"
+    ]
+  }
+}
+```
+
+Or use environment variables:
+
+```bash
+export MCP_DOTNET_ALLOWED_PATHS="/path/to/code:/another/path"
+spelunk stdio
+```
+
+### Development Build
+
+Build from source:
+
+```bash
+dotnet build
+dotnet run --project src/McpDotnet.Server -- stdio
 ```
 
 ### Docker
@@ -285,10 +342,10 @@ The architecture supports advanced scenarios like:
 - **[Statement-Level Editing](docs/design/STATEMENT_LEVEL_EDITING.md)** - Design principles for code modification
 - **[F# Architecture](docs/design/FSHARP_ARCHITECTURE.md)** - Understanding F# support implementation
 
-### RoslynPath Documentation
-- **[RoslynPath Instructions](docs/roslyn-path/ROSLYN_PATH_INSTRUCTIONS.md)** - Quick reference for query syntax
-- **[RoslynPath Agent Guide](docs/roslyn-path/ROSLYN_PATH_AGENT_GUIDE.md)** - 5-minute introduction for AI agents
-- **[RoslynPath Syntax Design](docs/roslyn-path/ROSLYN_PATH_SYNTAX_DESIGN.md)** - Complete syntax specification
+### SpelunkPath Documentation
+- **[SpelunkPath Instructions](docs/roslyn-path/ROSLYN_PATH_INSTRUCTIONS.md)** - Quick reference for query syntax
+- **[SpelunkPath Agent Guide](docs/roslyn-path/ROSLYN_PATH_AGENT_GUIDE.md)** - 5-minute introduction for AI agents
+- **[SpelunkPath Syntax Design](docs/roslyn-path/ROSLYN_PATH_SYNTAX_DESIGN.md)** - Complete syntax specification
 
 ## Contributing
 

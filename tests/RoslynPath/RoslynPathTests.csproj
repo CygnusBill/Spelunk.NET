@@ -17,7 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../src/McpRoslyn.Server/McpRoslyn.Server.csproj" />
+    <ProjectReference Include="../../src/McpDotnet.Server/McpDotnet.Server.csproj" />
   </ItemGroup>
 
 </Project>

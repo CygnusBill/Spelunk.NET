@@ -2,10 +2,10 @@ using System;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using McpRoslyn.Server.RoslynPath;
+using Spelunk.Server.SpelunkPath;
 using Xunit;
 
-namespace McpRoslyn.Tests.RoslynPath
+namespace Spelunk.Tests.SpelunkPath
 {
     /// <summary>
     /// Test suite for RoslynPath function argument parsing.
@@ -24,7 +24,7 @@ namespace McpRoslyn.Tests.RoslynPath
         {
             try
             {
-                var parser = new RoslynPathParser();
+                var parser = new SpelunkPathParser();
                 var result = parser.Parse(path);
                 return result != null;
             }
@@ -36,7 +36,7 @@ namespace McpRoslyn.Tests.RoslynPath
 
         private static string GetParsedFunctionExpression(string path)
         {
-            var parser = new RoslynPathParser();
+            var parser = new SpelunkPathParser();
             var result = parser.Parse(path);
             // This would need access to the internal structure
             // For testing purposes, we verify that parsing succeeds
@@ -164,7 +164,7 @@ namespace TestNamespace
 }";
 
             var tree = ParseCode(code);
-            var evaluator = new RoslynPathEvaluator(tree);
+            var evaluator = new SpelunkPathEvaluator(tree);
             
             // These would work if the evaluator implements the functions
             // For now, we test that parsing succeeds
