@@ -18,8 +18,8 @@ RUN dotnet publish src/McpRoslyn.Server/McpRoslyn.Server.csproj \
     --no-restore \
     --output /app
 
-# Runtime stage
-FROM mcr.microsoft.com/dotnet/runtime:10.0
+# Runtime stage - SDK is required for MSBuild.Locator
+FROM mcr.microsoft.com/dotnet/sdk:10.0
 WORKDIR /app
 
 # Copy build artifacts

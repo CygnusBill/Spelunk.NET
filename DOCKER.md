@@ -134,13 +134,11 @@ RUN dotnet publish src/McpRoslyn.Server/McpRoslyn.Server.csproj \
     --output /app
 ```
 
-### Smaller Image
+### Image Size
 
-The current image uses `mcr.microsoft.com/dotnet/runtime:10.0` (~200MB). For even smaller images, use Alpine:
+The current image uses `mcr.microsoft.com/dotnet/sdk:10.0` (~1.4GB) because the MCP Roslyn Server requires MSBuild.Locator, which needs the full .NET SDK at runtime.
 
-```dockerfile
-FROM mcr.microsoft.com/dotnet/runtime:10.0-alpine
-```
+**Note**: The runtime-only image (`mcr.microsoft.com/dotnet/runtime:10.0`) cannot be used because MSBuild.Locator requires SDK components to load and analyze .NET projects.
 
 ## Security Considerations
 
@@ -254,7 +252,7 @@ docker-compose run --rm mcp-roslyn
 
 Expected image sizes:
 - **Build stage**: ~2.5 GB (includes .NET SDK)
-- **Final runtime image**: ~220 MB (runtime only)
+- **Final image**: ~1.4 GB (requires full SDK for MSBuild.Locator)
 
 Check your image size:
 
