@@ -5,31 +5,31 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace McpDotnet.Server.RoslynPath
+namespace Spelunk.Server.SpelunkPath
 {
     /// <summary>
-    /// Simple facade for using RoslynPath
+    /// Simple facade for using SpelunkPath
     /// </summary>
-    public static class RoslynPath
+    public static class SpelunkPath
     {
         /// <summary>
-        /// Find nodes in a syntax tree using RoslynPath syntax
+        /// Find nodes in a syntax tree using SpelunkPath syntax
         /// </summary>
         /// <param name="tree">The syntax tree to search</param>
-        /// <param name="path">The RoslynPath expression</param>
+        /// <param name="path">The SpelunkPath expression</param>
         /// <param name="semanticModel">Optional semantic model for semantic queries</param>
         /// <returns>Matching syntax nodes</returns>
         public static IEnumerable<SyntaxNode> Find(SyntaxTree tree, string path, SemanticModel? semanticModel = null)
         {
-            var evaluator = new RoslynPathEvaluator(tree);
+            var evaluator = new SpelunkPathEvaluator(tree);
             return evaluator.Evaluate(path);
         }
 
         /// <summary>
-        /// Find nodes in source code using RoslynPath syntax
+        /// Find nodes in source code using SpelunkPath syntax
         /// </summary>
         /// <param name="sourceCode">C# source code</param>
-        /// <param name="path">The RoslynPath expression</param>
+        /// <param name="path">The SpelunkPath expression</param>
         /// <returns>Matching syntax nodes with location info</returns>
         public static IEnumerable<NodeResult> Find(string sourceCode, string path)
         {

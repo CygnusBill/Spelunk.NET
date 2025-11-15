@@ -13,7 +13,7 @@ using Microsoft.FSharp.Collections;
 using Microsoft.FSharp.Control;
 using Microsoft.FSharp.Core;
 
-namespace McpDotnet.Server.FSharp;
+namespace Spelunk.Server.FSharp;
 
 /// <summary>
 /// Manages F# workspaces using FSharp.Compiler.Service.

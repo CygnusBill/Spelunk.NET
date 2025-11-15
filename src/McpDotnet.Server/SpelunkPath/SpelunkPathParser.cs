@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace McpDotnet.Server.RoslynPath
+namespace Spelunk.Server.SpelunkPath
 {
     /// <summary>
-    /// Complete rewrite of RoslynPath parser with proper grammar support
+    /// Complete rewrite of SpelunkPath parser with proper grammar support
     /// </summary>
-    public class RoslynPathParser
+    public class SpelunkPathParser
     {
         public PathExpression Parse(string input)
         {

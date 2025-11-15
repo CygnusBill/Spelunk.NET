@@ -3,7 +3,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Formatting;
 
-namespace McpDotnet.Server.LanguageHandlers;
+namespace Spelunk.Server.LanguageHandlers;
 
 /// <summary>
 /// C# specific implementation of language operations

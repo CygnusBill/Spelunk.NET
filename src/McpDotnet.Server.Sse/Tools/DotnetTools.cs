@@ -3,22 +3,22 @@ using Microsoft.CodeAnalysis.MSBuild;
 using ModelContextProtocol.Server;
 using System.ComponentModel;
 using System.Text.Json;
-using McpDotnet.Server;
-using McpDotnet.Server.Configuration;
+using Spelunk.Server;
+using Spelunk.Server.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace McpDotnet.Server.Sse.Tools;
+namespace Spelunk.Server.Sse.Tools;
 
 [McpServerToolType]
 public static class DotnetTools
 {
     private static DotnetWorkspaceManager? _workspaceManager;
-    private static IOptionsMonitor<McpDotnetOptions>? _optionsMonitor;
+    private static IOptionsMonitor<SpelunkOptions>? _optionsMonitor;
     private static ILogger<Program>? _logger;
     private static IDisposable? _optionsChangeToken;
 
-    public static void Initialize(IOptionsMonitor<McpDotnetOptions> optionsMonitor, ILogger<Program> logger)
+    public static void Initialize(IOptionsMonitor<SpelunkOptions> optionsMonitor, ILogger<Program> logger)
     {
         _logger = logger;
         _optionsMonitor = optionsMonitor;
@@ -435,8 +435,8 @@ public static class DotnetTools
 
     [McpServerTool(Name = "dotnet-find-statements"), Description(ToolDescriptions.FindStatements)]
     public static async Task<string> DotnetFindStatements(
-        [Description("Text, regex, or RoslynPath pattern to match in statements. RoslynPath allows XPath-style queries like '//method[Get*]//statement[@type=ThrowStatement]'")] string pattern,
-        [Description("Pattern type: 'text' (default), 'regex', or 'roslynpath' for XPath-style queries")] string patternType = "text",
+        [Description("Text, regex, or SpelunkPath pattern to match in statements. SpelunkPath allows XPath-style queries like '//method[Get*]//statement[@type=ThrowStatement]'")] string pattern,
+        [Description("Pattern type: 'text' (default), 'regex', or 'spelunkpath' for XPath-style queries")] string patternType = "text",
         [Description("Optional file path to search in")] string? filePath = null,
         [Description("Include nested statements in blocks")] bool includeNestedStatements = true,
         [Description("Group related statements together")] bool groupRelated = false,

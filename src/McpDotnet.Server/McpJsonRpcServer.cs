@@ -1,14 +1,14 @@
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using McpDotnet.Server.Configuration;
+using Spelunk.Server.Configuration;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
 using CS = Microsoft.CodeAnalysis.CSharp.Syntax;
-using McpDotnet.Server.FSharp;
+using Spelunk.Server.FSharp;
 
-namespace McpDotnet.Server;
+namespace Spelunk.Server;
 
 public class McpJsonRpcServer
 {
@@ -23,7 +23,7 @@ public class McpJsonRpcServer
     
     public McpJsonRpcServer(
         ILogger<McpJsonRpcServer> logger,
-        IOptions<McpDotnetOptions> options,
+        IOptions<SpelunkOptions> options,
         DotnetWorkspaceManager workspaceManager,
         FSharpWorkspaceManager? fsharpWorkspaceManager = null
         )
@@ -60,7 +60,7 @@ public class McpJsonRpcServer
         }
     }
     
-    public void UpdateConfiguration(McpDotnetOptions options)
+    public void UpdateConfiguration(SpelunkOptions options)
     {
         lock (_configLock)
         {
@@ -474,7 +474,7 @@ public class McpJsonRpcServer
                     type = "object",
                     properties = new
                     {
-                        pattern = new { type = "string", description = "Text, regex, or RoslynPath pattern to match in statements. RoslynPath allows XPath-style queries like '//method[Get*]//statement[@type=ThrowStatement]'" },
+                        pattern = new { type = "string", description = "Text, regex, or SpelunkPath pattern to match in statements. SpelunkPath allows XPath-style queries like '//method[Get*]//statement[@type=ThrowStatement]'" },
                         scope = new 
                         { 
                             type = "object", 
@@ -486,7 +486,7 @@ public class McpJsonRpcServer
                                 methodName = new { type = "string", description = "Method name to search within" }
                             }
                         },
-                        patternType = new { type = "string", description = "Pattern type: 'text' (default), 'regex', or 'roslynpath' for XPath-style queries", @enum = new[] { "text", "regex", "roslynpath" } },
+                        patternType = new { type = "string", description = "Pattern type: 'text' (default), 'regex', or 'spelunkpath' for XPath-style queries", @enum = new[] { "text", "regex", "spelunkpath" } },
                         includeNestedStatements = new { type = "boolean", description = "Include statements inside blocks (if/while/for bodies)" },
                         groupRelated = new { type = "boolean", description = "Group statements that share data flow or are in sequence" },
                         workspacePath = new { type = "string", description = "Optional workspace path to search in" }
@@ -775,7 +775,7 @@ public class McpJsonRpcServer
                     type = "object",
                     properties = new
                     {
-                        roslynPath = new { type = "string", description = "RoslynPath query (e.g., '//binary-expression[@operator=\"==\" and @right-text=\"null\"]')" },
+                        roslynPath = new { type = "string", description = "SpelunkPath query (e.g., '//binary-expression[@operator=\"==\" and @right-text=\"null\"]')" },
                         file = new { type = "string", description = "Optional: specific file to search in" },
                         workspacePath = new { type = "string", description = "Optional: workspace to search in" },
                         includeContext = new { type = "boolean", description = "Include surrounding context lines" },
@@ -806,7 +806,7 @@ public class McpJsonRpcServer
                             required = new[] { "file", "line", "column" }
                         },
                         path = new { type = "string", description = "Navigation path (e.g., 'ancestor::method[1]/following-sibling::method[1]')" },
-                        returnPath = new { type = "boolean", description = "Return the RoslynPath of the target node" },
+                        returnPath = new { type = "boolean", description = "Return the SpelunkPath of the target node" },
                         includeSemanticInfo = new { type = "boolean", description = "Include semantic information (types, symbols, project context)" }
                     },
                     required = new[] { "from", "path" }
@@ -822,7 +822,7 @@ public class McpJsonRpcServer
                     properties = new
                     {
                         file = new { type = "string", description = "File path to analyze" },
-                        root = new { type = "string", description = "Optional: RoslynPath to root node (e.g., '//method[Process]')" },
+                        root = new { type = "string", description = "Optional: SpelunkPath to root node (e.g., '//method[Process]')" },
                         depth = new { type = "integer", description = "Tree depth to include (default: 3)" },
                         includeTokens = new { type = "boolean", description = "Include syntax tokens" },
                         format = new { type = "string", description = "Output format: 'tree' (default)" },
@@ -1058,7 +1058,7 @@ public class McpJsonRpcServer
         {
             if (!string.IsNullOrEmpty(symbolName))
             {
-                // Use RoslynPath to find symbols by name
+                // Use SpelunkPath to find symbols by name
                 return await _workspaceManager.GetSymbolsByNameAsync(filePath, symbolName, workspaceId);
             }
             else if (hasPosition)
@@ -3484,13 +3484,13 @@ public class McpJsonRpcServer
         {
             // Extract required parameters
             if (!args.Value.TryGetProperty("roslynPath", out var pathElement))
-                return CreateErrorResponse("RoslynPath query is required");
+                return CreateErrorResponse("SpelunkPath query is required");
                 
             var roslynPath = pathElement.GetString();
             if (string.IsNullOrEmpty(roslynPath))
-                return CreateErrorResponse("RoslynPath cannot be empty");
+                return CreateErrorResponse("SpelunkPath cannot be empty");
                 
-            // No restrictions needed - RoslynPath follows XPath semantics where
+            // No restrictions needed - SpelunkPath follows XPath semantics where
             // the descendant axis (//) finds all descendants regardless of nesting
                 
             // Extract optional parameters
@@ -3511,7 +3511,7 @@ public class McpJsonRpcServer
                     {
                         requestedFile = filePath,
                         requestedQuery = roslynPath,
-                        note = "F# will use FSharpPath syntax instead of RoslynPath",
+                        note = "F# will use FSharpPath syntax instead of SpelunkPath",
                         documentationLink = "docs/design/FSHARP_IMPLEMENTATION_GUIDE.md#fsharppath-query-language"
                     }
                 };
@@ -3587,7 +3587,7 @@ public class McpJsonRpcServer
                     .ToList();
             }
             
-            // Search documents using RoslynPath
+            // Search documents using SpelunkPath
             var matches = new List<object>();
             
             foreach (var document in documentsToSearch)
@@ -3596,7 +3596,7 @@ public class McpJsonRpcServer
                 if (tree == null) continue;
                 
                 var semanticModel = await document.GetSemanticModelAsync();
-                var evaluator = new RoslynPath.RoslynPathEvaluator(tree);
+                var evaluator = new SpelunkPath.SpelunkPathEvaluator(tree);
                 
                 try
                 {
@@ -3605,7 +3605,7 @@ public class McpJsonRpcServer
                     foreach (var node in results)
                     {
                         var lineSpan = node.GetLocation().GetLineSpan();
-                        var nodeType = RoslynPath.EnhancedNodeTypes.GetDetailedNodeTypeName(node);
+                        var nodeType = SpelunkPath.EnhancedNodeTypes.GetDetailedNodeTypeName(node);
                         
                         object? semanticInfo = null;
                         if (includeSemanticInfo && semanticModel != null)
@@ -3616,7 +3616,7 @@ public class McpJsonRpcServer
                         var match = new
                         {
                             nodeType = nodeType,
-                            path = RoslynPath.RoslynPath.GetNodePath(node),
+                            path = SpelunkPath.SpelunkPath.GetNodePath(node),
                             location = new
                             {
                                 file = document.FilePath,
@@ -3635,7 +3635,7 @@ public class McpJsonRpcServer
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, $"Error evaluating RoslynPath in {document.FilePath}");
+                    _logger.LogWarning(ex, $"Error evaluating SpelunkPath in {document.FilePath}");
                 }
             }
             
@@ -3754,7 +3754,7 @@ public class McpJsonRpcServer
             
             var target = new
             {
-                nodeType = RoslynPath.EnhancedNodeTypes.GetDetailedNodeTypeName(targetNode),
+                nodeType = SpelunkPath.EnhancedNodeTypes.GetDetailedNodeTypeName(targetNode),
                 name = GetNodeName(targetNode),
                 location = new
                 {
@@ -3863,7 +3863,7 @@ public class McpJsonRpcServer
         
         while (current != null)
         {
-            var nodeType = RoslynPath.EnhancedNodeTypes.GetDetailedNodeTypeName(current);
+            var nodeType = SpelunkPath.EnhancedNodeTypes.GetDetailedNodeTypeName(current);
             var name = GetNodeName(current);
             
             if (!string.IsNullOrEmpty(name))
@@ -3944,7 +3944,7 @@ public class McpJsonRpcServer
                 if (tree == null)
                     return CreateErrorResponse("Failed to get syntax tree");
                     
-                var evaluator = new RoslynPath.RoslynPathEvaluator(tree);
+                var evaluator = new SpelunkPath.SpelunkPathEvaluator(tree);
                 var results = evaluator.Evaluate(rootPath).ToList();
                 
                 if (results.Count == 0)
@@ -3976,7 +3976,7 @@ public class McpJsonRpcServer
     
     private async Task<object> BuildAstNodeAsync(SyntaxNode node, int remainingDepth, bool includeTokens, SemanticModel semanticModel, Document document)
     {
-        var nodeType = RoslynPath.EnhancedNodeTypes.GetDetailedNodeTypeName(node);
+        var nodeType = SpelunkPath.EnhancedNodeTypes.GetDetailedNodeTypeName(node);
         var result = new Dictionary<string, object>
         {
             ["nodeType"] = nodeType,
@@ -3996,7 +3996,7 @@ public class McpJsonRpcServer
         // Add specific properties based on node type
         if (node is CS.BinaryExpressionSyntax binary)
         {
-            result["operator"] = RoslynPath.EnhancedNodeTypes.GetBinaryOperator(node) ?? "";
+            result["operator"] = SpelunkPath.EnhancedNodeTypes.GetBinaryOperator(node) ?? "";
             if (remainingDepth > 0)
             {
                 result["left"] = await BuildAstNodeAsync(binary.Left, remainingDepth - 1, includeTokens, semanticModel, document);
@@ -4005,7 +4005,7 @@ public class McpJsonRpcServer
         }
         else if (node is CS.LiteralExpressionSyntax literal)
         {
-            result["value"] = RoslynPath.EnhancedNodeTypes.GetLiteralValue(node) ?? "";
+            result["value"] = SpelunkPath.EnhancedNodeTypes.GetLiteralValue(node) ?? "";
         }
         else if (remainingDepth > 0)
         {
@@ -4038,7 +4038,7 @@ public class McpJsonRpcServer
     
     private object BuildAstNode(SyntaxNode node, int remainingDepth, bool includeTokens, SemanticModel? semanticModel = null, string? projectName = null)
     {
-        var nodeType = RoslynPath.EnhancedNodeTypes.GetDetailedNodeTypeName(node);
+        var nodeType = SpelunkPath.EnhancedNodeTypes.GetDetailedNodeTypeName(node);
         var result = new Dictionary<string, object>
         {
             ["type"] = nodeType,
@@ -4057,7 +4057,7 @@ public class McpJsonRpcServer
         // Add specific properties based on node type
         if (node is CS.BinaryExpressionSyntax binary)
         {
-            result["operator"] = RoslynPath.EnhancedNodeTypes.GetBinaryOperator(node) ?? "";
+            result["operator"] = SpelunkPath.EnhancedNodeTypes.GetBinaryOperator(node) ?? "";
             if (remainingDepth > 0)
             {
                 result["left"] = BuildAstNode(binary.Left, remainingDepth - 1, includeTokens, semanticModel, projectName);
@@ -4066,7 +4066,7 @@ public class McpJsonRpcServer
         }
         else if (node is CS.LiteralExpressionSyntax literal)
         {
-            result["value"] = RoslynPath.EnhancedNodeTypes.GetLiteralValue(node) ?? "";
+            result["value"] = SpelunkPath.EnhancedNodeTypes.GetLiteralValue(node) ?? "";
         }
         else if (remainingDepth > 0)
         {

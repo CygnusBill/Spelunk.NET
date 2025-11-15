@@ -1,4 +1,4 @@
-namespace McpDotnet.Server;
+namespace Spelunk.Server;
 
 public class WorkspaceInfo
 {

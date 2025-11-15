@@ -3,7 +3,7 @@ using Microsoft.CodeAnalysis.CSharp;
 using CS = Microsoft.CodeAnalysis.CSharp.Syntax;
 using VB = Microsoft.CodeAnalysis.VisualBasic.Syntax;
 
-namespace McpDotnet.Server.RoslynPath;
+namespace Spelunk.Server.SpelunkPath;
 
 /// <summary>
 /// Enhanced node type mappings for comprehensive AST navigation
@@ -11,7 +11,7 @@ namespace McpDotnet.Server.RoslynPath;
 public static class EnhancedNodeTypes
 {
     /// <summary>
-    /// Get a detailed node type name for RoslynPath queries
+    /// Get a detailed node type name for SpelunkPath queries
     /// </summary>
     public static string GetDetailedNodeTypeName(SyntaxNode node)
     {

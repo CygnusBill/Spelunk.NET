@@ -3,7 +3,7 @@ using Microsoft.CodeAnalysis.VisualBasic;
 using Microsoft.CodeAnalysis.VisualBasic.Syntax;
 using Microsoft.CodeAnalysis.Formatting;
 
-namespace McpDotnet.Server.LanguageHandlers;
+namespace Spelunk.Server.LanguageHandlers;
 
 /// <summary>
 /// Visual Basic specific implementation of language operations

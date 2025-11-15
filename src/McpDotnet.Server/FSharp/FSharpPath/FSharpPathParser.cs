@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 
-namespace McpDotnet.Server.FSharp.FSharpPath;
+namespace Spelunk.Server.FSharp.FSharpPath;
 
 /// <summary>
 /// Parser for FSharpPath queries - an XPath-inspired query language for F# AST.

@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace McpDotnet.Server;
+namespace Spelunk.Server;
 
 public class ToolCallParams
 {

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
-namespace McpDotnet.Server.FSharp;
+namespace Spelunk.Server.FSharp;
 
 /// <summary>
 /// Stub implementation for F# support that provides consistent "not implemented" responses
@@ -39,7 +39,7 @@ public class FSharpSupportStub
     }
 
     /// <summary>
-    /// Stub for F# RoslynPath queries (will be FSharpPath).
+    /// Stub for F# SpelunkPath queries (will be FSharpPath).
     /// </summary>
     public Task<object> QuerySyntaxStubAsync(string filePath, string query, bool includeSemanticInfo)
     {
@@ -54,7 +54,7 @@ public class FSharpSupportStub
                 requestedFile = filePath,
                 requestedQuery = query,
                 includeSemanticInfo,
-                note = "F# will use FSharpPath syntax instead of RoslynPath",
+                note = "F# will use FSharpPath syntax instead of SpelunkPath",
                 documentationLink = "docs/design/FSHARP_IMPLEMENTATION_GUIDE.md#fsharppath-query-language"
             }
         });
@@ -123,7 +123,7 @@ public class FSharpSupportStub
             plannedFeatures = new[]
             {
                 "Full syntax and semantic analysis via FSharp.Compiler.Service",
-                "FSharpPath query language (similar to RoslynPath)",
+                "FSharpPath query language (similar to SpelunkPath)",
                 "Cross-language symbol resolution",
                 "Expression-based refactoring",
                 "Type provider support"

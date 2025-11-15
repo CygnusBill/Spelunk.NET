@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Connections;
 using Microsoft.Build.Locator;
 using ModelContextProtocol.AspNetCore;
-using McpDotnet.Server.Sse.Tools;
-using McpDotnet.Server.Configuration;
+using Spelunk.Server.Sse.Tools;
+using Spelunk.Server.Configuration;
 using Microsoft.Extensions.Options;
 
 // Register MSBuild once at startup
@@ -41,8 +41,8 @@ if (!string.IsNullOrEmpty(legacyAllowedPaths))
 builder.Configuration.AddEnvironmentVariables("MCP_DOTNET__");
 
 // Configure and validate options
-builder.Services.AddOptions<McpDotnetOptions>()
-    .Bind(builder.Configuration.GetSection(McpDotnetOptions.SectionName))
+builder.Services.AddOptions<SpelunkOptions>()
+    .Bind(builder.Configuration.GetSection(SpelunkOptions.SectionName))
     .Configure(options =>
     {
         // Default to current directory if no allowed paths specified
@@ -69,7 +69,7 @@ builder.Services.AddMcpServer()
 var app = builder.Build();
 
 // Initialize the static tools with configuration from IOptionsMonitor
-var optionsMonitor = app.Services.GetRequiredService<IOptionsMonitor<McpDotnetOptions>>();
+var optionsMonitor = app.Services.GetRequiredService<IOptionsMonitor<SpelunkOptions>>();
 var logger = app.Services.GetRequiredService<ILogger<Program>>();
 DotnetTools.Initialize(optionsMonitor, logger);
 

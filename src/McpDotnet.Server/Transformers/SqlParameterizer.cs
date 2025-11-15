@@ -4,7 +4,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace McpDotnet.Server.Transformers;
+namespace Spelunk.Server.Transformers;
 
 /// <summary>
 /// Provides robust SQL parameterization using AST-based transformations

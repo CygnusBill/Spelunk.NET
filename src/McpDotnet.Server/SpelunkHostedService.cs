@@ -1,24 +1,24 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using McpDotnet.Server.Configuration;
+using Spelunk.Server.Configuration;
 
-namespace McpDotnet.Server;
+namespace Spelunk.Server;
 
 /// <summary>
 /// Hosted service for running the MCP Dotnet Server
 /// </summary>
-public class McpRoslynHostedService : BackgroundService
+public class SpelunkHostedService : BackgroundService
 {
     private readonly McpJsonRpcServer _server;
-    private readonly IOptionsMonitor<McpDotnetOptions> _optionsMonitor;
-    private readonly ILogger<McpRoslynHostedService> _logger;
+    private readonly IOptionsMonitor<SpelunkOptions> _optionsMonitor;
+    private readonly ILogger<SpelunkHostedService> _logger;
     private IDisposable? _optionsChangeToken;
     
-    public McpRoslynHostedService(
+    public SpelunkHostedService(
         McpJsonRpcServer server,
-        IOptionsMonitor<McpDotnetOptions> optionsMonitor,
-        ILogger<McpRoslynHostedService> logger)
+        IOptionsMonitor<SpelunkOptions> optionsMonitor,
+        ILogger<SpelunkHostedService> logger)
     {
         _server = server;
         _optionsMonitor = optionsMonitor;
@@ -51,7 +51,7 @@ public class McpRoslynHostedService : BackgroundService
         }
     }
     
-    private void OnOptionsChanged(McpDotnetOptions options, string? name)
+    private void OnOptionsChanged(SpelunkOptions options, string? name)
     {
         _logger.LogInformation("Configuration changed. New allowed paths: {Paths}", 
             string.Join(", ", options.AllowedPaths));

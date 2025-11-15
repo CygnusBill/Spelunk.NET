@@ -1,12 +1,12 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.Extensions.Logging;
 
-namespace McpDotnet.Server.Configuration;
+namespace Spelunk.Server.Configuration;
 
 /// <summary>
 /// Configuration options for the MCP Dotnet Server
 /// </summary>
-public class McpDotnetOptions
+public class SpelunkOptions
 {
     /// <summary>
     /// Configuration section name in appsettings.json

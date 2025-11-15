@@ -4,7 +4,7 @@ using System.Linq;
 using FSharp.Compiler.Syntax;
 using Microsoft.FSharp.Collections;
 
-namespace McpDotnet.Server.FSharp.FSharpPath;
+namespace Spelunk.Server.FSharp.FSharpPath;
 
 /// <summary>
 /// Evaluates FSharpPath queries against F# AST nodes.

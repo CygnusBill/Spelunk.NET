@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using FSharp.Compiler.Syntax;
-using McpDotnet.Server.FSharp.FSharpPath;
+using Spelunk.Server.FSharp.FSharpPath;
 using Microsoft.Extensions.Logging;
 using Microsoft.FSharp.Collections;
 
-namespace McpDotnet.Server.FSharp.Tools;
+namespace Spelunk.Server.FSharp.Tools;
 
 /// <summary>
 /// MCP tool for getting F# AST structure.

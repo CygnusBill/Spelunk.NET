@@ -1,6 +1,6 @@
 using Microsoft.CodeAnalysis;
 
-namespace McpDotnet.Server;
+namespace Spelunk.Server;
 
 public static class SymbolExtensions
 {

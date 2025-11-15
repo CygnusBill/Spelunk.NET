@@ -1,4 +1,4 @@
-namespace McpDotnet.Server;
+namespace Spelunk.Server;
 
 /// <summary>
 /// Centralized tool descriptions and metadata for MCP Dotnet tools.
@@ -36,7 +36,7 @@ public static class ToolDescriptions
     
     public const string EditCode = "Perform surgical code edits using Roslyn. Operations: add-method, add-property, make-async, add-parameter, wrap-try-catch";
     
-    public const string FixPattern = "Transform code using semantic-aware patterns with RoslynPath queries and statement-level operations. Supports transformations: add-null-check, convert-to-async, extract-variable, simplify-conditional, parameterize-query, convert-to-interpolation, add-await, custom";
+    public const string FixPattern = "Transform code using semantic-aware patterns with SpelunkPath queries and statement-level operations. Supports transformations: add-null-check, convert-to-async, extract-variable, simplify-conditional, parameterize-query, convert-to-interpolation, add-await, custom";
     
     public const string FindStatements = "Find statements in code matching a pattern. Returns statement IDs for use with other operations. Uses Roslyn's syntax tree to enumerate all statements.";
     
@@ -66,9 +66,9 @@ public static class ToolDescriptions
     
     public const string FSharpFindSymbols = "Find symbols in F# code using FSharpPath queries";
     
-    public const string QuerySyntax = "Query any syntax node using enhanced RoslynPath with full AST navigation";
+    public const string QuerySyntax = "Query any syntax node using enhanced SpelunkPath with full AST navigation";
     
-    public const string Navigate = "Navigate from a position using RoslynPath axes (ancestor::, following-sibling::, etc.)";
+    public const string Navigate = "Navigate from a position using SpelunkPath axes (ancestor::, following-sibling::, etc.)";
     
     public const string GetAst = "Get AST structure for understanding code hierarchy";
 }

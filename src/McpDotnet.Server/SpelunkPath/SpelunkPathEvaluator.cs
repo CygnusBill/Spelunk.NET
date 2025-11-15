@@ -12,17 +12,17 @@ using VB = Microsoft.CodeAnalysis.VisualBasic.Syntax;
 using CSharpSyntaxKind = Microsoft.CodeAnalysis.CSharp.SyntaxKind;
 using VBSyntaxKind = Microsoft.CodeAnalysis.VisualBasic.SyntaxKind;
 
-namespace McpDotnet.Server.RoslynPath
+namespace Spelunk.Server.SpelunkPath
 {
     /// <summary>
-    /// Evaluates RoslynPath expressions against syntax trees using proper AST evaluation
+    /// Evaluates SpelunkPath expressions against syntax trees using proper AST evaluation
     /// </summary>
-    public class RoslynPathEvaluator
+    public class SpelunkPathEvaluator
     {
         private readonly SyntaxTree _tree;
         private readonly SyntaxNode _root;
 
-        public RoslynPathEvaluator(SyntaxTree tree)
+        public SpelunkPathEvaluator(SyntaxTree tree)
         {
             _tree = tree;
             _root = tree.GetRoot();
@@ -30,7 +30,7 @@ namespace McpDotnet.Server.RoslynPath
 
         public IEnumerable<SyntaxNode> Evaluate(string pathString)
         {
-            var parser = new RoslynPathParser();
+            var parser = new SpelunkPathParser();
             var path = parser.Parse(pathString);
             return Evaluate(path);
         }
@@ -229,7 +229,7 @@ namespace McpDotnet.Server.RoslynPath
             // Parse and evaluate the nested path from current node context
             try
             {
-                var parser = new RoslynPathParser();
+                var parser = new SpelunkPathParser();
                 var path = parser.Parse(pathExpr.PathString);
                 var context = new EvaluationContext(node);
                 var results = EvaluatePath(context, path);

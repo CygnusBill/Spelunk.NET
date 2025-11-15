@@ -13,11 +13,11 @@ using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using McpDotnet.Server.RoslynPath;
-using McpDotnet.Server.LanguageHandlers;
-// using McpDotnet.Server.FSharp; // Temporarily commented for diagnostic PoC
+using Spelunk.Server.SpelunkPath;
+using Spelunk.Server.LanguageHandlers;
+// using Spelunk.Server.FSharp; // Temporarily commented for diagnostic PoC
 
-namespace McpDotnet.Server;
+namespace Spelunk.Server;
 
 public class DotnetWorkspaceManager : IDisposable
 {
@@ -2010,7 +2010,7 @@ public class DotnetWorkspaceManager : IDisposable
                     parameters["replacement"] = replacePattern;
                     break;
                 default:
-                    // Assume it's a RoslynPath pattern
+                    // Assume it's a SpelunkPath pattern
                     transformType = TransformationType.Custom;
                     parameters["replacement"] = replacePattern;
                     break;
@@ -2021,20 +2021,20 @@ public class DotnetWorkspaceManager : IDisposable
             {
                 Name = patternType,
                 Type = transformType,
-                RoslynPathPattern = findPattern,
+                SpelunkPathPattern = findPattern,
                 Parameters = parameters
             };
             
-            // If it looks like a RoslynPath pattern, use statement-level search
-            bool useRoslynPath = findPattern.StartsWith("//") || findPattern.Contains("[@");
+            // If it looks like a SpelunkPath pattern, use statement-level search
+            bool useSpelunkPath = findPattern.StartsWith("//") || findPattern.Contains("[@");
             
-            if (useRoslynPath)
+            if (useSpelunkPath)
             {
-                // Use RoslynPath to find statements
+                // Use SpelunkPath to find statements
                 var statementsResult = await FindStatementsAsync(
                     findPattern, 
                     null, 
-                    "roslynpath", 
+                    "spelunkpath", 
                     true, 
                     false, 
                     workspacePath);
@@ -2552,16 +2552,16 @@ public class DotnetWorkspaceManager : IDisposable
             return;
         }
         
-        // Handle RoslynPath pattern type
-        if (patternType.ToLower() == "roslynpath")
+        // Handle SpelunkPath pattern type
+        if (patternType.ToLower() == "spelunkpath")
         {
             try
             {
                 var syntaxTree = await document.GetSyntaxTreeAsync();
                 if (syntaxTree == null) return;
                 
-                // Use RoslynPath to find nodes
-                var matchingNodes = RoslynPath.RoslynPath.Find(syntaxTree, pattern, semanticModel);
+                // Use SpelunkPath to find nodes
+                var matchingNodes = SpelunkPath.SpelunkPath.Find(syntaxTree, pattern, semanticModel);
                 
                 // Filter to only statements
                 var statements = matchingNodes.Where(n => handler.IsStatement(n));
@@ -2580,22 +2580,22 @@ public class DotnetWorkspaceManager : IDisposable
                 
                 foreach (var statement in statements)
                 {
-                    // For RoslynPath, calculate traversal depth from the query root
+                    // For SpelunkPath, calculate traversal depth from the query root
                     await AddStatementToResult(statement, sourceText, semanticModel, 
                         document.FilePath ?? "", result, statementIdCounter, language, workspaceId, 
-                        searchType: "roslynpath");
+                        searchType: "spelunkpath");
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogWarning($"RoslynPath query failed: {ex.Message}. Falling back to text search.");
+                _logger.LogWarning($"SpelunkPath query failed: {ex.Message}. Falling back to text search.");
                 // Fall back to text search
                 patternType = "text";
             }
         }
         
         // Handle text and regex pattern types
-        if (patternType.ToLower() != "roslynpath")
+        if (patternType.ToLower() != "spelunkpath")
         {
             // Get all statements using language handler
             var statements = root.DescendantNodes()
@@ -4802,7 +4802,7 @@ public class DotnetWorkspaceManager : IDisposable
         if (semanticModel == null)
             return CreateErrorResponse("Could not get semantic model");
             
-        // Use multiple RoslynPath queries to find different types of symbols
+        // Use multiple SpelunkPath queries to find different types of symbols
         var queries = new[]
         {
             $"//class[@name='{symbolName}']",
@@ -4818,7 +4818,7 @@ public class DotnetWorkspaceManager : IDisposable
         var allNodes = new HashSet<SyntaxNode>();
         foreach (var query in queries)
         {
-            var nodes = RoslynPath.RoslynPath.Find(syntaxTree, query, semanticModel);
+            var nodes = SpelunkPath.SpelunkPath.Find(syntaxTree, query, semanticModel);
             foreach (var node in nodes)
             {
                 allNodes.Add(node);

@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 
-namespace McpDotnet.Server.FSharp;
+namespace Spelunk.Server.FSharp;
 
 /// <summary>
 /// Provides F# file detection and routing decisions for tool implementations.

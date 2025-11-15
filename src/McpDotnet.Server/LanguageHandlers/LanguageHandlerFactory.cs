@@ -1,6 +1,6 @@
 using Microsoft.CodeAnalysis;
 
-namespace McpDotnet.Server.LanguageHandlers;
+namespace Spelunk.Server.LanguageHandlers;
 
 /// <summary>
 /// Factory for creating language-specific handlers

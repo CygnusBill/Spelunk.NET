@@ -6,7 +6,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace McpDotnet.Server;
+namespace Spelunk.Server;
 
 /// <summary>
 /// Extracts semantic information from Roslyn syntax nodes

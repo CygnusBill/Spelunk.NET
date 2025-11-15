@@ -1,7 +1,7 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
 
-namespace McpDotnet.Server.LanguageHandlers;
+namespace Spelunk.Server.LanguageHandlers;
 
 /// <summary>
 /// Interface for language-specific syntax and semantic operations

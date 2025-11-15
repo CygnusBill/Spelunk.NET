@@ -8,7 +8,7 @@ using System.Text.Json;
 using CSSyntaxKind = Microsoft.CodeAnalysis.CSharp.SyntaxKind;
 using VBSyntaxKind = Microsoft.CodeAnalysis.VisualBasic.SyntaxKind;
 
-namespace McpDotnet.Server;
+namespace Spelunk.Server;
 
 /// <summary>
 /// Handles semantic-aware transformations of statements
@@ -469,7 +469,7 @@ public class TransformationRule
 {
     public string Name { get; set; } = "";
     public string Description { get; set; } = "";
-    public string? RoslynPathPattern { get; set; }
+    public string? SpelunkPathPattern { get; set; }
     public TransformationType Type { get; set; }
     public Dictionary<string, object> Parameters { get; set; } = new();
 }

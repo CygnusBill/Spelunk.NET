@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace McpDotnet.Server;
+namespace Spelunk.Server;
 
 public class JsonRpcRequest
 {

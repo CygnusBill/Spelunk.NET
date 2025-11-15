@@ -1,4 +1,4 @@
-namespace McpDotnet.Server;
+namespace Spelunk.Server;
 
 // Test interfaces
 public interface IWorkspaceService

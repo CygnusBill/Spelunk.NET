@@ -1,6 +1,6 @@
 using Microsoft.CodeAnalysis;
 
-namespace McpDotnet.Server;
+namespace Spelunk.Server;
 
 /// <summary>
 /// Utility class for detecting programming language from file extensions and documents

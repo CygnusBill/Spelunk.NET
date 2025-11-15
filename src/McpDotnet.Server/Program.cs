@@ -3,10 +3,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using McpDotnet.Server.Configuration;
-using McpDotnet.Server.FSharp;
+using Spelunk.Server.Configuration;
+using Spelunk.Server.FSharp;
 
-namespace McpDotnet.Server;
+namespace Spelunk.Server;
 
 class Program
 {
@@ -31,7 +31,7 @@ class Program
                 }
                 
                 // Support legacy environment variable for backward compatibility
-                var legacyAllowedPaths = Environment.GetEnvironmentVariable("MCP_ROSLYN_ALLOWED_PATHS");
+                var legacyAllowedPaths = Environment.GetEnvironmentVariable("SPELUNK_ALLOWED_PATHS");
                 if (!string.IsNullOrEmpty(legacyAllowedPaths))
                 {
                     // Convert legacy format to new format
@@ -39,23 +39,23 @@ class Program
                     var inMemoryConfig = new Dictionary<string, string?>();
                     for (int i = 0; i < paths.Length; i++)
                     {
-                        inMemoryConfig[$"McpRoslyn:AllowedPaths:{i}"] = paths[i];
+                        inMemoryConfig[$"Spelunk:AllowedPaths:{i}"] = paths[i];
                     }
                     config.AddInMemoryCollection(inMemoryConfig);
                 }
                 
                 // Support legacy workspace environment variable
-                var legacyWorkspace = Environment.GetEnvironmentVariable("MCP_ROSLYN_WORKSPACE");
+                var legacyWorkspace = Environment.GetEnvironmentVariable("SPELUNK_WORKSPACE");
                 if (!string.IsNullOrEmpty(legacyWorkspace))
                 {
                     config.AddInMemoryCollection(new Dictionary<string, string?>
                     {
-                        ["McpRoslyn:InitialWorkspace"] = legacyWorkspace
+                        ["Spelunk:InitialWorkspace"] = legacyWorkspace
                     });
                 }
                 
-                // Add new-style environment variables (MCP_ROSLYN__ prefix)
-                config.AddEnvironmentVariables("MCP_ROSLYN__");
+                // Add new-style environment variables (SPELUNK__ prefix)
+                config.AddEnvironmentVariables("SPELUNK__");
                 
                 // Command line arguments have highest priority
                 config.AddCommandLine(args, GetCommandLineMappings());
@@ -63,8 +63,8 @@ class Program
             .ConfigureServices((context, services) =>
             {
                 // Configure options with validation
-                services.AddOptions<McpDotnetOptions>()
-                    .Bind(context.Configuration.GetSection(McpDotnetOptions.SectionName))
+                services.AddOptions<SpelunkOptions>()
+                    .Bind(context.Configuration.GetSection(SpelunkOptions.SectionName))
                     .Configure(options =>
                     {
                         // Default to current directory if no allowed paths specified
@@ -80,7 +80,7 @@ class Program
                 services.AddSingleton<DotnetWorkspaceManager>();
                 services.AddSingleton<FSharpWorkspaceManager>();
                 services.AddSingleton<McpJsonRpcServer>();
-                services.AddHostedService<McpRoslynHostedService>();
+                services.AddHostedService<SpelunkHostedService>();
             })
             .ConfigureLogging((context, logging) =>
             {
@@ -93,7 +93,7 @@ class Program
                 
                 // Apply log level from configuration
                 var logLevel = context.Configuration
-                    .GetSection("McpRoslyn:Logging:MinimumLevel")
+                    .GetSection("Spelunk:Logging:MinimumLevel")
                     .Get<LogLevel?>() ?? LogLevel.Information;
                 logging.SetMinimumLevel(logLevel);
             })
@@ -120,13 +120,13 @@ class Program
         return new Dictionary<string, string>
         {
             // Map legacy command line arguments
-            { "--workspace", "McpRoslyn:InitialWorkspace" },
-            { "-w", "McpRoslyn:InitialWorkspace" },
-            { "--allowed-path", "McpRoslyn:AllowedPaths:0" },  // Simple case for single path
+            { "--workspace", "Spelunk:InitialWorkspace" },
+            { "-w", "Spelunk:InitialWorkspace" },
+            { "--allowed-path", "Spelunk:AllowedPaths:0" },  // Simple case for single path
             
             // New style arguments
             { "--config", "ConfigFile" },  // Special handling needed
-            { "--log-level", "McpRoslyn:Logging:MinimumLevel" }
+            { "--log-level", "Spelunk:Logging:MinimumLevel" }
         };
     }
 }

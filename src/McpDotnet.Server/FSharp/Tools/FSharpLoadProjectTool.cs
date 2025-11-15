@@ -3,7 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
-namespace McpDotnet.Server.FSharp.Tools;
+namespace Spelunk.Server.FSharp.Tools;
 
 /// <summary>
 /// MCP tool for loading F# projects.

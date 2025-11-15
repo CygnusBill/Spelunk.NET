@@ -1,6 +1,6 @@
 using Microsoft.CodeAnalysis;
 
-namespace McpDotnet.Server;
+namespace Spelunk.Server;
 
 /// <summary>
 /// Represents a loaded workspace with tracking information
