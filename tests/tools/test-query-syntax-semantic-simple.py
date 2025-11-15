@@ -27,7 +27,7 @@ def test_semantic_simple():
         "id": 1,
         "method": "tools/call",
         "params": {
-            "name": "dotnet-query-syntax",
+            "name": "spelunk-query-syntax",
             "arguments": {
                 "roslynPath": "//method",
                 "file": os.path.join(os.getcwd(), "test-workspace", "OrderService.cs"),

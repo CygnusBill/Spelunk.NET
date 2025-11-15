@@ -53,7 +53,7 @@ def test_region(client, file, start_line, start_col, end_line, end_col, descript
     print("-" * 60)
     
     response = client.send_request("tools/call", {
-        "name": "dotnet-get-data-flow",
+        "name": "spelunk-get-data-flow",
         "arguments": {
             "file": file,
             "startLine": start_line,
@@ -127,7 +127,7 @@ client = MCPClient()
 # Load workspace
 print("Loading SampleAppForMcp...")
 response = client.send_request("tools/call", {
-    "name": "dotnet-load-workspace",
+    "name": "spelunk-load-workspace",
     "arguments": {
         "workspacePath": "/Users/bill/Repos/SampleAppForMcp/SampleAppForMcp.sln"
     }

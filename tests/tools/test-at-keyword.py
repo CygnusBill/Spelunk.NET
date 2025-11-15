@@ -73,7 +73,7 @@ def test_at_keywords():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet-load-workspace",
+                "name": "spelunk-load-workspace",
                 "arguments": {"path": "./src/McpRoslyn/McpRoslyn.sln"}
             },
             "id": 2
@@ -94,7 +94,7 @@ def test_at_keywords():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet-rename-symbol",
+                "name": "spelunk-rename-symbol",
                 "arguments": {
                     "oldName": "GetUserAsync",
                     "newName": "class",
@@ -115,7 +115,7 @@ def test_at_keywords():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet-rename-symbol",
+                "name": "spelunk-rename-symbol",
                 "arguments": {
                     "oldName": "GetUserAsync",
                     "newName": "@class",
@@ -136,7 +136,7 @@ def test_at_keywords():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet-rename-symbol",
+                "name": "spelunk-rename-symbol",
                 "arguments": {
                     "oldName": "GetUserAsync",
                     "newName": "123abc",
@@ -157,7 +157,7 @@ def test_at_keywords():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet-rename-symbol",
+                "name": "spelunk-rename-symbol",
                 "arguments": {
                     "oldName": "GetUserAsync",
                     "newName": "_myMethod",
@@ -178,7 +178,7 @@ def test_at_keywords():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet-rename-symbol",
+                "name": "spelunk-rename-symbol",
                 "arguments": {
                     "oldName": "GetUserAsync",
                     "newName": "@",

@@ -18,7 +18,7 @@ def test_semantic_basic():
     workspace_path = os.path.join(os.getcwd(), "test-workspace", "TestProject.csproj")
     print(f"Loading workspace: {workspace_path}")
     
-    result = client.call_tool("dotnet-load-workspace", {
+    result = client.call_tool("spelunk-load-workspace", {
         "path": workspace_path
     })
     
@@ -32,7 +32,7 @@ def test_semantic_basic():
     program_cs = os.path.join(os.getcwd(), "test-workspace", "Program.cs")
     print(f"\nTesting semantic enrichment on: {program_cs}")
     
-    result = client.call_tool("dotnet-query-syntax", {
+    result = client.call_tool("spelunk-query-syntax", {
         "file": program_cs,
         "roslynPath": "//class",
         "includeSemanticInfo": True

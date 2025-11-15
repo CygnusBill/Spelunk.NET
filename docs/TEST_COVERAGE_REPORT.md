@@ -65,7 +65,7 @@ This report analyzes test coverage for features implemented in the recent sessio
 #### Navigate Tool Tests Needed
 ```python
 # Test 1: Navigate with semantic info
-response = runner.call_tool("dotnet-navigate", {
+response = runner.call_tool("spelunk-navigate", {
     "from": {"file": "test.cs", "line": 10, "column": 1},
     "path": "ancestor::method[1]",
     "includeSemanticInfo": True
@@ -79,7 +79,7 @@ response = runner.call_tool("dotnet-navigate", {
 #### Get-AST Tool Tests Needed
 ```python
 # Test 1: Get AST with semantic enrichment
-response = runner.call_tool("dotnet-get-ast", {
+response = runner.call_tool("spelunk-get-ast", {
     "file": "test.cs",
     "root": "//class",
     "includeSemanticInfo": True
@@ -93,7 +93,7 @@ response = runner.call_tool("dotnet-get-ast", {
 #### F# Detection Tests Needed
 ```python
 # Test 1: Query F# file
-response = runner.call_tool("dotnet-query-syntax", {
+response = runner.call_tool("spelunk-query-syntax", {
     "file": "test.fs",
     "roslynPath": "//function"
 })
@@ -123,12 +123,12 @@ response = runner.call_tool("dotnet-query-syntax", {
 ```python
 # This fails due to allowed path restrictions:
 workspace_path = tempfile.mkdtemp(prefix="test_semantic_")
-result = client.call_tool("dotnet-load-workspace", {"path": workspace_path})
+result = client.call_tool("spelunk-load-workspace", {"path": workspace_path})
 # Timeout - server cannot access temp directory
 
 # This works:
 workspace_path = "test-workspace/TestProject.csproj"
-result = client.call_tool("dotnet-load-workspace", {"path": workspace_path})
+result = client.call_tool("spelunk-load-workspace", {"path": workspace_path})
 # Success - path is under project root
 ```
 

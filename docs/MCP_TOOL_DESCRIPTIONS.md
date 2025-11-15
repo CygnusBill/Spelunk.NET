@@ -89,13 +89,13 @@ These are defined in `McpJsonRpcServer.cs` in the tool definitions array:
 ### dotnet-get-diagnostics
 **MCP Description**: "Get compilation diagnostics (errors, warnings, info) from the workspace"
 
-### dotnet-fsharp-projects
+### spelunk-fsharp-projects
 **MCP Description**: "Get information about F# projects in the workspace (detected but not loaded by MSBuild)"
 
 ### dotnet-load-fsharp-project
 **MCP Description**: "Load an F# project using FSharp.Compiler.Service (separate from MSBuild workspaces)"
 
-### dotnet-fsharp-find-symbols
+### spelunk-fsharp-find-symbols
 **MCP Description**: "Find symbols in F# code using FSharpPath queries"
 
 ## SSE Server Tool Descriptions

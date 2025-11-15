@@ -32,9 +32,9 @@
 - [ ] Add error handling for common scenarios
 
 #### 1.2 Implement Core Tools
-- [ ] `dotnet-load-fsharp-project` - Load F# projects
-- [ ] `dotnet-fsharp-find-symbols` - Basic symbol search
-- [ ] `dotnet-fsharp-get-diagnostics` - Compilation errors
+- [ ] `spelunk-load-fsharp-project` - Load F# projects
+- [ ] `spelunk-fsharp-find-symbols` - Basic symbol search
+- [ ] `spelunk-fsharp-get-diagnostics` - Compilation errors
 
 #### 1.3 Testing Infrastructure
 - [ ] Unit tests for F# components

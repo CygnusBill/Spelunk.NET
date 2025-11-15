@@ -27,10 +27,10 @@ Need type information or cross-file analysis?
 ## Common Scenarios
 
 ### 1. "Find all methods that override a base class method"
-**Use**: `dotnet-find-method` (semantic)
+**Use**: `spelunk-find-method` (semantic)
 ```json
 {
-  "tool": "dotnet-find-method",
+  "tool": "spelunk-find-method",
   "pattern": "*",
   "includeOverrides": true
 }
@@ -38,40 +38,40 @@ Need type information or cross-file analysis?
 **Why**: Requires understanding inheritance relationships across files
 
 ### 2. "Find all null comparisons in if statements"
-**Use**: `dotnet-query-syntax` (syntactic)
+**Use**: `spelunk-query-syntax` (syntactic)
 ```json
 {
-  "tool": "dotnet-query-syntax",
+  "tool": "spelunk-query-syntax",
   "roslynPath": "//if-statement//binary-expression[@operator='==' and @right-text='null']"
 }
 ```
 **Why**: Pattern-based search within syntax structure
 
 ### 3. "Find all implementations of IDisposable"
-**Use**: `dotnet-find-implementations` (semantic)
+**Use**: `spelunk-find-implementations` (semantic)
 ```json
 {
-  "tool": "dotnet-find-implementations",
+  "tool": "spelunk-find-implementations",
   "interfaceName": "IDisposable"
 }
 ```
 **Why**: Requires type resolution and inheritance analysis
 
 ### 4. "Find all async methods without ConfigureAwait"
-**Use**: `dotnet-query-syntax` (syntactic)
+**Use**: `spelunk-query-syntax` (syntactic)
 ```json
 {
-  "tool": "dotnet-query-syntax",
+  "tool": "spelunk-query-syntax",
   "roslynPath": "//method[@async]//await-expression[not(invocation[@name='ConfigureAwait'])]"
 }
 ```
 **Why**: Structural pattern within method bodies
 
 ### 5. "Find what type a variable is"
-**Use**: `dotnet-query-syntax` with semantic enrichment
+**Use**: `spelunk-query-syntax` with semantic enrichment
 ```json
 {
-  "tool": "dotnet-query-syntax",
+  "tool": "spelunk-query-syntax",
   "roslynPath": "//variable[@name='customer']",
   "includeSemanticInfo": true
 }
@@ -115,14 +115,14 @@ Example: Find all ToString() overrides that don't call base
 ```json
 // Step 1: Find overrides
 {
-  "tool": "dotnet-find-method",
+  "tool": "spelunk-find-method",
   "pattern": "ToString",
   "includeOverrides": true
 }
 
 // Step 2: Check implementation
 {
-  "tool": "dotnet-query-syntax",
+  "tool": "spelunk-query-syntax",
   "file": "result.file",
   "roslynPath": "//method[ToString]/block[not(.//base-expression)]"
 }
@@ -132,7 +132,7 @@ Example: Find all ToString() overrides that don't call base
 When you need both syntax patterns and type info:
 ```json
 {
-  "tool": "dotnet-query-syntax",
+  "tool": "spelunk-query-syntax",
   "roslynPath": "//invocation[@name='Process']",
   "includeSemanticInfo": true
 }
@@ -188,20 +188,20 @@ Returns syntax nodes with added semantic data:
 ## Quick Reference
 
 ### Semantic Tools
-- `dotnet-find-method` - Methods with full signatures
-- `dotnet-find-property` - Properties with types  
-- `dotnet-find-class` - Classes with inheritance
-- `dotnet-find-interface` - Interfaces with members
-- `dotnet-find-type` - Any type definition
-- `dotnet-find-implementations` - Interface/abstract implementations
-- `dotnet-find-references` - Symbol usage across files
-- `dotnet-find-type-references` - Type usage locations
+- `spelunk-find-method` - Methods with full signatures
+- `spelunk-find-property` - Properties with types  
+- `spelunk-find-class` - Classes with inheritance
+- `spelunk-find-interface` - Interfaces with members
+- `spelunk-find-type` - Any type definition
+- `spelunk-find-implementations` - Interface/abstract implementations
+- `spelunk-find-references` - Symbol usage across files
+- `spelunk-find-type-references` - Type usage locations
 
 ### Syntactic Tools  
-- `dotnet-query-syntax` - XPath queries on AST
-- `dotnet-navigate` - Navigate from position using axes
-- `dotnet-get-ast` - Get syntax tree structure
-- `dotnet-find-in-project` - Text search (fallback)
+- `spelunk-query-syntax` - XPath queries on AST
+- `spelunk-navigate` - Navigate from position using axes
+- `spelunk-get-ast` - Get syntax tree structure
+- `spelunk-find-in-project` - Text search (fallback)
 
 ### Hybrid Approach
 All syntactic tools support `includeSemanticInfo: true` for enriched results combining syntax patterns with semantic data.

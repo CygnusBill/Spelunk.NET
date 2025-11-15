@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `dotnet-get-data-flow` tool includes optional control flow analysis via the `includeControlFlow` parameter. As of January 2025, this feature has been enhanced to use Roslyn's control flow analysis API with clear error reporting when analysis isn't possible.
+The `spelunk-get-data-flow` tool includes optional control flow analysis via the `includeControlFlow` parameter. As of January 2025, this feature has been enhanced to use Roslyn's control flow analysis API with clear error reporting when analysis isn't possible.
 
 ## Current Implementation (Enhanced)
 
@@ -144,8 +144,8 @@ In contrast, the **data flow analysis** is robust and uses Roslyn's `AnalyzeData
 2. **Use data flow analysis instead** - it's accurate and reliable
 3. **Set `includeControlFlow: false`** to avoid confusion
 4. **Use other tools** for control flow needs:
-   - `dotnet-find-statements` with RoslynPath for finding control structures
-   - `dotnet-get-statement-context` for understanding code structure
+   - `spelunk-find-statements` with RoslynPath for finding control structures
+   - `spelunk-get-statement-context` for understanding code structure
 
 ### For Future Development
 

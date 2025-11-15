@@ -178,19 +178,19 @@ This document lists all 37 McpDotnet tools with their descriptions as seen by AI
 
 ## 9. F# Specific Tools
 
-### dotnet-fsharp-load-project
+### spelunk-fsharp-load-project
 **Agent Description**: "Load an F# project using FSharp.Compiler.Service (separate from MSBuild workspaces)"
 **When to Use**: Working with F# projects (required before other F# operations).
 
-### dotnet-fsharp-find-symbols
+### spelunk-fsharp-find-symbols
 **Agent Description**: "Find symbols in F# code using FSharpPath queries"
 **When to Use**: Searching F# code for functions, types, patterns.
 
-### dotnet-fsharp-query
+### spelunk-fsharp-query
 **Agent Description**: "Query F# AST using FSharpPath (XPath-like syntax for F#)"
 **When to Use**: Pattern matching on F# code structure.
 
-### dotnet-fsharp-get-ast
+### spelunk-fsharp-get-ast
 **Agent Description**: "Get F# AST structure"
 **When to Use**: Understanding F# code organization.
 

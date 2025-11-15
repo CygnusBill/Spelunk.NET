@@ -69,7 +69,7 @@ def test_member_search():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet-load-workspace",
+                "name": "spelunk-load-workspace",
                 "arguments": {"path": "./src/McpRoslyn/McpRoslyn.sln"}
             },
             "id": 2
@@ -102,7 +102,7 @@ def test_member_search():
                 "jsonrpc": "2.0",
                 "method": "tools/call",
                 "params": {
-                    "name": "dotnet-find-method",
+                    "name": "spelunk-find-method",
                     "arguments": test
                 },
                 "id": id_counter
@@ -133,7 +133,7 @@ def test_member_search():
                 "jsonrpc": "2.0",
                 "method": "tools/call",
                 "params": {
-                    "name": "dotnet-find-property",
+                    "name": "spelunk-find-property",
                     "arguments": test
                 },
                 "id": id_counter

@@ -75,7 +75,7 @@ def test_get_symbols():
         # Load workspace
         print("\n=== Loading workspace ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet-load-workspace",
+            "name": "spelunk-load-workspace",
             "arguments": {
                 "path": os.path.join(workspace_dir, "test-workspace", "TestProject.csproj")
             }
@@ -84,7 +84,7 @@ def test_get_symbols():
         # Test 1: Get symbol by name
         print("\n=== Test 1: Get symbol by name (Calculator) ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet-get-symbols",
+            "name": "spelunk-get-symbols",
             "arguments": {
                 "filePath": os.path.join(workspace_dir, "test-workspace", "Program.cs"),
                 "symbolName": "Calculator"
@@ -94,7 +94,7 @@ def test_get_symbols():
         # Test 2: Get symbol at position
         print("\n=== Test 2: Get symbol at position ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet-get-symbols",
+            "name": "spelunk-get-symbols",
             "arguments": {
                 "filePath": os.path.join(workspace_dir, "test-workspace", "Program.cs"),
                 "position": {
@@ -107,7 +107,7 @@ def test_get_symbols():
         # Test 3: Get all symbols in file
         print("\n=== Test 3: Get all symbols in file ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet-get-symbols",
+            "name": "spelunk-get-symbols",
             "arguments": {
                 "filePath": os.path.join(workspace_dir, "test-workspace", "Calculator.cs")
             }

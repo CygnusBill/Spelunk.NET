@@ -21,7 +21,7 @@ def test_vb_find_methods():
     
     # Test 1: Load VB workspace
     print("\n1. Loading VB.NET workspace...")
-    load_result = client.call_tool("dotnet-load-workspace", {
+    load_result = client.call_tool("spelunk-load-workspace", {
         "path": vb_project_path
     })
     
@@ -34,7 +34,7 @@ def test_vb_find_methods():
     
     # Test 2: Find all methods in Calculator class
     print("\n2. Finding all methods in Calculator class...")
-    find_result = client.call_tool("dotnet-find-method", {
+    find_result = client.call_tool("spelunk-find-method", {
         "pattern": "*",
         "workspacePath": workspace_id
     })
@@ -53,7 +53,7 @@ def test_vb_find_methods():
     
     # Test 3: Find specific methods by pattern
     print("\n3. Finding methods with 'Add' pattern...")
-    add_result = client.call_tool("dotnet-find-method", {
+    add_result = client.call_tool("spelunk-find-method", {
         "pattern": "Add*",
         "workspacePath": workspace_id
     })
@@ -70,7 +70,7 @@ def test_vb_find_methods():
     # Test 4: Find async methods
     print("\n4. Finding async methods in TestClasses...")
     # First, let's get files with async methods
-    async_result = client.call_tool("dotnet-find-method", {
+    async_result = client.call_tool("spelunk-find-method", {
         "pattern": "*Async",
         "workspacePath": workspace_id
     })
@@ -86,7 +86,7 @@ def test_vb_find_methods():
     
     # Test 5: Find methods with RoslynPath
     print("\n5. Finding VB.NET Sub methods using RoslynPath...")
-    roslynpath_result = client.call_tool("dotnet-find-statements", {
+    roslynpath_result = client.call_tool("spelunk-find-statements", {
         "pattern": "//method[@methodtype='sub']",
         "patternType": "roslynpath",
         "workspacePath": workspace_id

@@ -83,7 +83,7 @@ def main():
         # Load workspace
         print("\n=== Loading workspace ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet-load-workspace",
+            "name": "spelunk-load-workspace",
             "arguments": {
                 "path": "./test-workspace/TestProject.csproj"
             }
@@ -92,7 +92,7 @@ def main():
         # First, find some statements to remove
         print("\n=== Finding Console.WriteLine statements ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet-find-statements",
+            "name": "spelunk-find-statements",
             "arguments": {
                 "pattern": "Console.WriteLine"
             }
@@ -101,7 +101,7 @@ def main():
         # Test 1: Remove a simple statement
         print("\n=== Test 1: Remove a Console.WriteLine statement ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet-remove-statement",
+            "name": "spelunk-remove-statement",
             "arguments": {
                 "location": {
                     "file": "./test-workspace/Program.cs",
@@ -115,14 +115,14 @@ def main():
         # Test 2: Remove a variable declaration
         print("\n=== Test 2: Remove variable declaration ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet-find-statements",
+            "name": "spelunk-find-statements",
             "arguments": {
                 "pattern": "int x = 10"
             }
         })
         
         response = send_request(process, "tools/call", {
-            "name": "dotnet-remove-statement",
+            "name": "spelunk-remove-statement",
             "arguments": {
                 "location": {
                     "file": "./test-workspace/Program.cs",
@@ -136,14 +136,14 @@ def main():
         # Test 3: Remove statement with comment
         print("\n=== Test 3: Find and remove return statement ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet-find-statements",
+            "name": "spelunk-find-statements",
             "arguments": {
                 "pattern": "return a + b"
             }
         })
         
         response = send_request(process, "tools/call", {
-            "name": "dotnet-remove-statement",
+            "name": "spelunk-remove-statement",
             "arguments": {
                 "location": {
                     "file": "./test-workspace/Program.cs",
@@ -157,7 +157,7 @@ def main():
         # Test 4: Remove without preserving comments
         print("\n=== Test 4: Remove statement without preserving comments ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet-remove-statement",
+            "name": "spelunk-remove-statement",
             "arguments": {
                 "location": {
                     "file": "./test-workspace/Program.cs",
@@ -171,7 +171,7 @@ def main():
         # Test 5: Test error handling - invalid location
         print("\n=== Test 5: Error handling - invalid location ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet-remove-statement",
+            "name": "spelunk-remove-statement",
             "arguments": {
                 "location": {
                     "file": "./test-workspace/Program.cs",
@@ -184,7 +184,7 @@ def main():
         # Test 6: View the final result
         print("\n=== Test 6: View final file content ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet-find-statements",
+            "name": "spelunk-find-statements",
             "arguments": {
                 "pattern": "Main",
                 "scope": {

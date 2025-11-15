@@ -16,7 +16,7 @@ def test_fsharp_file_detection(client, file_path):
     """Test if F# file is detected when using query-syntax"""
     print(f"\nTesting F# detection for: {file_path}")
     
-    result = client.call_tool("dotnet-query-syntax", {
+    result = client.call_tool("spelunk-query-syntax", {
         "roslynPath": "//method",
         "file": os.path.abspath(file_path)
     })
@@ -53,7 +53,7 @@ def test_fsharp_project_detection(client, project_path):
     """Test if F# project is detected when loading"""
     print(f"\nTesting F# project detection for: {project_path}")
     
-    result = client.call_tool("dotnet-load-workspace", {
+    result = client.call_tool("spelunk-load-workspace", {
         "path": os.path.abspath(project_path)
     })
     
@@ -77,7 +77,7 @@ def test_non_fsharp_file(client, file_path):
     """Test that non-F# files are not detected as F#"""
     print(f"\nTesting non-F# file: {file_path}")
     
-    result = client.call_tool("dotnet-query-syntax", {
+    result = client.call_tool("spelunk-query-syntax", {
         "roslynPath": "//method",
         "file": os.path.abspath(file_path)
     })
@@ -114,7 +114,7 @@ def main():
     client = SimpleClient(allowed_paths=["test-workspace"])
     
     # First, load a C# workspace so we have a context
-    result = client.call_tool("dotnet-load-workspace", {
+    result = client.call_tool("spelunk-load-workspace", {
         "path": os.path.abspath("test-workspace/TestProject.csproj")
     })
     print(f"C# workspace loaded: {result['success']}")

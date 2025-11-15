@@ -56,7 +56,7 @@ process.stdin.flush()
 time.sleep(1)
 
 print("\nSending request 2...")
-process.stdin.write('{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"dotnet-load-workspace","arguments":{"path":"' + os.path.abspath("test-workspace/TestProject.csproj") + '"}}}\n')
+process.stdin.write('{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"spelunk-load-workspace","arguments":{"path":"' + os.path.abspath("test-workspace/TestProject.csproj") + '"}}}\n')
 process.stdin.flush()
 
 # Wait and check thread

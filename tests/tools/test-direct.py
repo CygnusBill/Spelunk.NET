@@ -62,7 +62,7 @@ tool_request = {
     "id": 2,
     "method": "tools/call",
     "params": {
-        "name": "dotnet-load-workspace",
+        "name": "spelunk-load-workspace",
         "arguments": {
             "path": os.path.abspath("test-workspace/TestProject.csproj")
         }

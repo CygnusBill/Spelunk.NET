@@ -285,23 +285,23 @@ IMPLEMENT_INTERFACE_AGENT:
 ### Pattern: Discover → Analyze → Transform → Verify
 
 1. **Discovery Phase** - Use search tools to find targets:
-   - `dotnet-find-statements` with RoslynPath
-   - `dotnet-find-method`, `dotnet-find-class`
+   - `spelunk-find-statements` with RoslynPath
+   - `spelunk-find-method`, `spelunk-find-class`
    - `search_for_pattern` for flexible searches
 
 2. **Analysis Phase** - Understand the code:
-   - `dotnet-get-statement-context` for semantic info
-   - `dotnet-get-data-flow` for dependencies
-   - `dotnet-find-references` for impact analysis
+   - `spelunk-get-statement-context` for semantic info
+   - `spelunk-get-data-flow` for dependencies
+   - `spelunk-find-references` for impact analysis
 
 3. **Transform Phase** - Make changes:
-   - `dotnet-replace-statement` for precise edits
-   - `dotnet-insert-statement` for additions
-   - `dotnet-edit-code` for structural changes
+   - `spelunk-replace-statement` for precise edits
+   - `spelunk-insert-statement` for additions
+   - `spelunk-edit-code` for structural changes
 
 4. **Verification Phase** - Ensure correctness:
-   - `dotnet-workspace-status` for compilation
-   - `dotnet-find-marked-statements` to track changes
+   - `spelunk-workspace-status` for compilation
+   - `spelunk-find-marked-statements` to track changes
    - Generate summary reports
 
 ## Agent Instructions Template
@@ -314,28 +314,28 @@ You are a specialized refactoring agent that [specific purpose].
 ### Your Workflow:
 
 1. **Discovery**: First, find all instances of [pattern] using:
-   - Use `dotnet-find-statements` with pattern "[specific pattern]"
-   - If working with methods, use `dotnet-find-method`
+   - Use `spelunk-find-statements` with pattern "[specific pattern]"
+   - If working with methods, use `spelunk-find-method`
    - For broad searches, use `search_for_pattern`
 
 2. **Analysis**: For each discovered item:
-   - Use `dotnet-get-statement-context` to understand the code
+   - Use `spelunk-get-statement-context` to understand the code
    - Check for [specific conditions]
    - Determine [specific decisions]
 
 3. **Transformation**: Apply these changes:
    - [Specific transformation rules]
-   - Use `dotnet-replace-statement` for line-level changes
-   - Use `dotnet-insert-statement` for additions
-   - Use `dotnet-edit-code` for structural changes
+   - Use `spelunk-replace-statement` for line-level changes
+   - Use `spelunk-insert-statement` for additions
+   - Use `spelunk-edit-code` for structural changes
 
 4. **Propagation**: Handle ripple effects:
-   - Find affected code with `dotnet-find-references`
-   - Update callers with `dotnet-find-method-callers`
+   - Find affected code with `spelunk-find-references`
+   - Update callers with `spelunk-find-method-callers`
    - Ensure consistency across interfaces/implementations
 
 5. **Verification**: Ensure success:
-   - Check compilation with `dotnet-workspace-status`
+   - Check compilation with `spelunk-workspace-status`
    - Report what was changed
    - Suggest manual review points
 

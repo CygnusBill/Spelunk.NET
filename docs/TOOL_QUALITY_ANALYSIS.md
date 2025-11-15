@@ -209,7 +209,7 @@ This document provides a comprehensive analysis of all 37 MCP Dotnet tools to en
 
 ### 9. F# Tools
 
-#### dotnet-fsharp-analyze ✅
+#### spelunk-fsharp-analyze ✅
 - **Purpose**: Analyze F# files
 - **Valuable Outcome**: F# specific analysis
 - **Error Handling**: Clear F# errors

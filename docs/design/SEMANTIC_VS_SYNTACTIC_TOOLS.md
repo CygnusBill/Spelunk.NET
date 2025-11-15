@@ -139,7 +139,7 @@ Future enhancements will allow syntactic tools to optionally include semantic in
 **Semantic Approach:**
 ```json
 // Request
-{ "tool": "dotnet-find-method", "pattern": "*", "includeAsync": true }
+{ "tool": "spelunk-find-method", "pattern": "*", "includeAsync": true }
 
 // Returns methods with full type info, knows about async Task returns
 ```
@@ -147,7 +147,7 @@ Future enhancements will allow syntactic tools to optionally include semantic in
 **Syntactic Approach:**
 ```json
 // Request
-{ "tool": "dotnet-query-syntax", "roslynPath": "//method[@async]" }
+{ "tool": "spelunk-query-syntax", "roslynPath": "//method[@async]" }
 
 // Returns syntax nodes marked with async modifier
 ```
@@ -157,7 +157,7 @@ Future enhancements will allow syntactic tools to optionally include semantic in
 **Semantic Approach:**
 ```json
 // Request
-{ "tool": "dotnet-find-implementations", "interfaceName": "IDisposable" }
+{ "tool": "spelunk-find-implementations", "interfaceName": "IDisposable" }
 
 // Returns all types implementing IDisposable, even indirect implementations
 ```
@@ -165,7 +165,7 @@ Future enhancements will allow syntactic tools to optionally include semantic in
 **Syntactic Approach:**
 ```json
 // Request
-{ "tool": "dotnet-query-syntax", "roslynPath": "//class[@implements='IDisposable']" }
+{ "tool": "spelunk-query-syntax", "roslynPath": "//class[@implements='IDisposable']" }
 
 // Returns only classes with explicit interface declaration in syntax
 ```

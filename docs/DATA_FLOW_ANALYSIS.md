@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `dotnet-get-data-flow` tool provides comprehensive data flow analysis using Roslyn's `AnalyzeDataFlow` API. This feature is production-ready and highly reliable, providing accurate information about variable usage, assignments, and flow through code regions.
+The `spelunk-get-data-flow` tool provides comprehensive data flow analysis using Roslyn's `AnalyzeDataFlow` API. This feature is production-ready and highly reliable, providing accurate information about variable usage, assignments, and flow through code regions.
 
 ## What It Does
 
@@ -186,7 +186,7 @@ Result:
 
 1. **Start with Complete Statements** - While partial regions work, complete statements give best results
 2. **Use for Refactoring** - Excellent for extract method and variable analysis
-3. **Combine with Other Tools** - Use with `dotnet-find-statements` for comprehensive analysis
+3. **Combine with Other Tools** - Use with `spelunk-find-statements` for comprehensive analysis
 4. **Check AlwaysAssigned** - Useful for ensuring variables are initialized
 
 ## API Usage

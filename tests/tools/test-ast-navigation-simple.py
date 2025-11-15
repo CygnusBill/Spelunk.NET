@@ -54,7 +54,7 @@ def test_query_syntax(process):
     
     # Test 1: Find classes
     response = send_request(process, "tools/call", {
-        "name": "dotnet-query-syntax",
+        "name": "spelunk-query-syntax",
         "arguments": {
             "roslynPath": "//class",
             "file": os.path.abspath("test-workspace/Program.cs")
@@ -72,7 +72,7 @@ def test_query_syntax(process):
     # Test 2: Find binary expressions with ==
     print("\nQuerying for binary expressions with == operator...")
     response = send_request(process, "tools/call", {
-        "name": "dotnet-query-syntax",
+        "name": "spelunk-query-syntax",
         "arguments": {
             "roslynPath": "//binary-expression[@operator='==']",
             "file": os.path.abspath("test-workspace/Program.cs")
@@ -93,7 +93,7 @@ def test_navigate(process):
     print("="*60)
     
     response = send_request(process, "tools/call", {
-        "name": "dotnet-navigate",
+        "name": "spelunk-navigate",
         "arguments": {
             "from": {
                 "file": os.path.abspath("test-workspace/Program.cs"),
@@ -126,7 +126,7 @@ def test_get_ast(process):
     print("="*60)
     
     response = send_request(process, "tools/call", {
-        "name": "dotnet-get-ast",
+        "name": "spelunk-get-ast",
         "arguments": {
             "file": os.path.abspath("test-workspace/Program.cs"),
             "depth": 2
@@ -180,7 +180,7 @@ def main():
         # Load workspace
         print("\nLoading workspace...")
         response = send_request(process, "tools/call", {
-            "name": "dotnet-load-workspace",
+            "name": "spelunk-load-workspace",
             "arguments": {
                 "path": os.path.abspath("test-workspace/TestProject.csproj")
             }

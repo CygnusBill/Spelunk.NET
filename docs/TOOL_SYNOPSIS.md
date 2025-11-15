@@ -102,7 +102,7 @@ Use these when you need:
 
 ### 1. Workspace Management
 
-#### `dotnet-load-workspace`
+#### `spelunk-load-workspace`
 **MCP Description**: "Load a .NET solution or project into the workspace"
 
 **Purpose**: Load a C# project or solution into the workspace for analysis and manipulation.
@@ -131,7 +131,7 @@ Use these when you need:
 
 **Use Case**: Must be called before any other operations to establish the working context
 
-#### `dotnet-workspace-status`
+#### `spelunk-workspace-status`
 **MCP Description**: "Get loading progress and workspace info"
 
 **Purpose**: Get detailed status of loaded workspaces including project information.
@@ -164,7 +164,7 @@ Use these when you need:
 
 **Use Case**: Check what projects are available for analysis, verify load status
 
-#### `dotnet-fsharp-projects`
+#### `spelunk-fsharp-projects`
 **MCP Description**: "Get information about F# projects in the workspace (detected but not loaded by MSBuild)"
 
 **Purpose**: List F# projects that were detected but cannot be loaded by MSBuildWorkspace due to F# compiler limitations.
@@ -193,7 +193,7 @@ To work with F# projects, use FSharp.Compiler.Service directly.
 
 **Use Case**: Identify F# projects in mixed-language solutions, understand why certain projects aren't loaded
 
-#### `dotnet-get-diagnostics`
+#### `spelunk-get-diagnostics`
 **MCP Description**: "Get compilation diagnostics (errors, warnings, info) from the workspace"
 
 **Purpose**: Retrieve compilation errors, warnings, and info messages with precise locations for error resolution.
@@ -246,7 +246,7 @@ To work with F# projects, use FSharp.Compiler.Service directly.
 
 **Use Case**: Starting point for diagnostic-driven error resolution, identifying compilation issues before refactoring
 
-#### `dotnet-load-fsharp-project`
+#### `spelunk-load-fsharp-project`
 **MCP Description**: "Load an F# project using FSharp.Compiler.Service (separate from MSBuild workspaces)"
 
 **Purpose**: Load and analyze F# projects using the F# compiler service directly.
@@ -274,7 +274,7 @@ References: 8
 
 **Use Case**: Enable F# code analysis when MSBuildWorkspace cannot handle F# projects
 
-#### `dotnet-fsharp-find-symbols`
+#### `spelunk-fsharp-find-symbols`
 **MCP Description**: "Find symbols in F# code using pattern matching"
 
 **Purpose**: Find F# symbols (functions, values, types) using pattern matching.
@@ -313,7 +313,7 @@ Symbol: quickSort
 
 **Use Case**: Navigate and analyze F# code structures, find specific F# constructs
 
-#### `dotnet-fsharp-query`
+#### `spelunk-fsharp-query`
 **MCP Description**: "Query F# AST using FSharpPath expressions"
 
 **Purpose**: Execute complex FSharpPath queries against F# abstract syntax trees.
@@ -355,7 +355,7 @@ Found 1 match for FSharpPath: //let[@name='factorial']
 
 **Use Case**: Perform complex structural searches on F# code
 
-#### `dotnet-fsharp-get-ast`
+#### `spelunk-fsharp-get-ast`
 **MCP Description**: "Get AST structure for F# code"
 
 **Purpose**: Retrieve and visualize F# abstract syntax tree structure.
@@ -394,7 +394,7 @@ Module [MathOperations] @ 3:0
 
 ### 2. Code Discovery Tools (Read-Only)
 
-#### `dotnet-find-class`
+#### `spelunk-find-class`
 **MCP Description**: "Find classes, interfaces, structs, or enums by name pattern (supports * and ? wildcards)"
 
 **Purpose**: Find type definitions by name pattern using wildcards.
@@ -430,7 +430,7 @@ Found 3 type(s) matching '*Controller':
 
 **Use Case**: Discover classes matching naming conventions, find all implementations of a pattern
 
-#### `dotnet-find-method`
+#### `spelunk-find-method`
 **MCP Description**: "Find methods by name pattern with optional class pattern filter (supports * and ? wildcards)"
 
 **Purpose**: Find methods by name pattern with optional class filtering.
@@ -461,7 +461,7 @@ Found 5 method(s) matching 'Get*':
 
 **Use Case**: Locate methods for analysis, find all async methods, discover API endpoints
 
-#### `dotnet-find-property`
+#### `spelunk-find-property`
 **MCP Description**: "Find properties and fields by name pattern with optional class pattern filter (supports * and ? wildcards)"
 
 **Purpose**: Find properties and fields by name pattern.
@@ -493,7 +493,7 @@ Found 4 properties/fields matching 'Is*':
 
 **Use Case**: Find all boolean flags, discover model properties, locate configuration fields
 
-#### `dotnet-find-namespace`
+#### `spelunk-find-namespace`
 **Note**: This tool is not currently implemented in the server.
 
 **Purpose**: Find namespaces by pattern.
@@ -506,13 +506,13 @@ Found 4 properties/fields matching 'Is*':
 #### 🔍 Inheritance Hierarchy Navigation
 McpDotnet provides comprehensive tools for tracing inheritance chains and understanding type relationships:
 
-- **`dotnet-find-implementations`** - Find all classes implementing an interface or abstract class
-- **`dotnet-find-derived-types`** - Find all classes inheriting from a base class  
-- **`dotnet-find-overrides`** - Find all method overrides across the inheritance chain
+- **`spelunk-find-implementations`** - Find all classes implementing an interface or abstract class
+- **`spelunk-find-derived-types`** - Find all classes inheriting from a base class  
+- **`spelunk-find-overrides`** - Find all method overrides across the inheritance chain
 
 These tools help you understand type hierarchies, trace inheritance relationships, and analyze how types are related in your codebase.
 
-#### `dotnet-find-method-calls`
+#### `spelunk-find-method-calls`
 **MCP Description**: "Find all methods called by a specific method (call tree analysis)"
 
 **Purpose**: Analyze what methods are called BY a specific method (outgoing calls).
@@ -546,7 +546,7 @@ Direct calls (5):
 
 **Use Case**: Understand method dependencies, trace execution flow, identify external dependencies
 
-#### `dotnet-find-method-callers`
+#### `spelunk-find-method-callers`
 **MCP Description**: "Find all methods that call a specific method (caller tree analysis)"
 
 **Purpose**: Find all places that CALL a specific method (incoming calls).
@@ -580,7 +580,7 @@ Found 3 caller(s):
 
 **Use Case**: Impact analysis before changes, understand usage patterns, find all consumers
 
-#### `dotnet-find-references`
+#### `spelunk-find-references`
 **MCP Description**: "Find all references to a type, method, property, or field"
 
 **Purpose**: Find all usages of any symbol across the codebase.
@@ -614,7 +614,7 @@ Found 12 reference(s) to 'User' (type):
 
 **Use Case**: Find all usages before renaming, understand symbol dependencies, locate all consumers
 
-#### `dotnet-find-implementations`
+#### `spelunk-find-implementations`
 **MCP Description**: "Find all implementations of an interface or abstract class"
 
 **Purpose**: Discover all concrete implementations of interfaces or abstract classes.
@@ -650,7 +650,7 @@ Found 3 implementation(s) of 'IUserService':
 
 **Use Case**: Find all implementations for testing, understand service variations, locate mock implementations
 
-#### `dotnet-find-overrides`
+#### `spelunk-find-overrides`
 **MCP Description**: "Find all overrides of a virtual or abstract method"
 
 **Purpose**: Find all methods that override a virtual or abstract method.
@@ -681,7 +681,7 @@ Found 4 override(s) of 'BaseRepository.SaveChanges':
 
 **Use Case**: Understand customization points, track override implementations, ensure consistent behavior
 
-#### `dotnet-find-derived-types`
+#### `spelunk-find-derived-types`
 **MCP Description**: "Find all types that derive from a base class"
 
 **Purpose**: Discover all classes that inherit from a specific base class.
@@ -718,7 +718,7 @@ Found 5 type(s) deriving from 'ControllerBase':
 
 ### 4. Statement-Level Operations
 
-#### `dotnet-find-statements`
+#### `spelunk-find-statements`
 **MCP Description**: "Find statements in code matching a pattern. Returns statement IDs for use with other operations. Uses Roslyn's syntax tree to enumerate all statements."
 
 **Purpose**: Search for statements matching text or regex patterns for analysis or bulk operations.
@@ -774,7 +774,7 @@ Found 3 statement(s) matching 'Console.WriteLine':
 
 **Use Case**: Find patterns for refactoring, locate logging statements, identify async patterns
 
-#### `dotnet-replace-statement`
+#### `spelunk-replace-statement`
 **MCP Description**: "Replace a statement with new code. The statement is identified by its location from find-statements. Preserves indentation and formatting context."
 
 **Purpose**: Replace an entire statement at a specific location.
@@ -825,7 +825,7 @@ After:
 
 **Use Case**: Replace logging methods, update API calls, modernize syntax
 
-#### `dotnet-insert-statement`
+#### `spelunk-insert-statement`
 **MCP Description**: "Insert a new statement before or after an existing statement. The reference statement is identified by its location from find-statements. Preserves indentation and formatting context."
 
 **Purpose**: Add new statements relative to existing code.
@@ -868,7 +868,7 @@ After:
 
 **Use Case**: Add validation, insert logging, add null checks, insert using statements
 
-#### `dotnet-remove-statement`
+#### `spelunk-remove-statement`
 **MCP Description**: "Remove a statement from the code. The statement is identified by its location from find-statements. Can preserve comments attached to the statement."
 
 **Purpose**: Delete statements while optionally preserving their comments.
@@ -912,7 +912,7 @@ After:
 
 ### 5. Ephemeral Marker System
 
-#### `dotnet-mark-statement`
+#### `spelunk-mark-statement`
 **MCP Description**: "Mark a statement with an ephemeral marker for later reference. Markers are session-scoped and not persisted."
 
 **Purpose**: Tag statements with temporary identifiers that survive through code edits.
@@ -942,7 +942,7 @@ Context: Program.Main
 
 **Use Case**: Track statements through multi-step refactoring, maintain references during transformations
 
-#### `dotnet-find-marked-statements`
+#### `spelunk-find-marked-statements`
 **MCP Description**: "Find all or specific marked statements. Returns current locations even if code has been edited."
 
 **Purpose**: Locate previously marked statements, even after code modifications.
@@ -976,7 +976,7 @@ Statement: Console.WriteLine($"Result: {result}");
 
 **Use Case**: Find marked statements after edits, track multiple related statements
 
-#### `dotnet-unmark-statement`
+#### `spelunk-unmark-statement`
 **MCP Description**: "Remove a specific marker by its ID."
 
 **Purpose**: Clean up individual markers when no longer needed.
@@ -997,7 +997,7 @@ Remaining markers: 2
 
 **Use Case**: Remove completed markers, clean up after specific operations
 
-#### `dotnet-clear-markers`
+#### `spelunk-clear-markers`
 **MCP Description**: "Clear all markers in the current session."
 
 **Purpose**: Reset all markers when starting new operations.
@@ -1016,7 +1016,7 @@ Cleared 3 marker(s)
 
 **Use Case**: Reset marker state, clean up after complex refactoring
 
-#### `dotnet-get-statement-context`
+#### `spelunk-get-statement-context`
 **MCP Description**: "Get comprehensive semantic context for a statement including symbols, types, diagnostics, and basic data flow"
 
 **Purpose**: Provides deep semantic information about a statement for AI agents to understand code context hierarchically.
@@ -1121,7 +1121,7 @@ Cleared 3 marker(s)
 
 **Use Case**: Hierarchical context walking for AI agents, semantic-aware code modification, diagnostic-driven fixes
 
-#### `dotnet-get-data-flow`
+#### `spelunk-get-data-flow`
 **MCP Description**: "Get comprehensive data flow analysis for a code region showing variable usage, dependencies, and control flow"
 
 **Purpose**: Provides deep data flow analysis to understand how variables flow through code, detect dependencies, and identify potential issues.
@@ -1215,7 +1215,7 @@ Cleared 3 marker(s)
 
 ### 6. Code Modification Tools
 
-#### `dotnet-rename-symbol`
+#### `spelunk-rename-symbol`
 **MCP Description**: "Rename a symbol (type, method, property, field) and update all references"
 
 **Purpose**: Safely rename any symbol across the entire codebase with all references updated.
@@ -1254,7 +1254,7 @@ Renamed 'GetUser' to 'GetUserById' in 8 location(s):
 
 **Use Case**: Refactor method names, update property names, rename types consistently
 
-#### `dotnet-edit-code`
+#### `spelunk-edit-code`
 **MCP Description**: "Perform surgical code edits using Roslyn. Operations: add-method, add-property, make-async, add-parameter, wrap-try-catch"
 
 **Purpose**: Perform complex structural edits beyond simple text replacement.
@@ -1346,7 +1346,7 @@ Preview:
 
 **Use Case**: Add methods/properties, convert to async, add parameters, add error handling
 
-#### `dotnet-fix-pattern` (DEPRECATED)
+#### `spelunk-fix-pattern` (DEPRECATED)
 **MCP Description**: "Transform code using semantic-aware patterns with RoslynPath queries and statement-level operations"
 
 > **⚠️ DEPRECATED**: This tool represents a monolithic refactoring approach. Refactorings should be implemented as agent workflows using primitive tools. See [REFACTORING_AS_AGENTS.md](REFACTORING_AS_AGENTS.md) for the new approach. This tool is retained for backward compatibility only.
@@ -1416,7 +1416,7 @@ Preview:
 
 ### 7. Enhanced AST Navigation Tools
 
-#### `dotnet-query-syntax`
+#### `spelunk-query-syntax`
 **MCP Description**: "Query any syntax node using enhanced RoslynPath with full AST navigation"
 
 **Purpose**: Query the abstract syntax tree using enhanced RoslynPath expressions that support low-level node types and advanced navigation.
@@ -1462,7 +1462,7 @@ Preview:
 
 **Use Case**: Find specific patterns in code using detailed AST queries (null comparisons, complex expressions, specific node types)
 
-#### `dotnet-navigate`  
+#### `spelunk-navigate`  
 **MCP Description**: "Navigate from a position using RoslynPath axes (ancestor::, following-sibling::, etc.)"
 
 **Purpose**: Navigate the syntax tree from a specific position using XPath-style axes to find related code elements.
@@ -1502,7 +1502,7 @@ Preview:
 
 **Use Case**: Navigate between related code elements (find next method, parent class, enclosing block, sibling statements)
 
-#### `dotnet-get-ast`
+#### `spelunk-get-ast`
 **MCP Description**: "Get AST structure for understanding code hierarchy"
 
 **Purpose**: Retrieve the abstract syntax tree structure for a file or specific node to understand code organization and hierarchy.
@@ -1702,10 +1702,10 @@ Preview:
 ## Best Practices
 
 1. **Always Load First**: Call `load-workspace` before any operations
-2. **Start with Diagnostics**: Use `dotnet-get-diagnostics` to identify compilation errors before manual analysis
+2. **Start with Diagnostics**: Use `spelunk-get-diagnostics` to identify compilation errors before manual analysis
 3. **Mark Before Modify**: Use `mark-statement` to create stable references that survive edits
 4. **Context Walking**: Expand analysis hierarchically - statement → enclosing → siblings → method → class
-5. **Verify Fixes**: Re-run `dotnet-get-diagnostics` after changes to confirm resolution
+5. **Verify Fixes**: Re-run `spelunk-get-diagnostics` after changes to confirm resolution
 6. **Clean Up Markers**: Use `clear-markers` after complex operations to avoid session bloat
 7. **Preview Changes**: Most modification tools show previews - review them carefully
 8. **Combine Tools**: Use discovery tools to find targets, then modification tools to change them

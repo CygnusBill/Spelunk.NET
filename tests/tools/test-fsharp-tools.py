@@ -17,7 +17,7 @@ def test_fsharp_load_project(client, project_path):
     print(f"\n=== Testing F# Project Load ===")
     print(f"Project: {project_path}")
     
-    result = client.call_tool("dotnet-fsharp-load-project", {
+    result = client.call_tool("spelunk-fsharp-load-project", {
         "projectPath": os.path.abspath(project_path)
     })
     
@@ -43,7 +43,7 @@ def test_fsharp_find_symbols(client, file_path, pattern):
     print(f"File: {file_path}")
     print(f"Pattern: {pattern}")
     
-    result = client.call_tool("dotnet-fsharp-find-symbols", {
+    result = client.call_tool("spelunk-fsharp-find-symbols", {
         "query": pattern,  # Changed from "pattern" to "query"
         "filePath": os.path.abspath(file_path)
     })
@@ -87,7 +87,7 @@ def test_fsharp_query(client, file_path, query):
     print(f"File: {file_path}")
     print(f"Query: {query}")
     
-    result = client.call_tool("dotnet-fsharp-query", {
+    result = client.call_tool("spelunk-fsharp-query", {
         "fsharpPath": query,
         "file": os.path.abspath(file_path),
         "includeContext": True,
@@ -129,7 +129,7 @@ def test_fsharp_get_ast(client, file_path, root_query=None):
     if root_query:
         params["root"] = root_query
     
-    result = client.call_tool("dotnet-fsharp-get-ast", params)
+    result = client.call_tool("spelunk-fsharp-get-ast", params)
     
     if result['success']:
         content = result['result']['content'][0]['text']

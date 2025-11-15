@@ -199,7 +199,7 @@ public class McpJsonRpcServer
         {
             new
             {
-                name = "dotnet-load-workspace",
+                name = "spelunk-load-workspace",
                 description = ToolDescriptions.LoadWorkspace,
                 inputSchema = new
                 {
@@ -214,7 +214,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet-analyze-syntax",
+                name = "spelunk-analyze-syntax",
                 description = ToolDescriptions.AnalyzeSyntax,
                 inputSchema = new
                 {
@@ -230,7 +230,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet-get-symbols",
+                name = "spelunk-get-symbols",
                 description = ToolDescriptions.GetSymbols,
                 inputSchema = new
                 {
@@ -255,7 +255,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet-workspace-status",
+                name = "spelunk-workspace-status",
                 description = ToolDescriptions.WorkspaceStatus,
                 inputSchema = new
                 {
@@ -268,7 +268,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet-find-class",
+                name = "spelunk-find-class",
                 description = ToolDescriptions.FindClass,
                 inputSchema = new
                 {
@@ -283,7 +283,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet-find-method",
+                name = "spelunk-find-method",
                 description = ToolDescriptions.FindMethod,
                 inputSchema = new
                 {
@@ -299,7 +299,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet-find-property",
+                name = "spelunk-find-property",
                 description = ToolDescriptions.FindProperty,
                 inputSchema = new
                 {
@@ -315,7 +315,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet-find-method-calls",
+                name = "spelunk-find-method-calls",
                 description = ToolDescriptions.FindMethodCalls,
                 inputSchema = new
                 {
@@ -331,7 +331,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet-find-method-callers",
+                name = "spelunk-find-method-callers",
                 description = ToolDescriptions.FindMethodCallers,
                 inputSchema = new
                 {
@@ -347,7 +347,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet-find-references",
+                name = "spelunk-find-references",
                 description = ToolDescriptions.FindReferences,
                 inputSchema = new
                 {
@@ -364,7 +364,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet-find-implementations",
+                name = "spelunk-find-implementations",
                 description = ToolDescriptions.FindImplementations,
                 inputSchema = new
                 {
@@ -379,7 +379,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet-find-overrides",
+                name = "spelunk-find-overrides",
                 description = ToolDescriptions.FindOverrides,
                 inputSchema = new
                 {
@@ -395,7 +395,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet-find-derived-types",
+                name = "spelunk-find-derived-types",
                 description = ToolDescriptions.FindDerivedTypes,
                 inputSchema = new
                 {
@@ -410,7 +410,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet-rename-symbol",
+                name = "spelunk-rename-symbol",
                 description = ToolDescriptions.RenameSymbol,
                 inputSchema = new
                 {
@@ -429,7 +429,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet-edit-code",
+                name = "spelunk-edit-code",
                 description = ToolDescriptions.EditCode,
                 inputSchema = new
                 {
@@ -449,7 +449,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet-fix-pattern",
+                name = "spelunk-fix-pattern",
                 description = ToolDescriptions.FixPattern,
                 inputSchema = new
                 {
@@ -467,7 +467,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet-find-statements",
+                name = "spelunk-find-statements",
                 description = ToolDescriptions.FindStatements,
                 inputSchema = new
                 {
@@ -496,7 +496,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet-replace-statement",
+                name = "spelunk-replace-statement",
                 description = ToolDescriptions.ReplaceStatement,
                 inputSchema = new
                 {
@@ -525,7 +525,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet-insert-statement",
+                name = "spelunk-insert-statement",
                 description = ToolDescriptions.InsertStatement,
                 inputSchema = new
                 {
@@ -553,7 +553,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet-remove-statement",
+                name = "spelunk-remove-statement",
                 description = ToolDescriptions.RemoveStatement,
                 inputSchema = new
                 {
@@ -580,7 +580,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet-mark-statement",
+                name = "spelunk-mark-statement",
                 description = ToolDescriptions.MarkStatement,
                 inputSchema = new
                 {
@@ -607,7 +607,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet-find-marked-statements",
+                name = "spelunk-find-marked-statements",
                 description = ToolDescriptions.FindMarkedStatements,
                 inputSchema = new
                 {
@@ -621,7 +621,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet-unmark-statement",
+                name = "spelunk-unmark-statement",
                 description = ToolDescriptions.UnmarkStatement,
                 inputSchema = new
                 {
@@ -635,7 +635,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet-clear-markers",
+                name = "spelunk-clear-markers",
                 description = ToolDescriptions.ClearMarkers,
                 inputSchema = new
                 {
@@ -645,7 +645,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet-get-statement-context",
+                name = "spelunk-get-statement-context",
                 description = ToolDescriptions.GetStatementContext,
                 inputSchema = new
                 {
@@ -671,7 +671,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet-get-data-flow",
+                name = "spelunk-get-data-flow",
                 description = ToolDescriptions.GetDataFlow,
                 inputSchema = new
                 {
@@ -691,7 +691,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet-fsharp-projects",
+                name = "spelunk-fsharp-projects",
                 description = "Get information about F# projects in the workspace (detected but not loaded by MSBuild)",
                 inputSchema = new
                 {
@@ -705,7 +705,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet-fsharp-load-project",
+                name = "spelunk-fsharp-load-project",
                 description = "Load an F# project using FSharp.Compiler.Service (separate from MSBuild workspaces)",
                 inputSchema = new
                 {
@@ -719,7 +719,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet-fsharp-find-symbols",
+                name = "spelunk-fsharp-find-symbols",
                 description = "Find symbols in F# code using FSharpPath queries",
                 inputSchema = new
                 {
@@ -734,7 +734,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet-fsharp-query",
+                name = "spelunk-fsharp-query",
                 description = "Query F# code using FSharpPath syntax",
                 inputSchema = new
                 {
@@ -751,7 +751,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet-fsharp-get-ast",
+                name = "spelunk-fsharp-get-ast",
                 description = "Get AST structure for F# code",
                 inputSchema = new
                 {
@@ -768,7 +768,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet-query-syntax",
+                name = "spelunk-query-syntax",
                 description = ToolDescriptions.QuerySyntax,
                 inputSchema = new
                 {
@@ -787,7 +787,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet-navigate",
+                name = "spelunk-navigate",
                 description = ToolDescriptions.Navigate,
                 inputSchema = new
                 {
@@ -814,7 +814,7 @@ public class McpJsonRpcServer
             },
             new
             {
-                name = "dotnet-get-ast",
+                name = "spelunk-get-ast",
                 description = ToolDescriptions.GetAst,
                 inputSchema = new
                 {
@@ -861,139 +861,139 @@ public class McpJsonRpcServer
         object result;
         switch (toolCallParams.Name)
         {
-            case "dotnet-load-workspace":
+            case "spelunk-load-workspace":
                 result = await LoadWorkspaceToolAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet-analyze-syntax":
+            case "spelunk-analyze-syntax":
                 result = await AnalyzeSyntaxAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet-get-symbols":
+            case "spelunk-get-symbols":
                 result = await GetSymbolsAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet-workspace-status":
+            case "spelunk-workspace-status":
                 result = await GetWorkspaceStatusAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet-find-class":
+            case "spelunk-find-class":
                 result = await FindClassAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet-find-method":
+            case "spelunk-find-method":
                 result = await FindMethodAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet-find-property":
+            case "spelunk-find-property":
                 result = await FindPropertyAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet-find-method-calls":
+            case "spelunk-find-method-calls":
                 result = await FindMethodCallsAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet-find-method-callers":
+            case "spelunk-find-method-callers":
                 result = await FindMethodCallersAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet-find-references":
+            case "spelunk-find-references":
                 result = await FindReferencesAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet-find-implementations":
+            case "spelunk-find-implementations":
                 result = await FindImplementationsAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet-find-overrides":
+            case "spelunk-find-overrides":
                 result = await FindOverridesAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet-find-derived-types":
+            case "spelunk-find-derived-types":
                 result = await FindDerivedTypesAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet-rename-symbol":
+            case "spelunk-rename-symbol":
                 result = await RenameSymbolAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet-edit-code":
+            case "spelunk-edit-code":
                 result = await EditCodeAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet-fix-pattern":
+            case "spelunk-fix-pattern":
                 result = await FixPatternAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet-find-statements":
+            case "spelunk-find-statements":
                 result = await FindStatementsAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet-replace-statement":
+            case "spelunk-replace-statement":
                 result = await ReplaceStatementAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet-insert-statement":
+            case "spelunk-insert-statement":
                 result = await InsertStatementAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet-remove-statement":
+            case "spelunk-remove-statement":
                 result = await RemoveStatementAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet-mark-statement":
+            case "spelunk-mark-statement":
                 result = await MarkStatementAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet-find-marked-statements":
+            case "spelunk-find-marked-statements":
                 result = await FindMarkedStatementsAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet-unmark-statement":
+            case "spelunk-unmark-statement":
                 result = await UnmarkStatementAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet-clear-markers":
+            case "spelunk-clear-markers":
                 result = await ClearMarkersAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet-get-statement-context":
+            case "spelunk-get-statement-context":
                 result = await GetStatementContextAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet-get-data-flow":
+            case "spelunk-get-data-flow":
                 result = await GetDataFlowAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet-query-syntax":
+            case "spelunk-query-syntax":
                 result = await QuerySyntaxAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet-navigate":
+            case "spelunk-navigate":
                 result = await NavigateAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet-get-ast":
+            case "spelunk-get-ast":
                 result = await GetAstAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet-fsharp-projects":
+            case "spelunk-fsharp-projects":
                 result = await GetFSharpProjectsAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet-fsharp-load-project":
+            case "spelunk-fsharp-load-project":
                 result = await LoadFSharpProjectAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet-fsharp-find-symbols":
+            case "spelunk-fsharp-find-symbols":
                 result = await FindFSharpSymbolsAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet-fsharp-query":
+            case "spelunk-fsharp-query":
                 result = await QueryFSharpAsync(toolCallParams.Arguments);
                 break;
                 
-            case "dotnet-fsharp-get-ast":
+            case "spelunk-fsharp-get-ast":
                 result = await GetFSharpAstAsync(toolCallParams.Arguments);
                 break;
                 

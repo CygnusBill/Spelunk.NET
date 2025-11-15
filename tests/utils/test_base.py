@@ -37,7 +37,7 @@ class ToolTestBase:
         """Load a workspace"""
         if not self.client:
             raise RuntimeError("Test not set up. Call setup() first.")
-        return self.client.call_tool("dotnet-load-workspace", {"path": workspace_path})
+        return self.client.call_tool("spelunk-load-workspace", {"path": workspace_path})
     
     def assert_success(self, result: Dict[str, Any], message: str = "Expected successful result"):
         """Assert that result indicates success"""

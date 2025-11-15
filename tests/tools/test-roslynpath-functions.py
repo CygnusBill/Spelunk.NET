@@ -21,7 +21,7 @@ def test_roslynpath_function_arguments():
     with TestClient() as client:
         # Load the test workspace
         print("Loading workspace...")
-        result = client.call_tool("dotnet-load-workspace", {
+        result = client.call_tool("spelunk-load-workspace", {
             "path": str(Path(__file__).parent.parent.parent / "test-workspace" / "TestProject.csproj")
         })
         
@@ -75,7 +75,7 @@ namespace TestProject
         
         # Test 1: Functions without arguments (baseline)
         print("\n--- Test 1: Functions without arguments (baseline) ---")
-        result = client.call_tool("dotnet-find-statements", {
+        result = client.call_tool("spelunk-find-statements", {
             "pattern": "//method[TestMethod]/block/statement[last()]",
             "patternType": "roslynpath"
         })
@@ -87,7 +87,7 @@ namespace TestProject
         
         # Test 2: last()-N syntax
         print("\n--- Test 2: last()-N syntax ---")
-        result = client.call_tool("dotnet-find-statements", {
+        result = client.call_tool("spelunk-find-statements", {
             "pattern": "//method[TestMethod]/block/statement[last()-1]",
             "patternType": "roslynpath"
         })
@@ -111,7 +111,7 @@ namespace TestProject
         
         for pattern in patterns_to_test:
             print(f"  Testing pattern: {pattern}")
-            result = client.call_tool("dotnet-find-statements", {
+            result = client.call_tool("spelunk-find-statements", {
                 "pattern": pattern,
                 "patternType": "roslynpath"
             })
@@ -136,7 +136,7 @@ namespace TestProject
         
         for pattern in complex_patterns:
             print(f"  Testing pattern: {pattern}")
-            result = client.call_tool("dotnet-find-statements", {
+            result = client.call_tool("spelunk-find-statements", {
                 "pattern": pattern,
                 "patternType": "roslynpath"
             })
@@ -156,7 +156,7 @@ namespace TestProject
         
         for pattern in multi_arg_patterns:
             print(f"  Testing pattern: {pattern}")
-            result = client.call_tool("dotnet-find-statements", {
+            result = client.call_tool("spelunk-find-statements", {
                 "pattern": pattern,
                 "patternType": "roslynpath"
             })

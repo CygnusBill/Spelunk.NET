@@ -73,7 +73,7 @@ with open("test-ast-debug.cs", "w") as f:
 
 # Load workspace (use test file)
 send_request(process, "tools/call", {
-    "name": "dotnet-load-workspace",
+    "name": "spelunk-load-workspace",
     "arguments": {
         "path": os.path.abspath("test-workspace/TestProject.csproj")
     }
@@ -82,7 +82,7 @@ send_request(process, "tools/call", {
 # Get AST at the position
 print("\nGetting AST structure around '1' in '1 + 2'...")
 result = send_request(process, "tools/call", {
-    "name": "dotnet-get-ast",
+    "name": "spelunk-get-ast",
     "arguments": {
         "file": os.path.abspath("test-ast-debug.cs"),
         "depth": 5
@@ -100,7 +100,7 @@ if result:
 # Navigate from position
 print("\nNavigating from position of '1'...")
 result = send_request(process, "tools/call", {
-    "name": "dotnet-navigate",
+    "name": "spelunk-navigate",
     "arguments": {
         "from": {
             "file": os.path.abspath("test-ast-debug.cs"),

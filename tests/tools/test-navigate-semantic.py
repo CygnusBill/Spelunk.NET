@@ -75,14 +75,14 @@ namespace TestNavigation
             f.write(csproj_content)
         
         # Load the project
-        result = client.call_tool("dotnet-load-workspace", {
+        result = client.call_tool("spelunk-load-workspace", {
             "path": csproj_file
         })
         assert result["success"], f"Failed to load workspace: {result.get('error')}"
         
         # Test 1: Navigate to parent method with semantic info
         print("\n=== Test 1: Navigate to parent method with semantic info ===")
-        result = client.call_tool("dotnet-navigate", {
+        result = client.call_tool("spelunk-navigate", {
             "from": {
                 "file": test_file,
                 "line": 30,  # Inside if statement
@@ -111,7 +111,7 @@ namespace TestNavigation
         
         # Test 2: Navigate to parent class with type info
         print("\n=== Test 2: Navigate to parent class with semantic info ===")
-        result = client.call_tool("dotnet-navigate", {
+        result = client.call_tool("spelunk-navigate", {
             "from": {
                 "file": test_file,
                 "line": 18,  # Inside GetName method
@@ -141,7 +141,7 @@ namespace TestNavigation
         
         # Test 3: Navigate from identifier to its declaration
         print("\n=== Test 3: Navigate from usage to declaration with semantic info ===")
-        result = client.call_tool("dotnet-navigate", {
+        result = client.call_tool("spelunk-navigate", {
             "from": {
                 "file": test_file,
                 "line": 18,  # var result = ProcessOrder();
@@ -172,7 +172,7 @@ namespace TestNavigation
         
         # Test 4: Navigate without semantic info (default)
         print("\n=== Test 4: Navigate without semantic info (default) ===")
-        result = client.call_tool("dotnet-navigate", {
+        result = client.call_tool("spelunk-navigate", {
             "from": {
                 "file": test_file,
                 "line": 30,
@@ -192,7 +192,7 @@ namespace TestNavigation
         
         # Test 5: Navigate with following-sibling axis
         print("\n=== Test 5: Navigate to next statement with semantic info ===")
-        result = client.call_tool("dotnet-navigate", {
+        result = client.call_tool("spelunk-navigate", {
             "from": {
                 "file": test_file,
                 "line": 17,  # var result = ProcessOrder();

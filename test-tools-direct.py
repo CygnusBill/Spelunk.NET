@@ -23,7 +23,7 @@ def test_tool_outcomes():
     print("="*60)
     
     print("\n1. Loading a C# project:")
-    result = client.call_tool("dotnet-load-workspace", {
+    result = client.call_tool("spelunk-load-workspace", {
         "path": "/Users/bill/Repos/McpDotnet/test-workspace/TestProject.csproj"
     })
     if result.get("Success"):
@@ -34,7 +34,7 @@ def test_tool_outcomes():
         print(f"❌ Error: {result.get('error', 'Unknown')}")
     
     print("\n2. Workspace status:")
-    result = client.call_tool("dotnet-workspace-status", {})
+    result = client.call_tool("spelunk-workspace-status", {})
     if result:
         print(f"✅ Status: {result.get('LoadingStatus', 'Unknown')}")
     
@@ -44,7 +44,7 @@ def test_tool_outcomes():
     print("="*60)
     
     print("\n3. Finding classes:")
-    result = client.call_tool("dotnet-find-class", {"pattern": "*Test*"})
+    result = client.call_tool("spelunk-find-class", {"pattern": "*Test*"})
     if result:
         matches = result.get("Matches", [])
         if matches:
@@ -55,7 +55,7 @@ def test_tool_outcomes():
             print("⚠️ No classes found matching pattern")
     
     print("\n4. Finding methods:")
-    result = client.call_tool("dotnet-find-method", {"methodPattern": "Test*"})
+    result = client.call_tool("spelunk-find-method", {"methodPattern": "Test*"})
     if result:
         matches = result.get("Matches", [])
         if matches:
@@ -69,7 +69,7 @@ def test_tool_outcomes():
     print("="*60)
     
     print("\n5. Finding statements (text pattern):")
-    result = client.call_tool("dotnet-find-statements", {
+    result = client.call_tool("spelunk-find-statements", {
         "pattern": "Console.WriteLine"
     })
     if result:
@@ -81,14 +81,14 @@ def test_tool_outcomes():
         else:
             print("⚠️ No Console.WriteLine found - trying another pattern")
             # Try a more general pattern
-            result = client.call_tool("dotnet-find-statements", {
+            result = client.call_tool("spelunk-find-statements", {
                 "pattern": "return"
             })
             if result and result.get("Statements"):
                 print(f"✅ Found {len(result['Statements'])} return statements")
     
     print("\n6. Finding statements (RoslynPath):")
-    result = client.call_tool("dotnet-find-statements", {
+    result = client.call_tool("spelunk-find-statements", {
         "pattern": "//if-statement",
         "patternType": "roslynpath"
     })
@@ -121,7 +121,7 @@ public class TestClass
 }
 """)
     
-    result = client.call_tool("dotnet-get-symbols", {
+    result = client.call_tool("spelunk-get-symbols", {
         "filePath": test_file
     })
     if result and result.get("Symbols"):
@@ -130,7 +130,7 @@ public class TestClass
             print(f"   - {sym.get('Kind')}: {sym.get('Name')}")
     
     print("\n8. Data flow analysis:")
-    result = client.call_tool("dotnet-get-data-flow", {
+    result = client.call_tool("spelunk-get-data-flow", {
         "file": test_file,
         "startLine": 7,
         "startColumn": 5,
@@ -157,7 +157,7 @@ public class TestClass
     print("="*60)
     
     print("\n9. Marking a statement:")
-    result = client.call_tool("dotnet-mark-statement", {
+    result = client.call_tool("spelunk-mark-statement", {
         "filePath": test_file,
         "line": 8,
         "column": 9,
@@ -170,7 +170,7 @@ public class TestClass
             print(f"⚠️ Could not mark: {result.get('Message')}")
     
     print("\n10. Finding marked statements:")
-    result = client.call_tool("dotnet-find-marked-statements", {})
+    result = client.call_tool("spelunk-find-marked-statements", {})
     if result:
         markers = result.get("Markers", [])
         if markers:
@@ -184,7 +184,7 @@ public class TestClass
     print("="*60)
     
     print("\n11. Finding references:")
-    result = client.call_tool("dotnet-find-references", {
+    result = client.call_tool("spelunk-find-references", {
         "symbolName": "WriteLine"
     })
     if result:
@@ -195,7 +195,7 @@ public class TestClass
             print("⚠️ No references found - may need more specific context")
     
     print("\n12. Finding method callers:")
-    result = client.call_tool("dotnet-find-method-callers", {
+    result = client.call_tool("spelunk-find-method-callers", {
         "methodName": "Method1"
     })
     if result:
@@ -211,7 +211,7 @@ public class TestClass
     print("="*60)
     
     print("\n13. Invalid file path:")
-    result = client.call_tool("dotnet-get-symbols", {
+    result = client.call_tool("spelunk-get-symbols", {
         "filePath": "/nonexistent/file.cs"
     })
     if result:
@@ -221,7 +221,7 @@ public class TestClass
             print("❌ Should have returned an error for invalid file")
     
     print("\n14. Invalid line number:")
-    result = client.call_tool("dotnet-replace-statement", {
+    result = client.call_tool("spelunk-replace-statement", {
         "filePath": test_file,
         "line": 9999,
         "column": 1,
@@ -235,7 +235,7 @@ public class TestClass
             print("❌ Should have returned an error for invalid line")
     
     print("\n15. Missing required parameter:")
-    result = client.call_tool("dotnet-find-method", {})
+    result = client.call_tool("spelunk-find-method", {})
     if result:
         if result.get("error"):
             print(f"✅ Parameter validation: {result['error'].get('message', 'Unknown')}")

@@ -51,7 +51,7 @@ public class MarkStatementResult
 }
 ```
 
-**Tool**: `dotnet-mark-statement`
+**Tool**: `spelunk-mark-statement`
 - Input: location (file/line/column), optional label
 - Process:
   1. Find statement at location
@@ -73,7 +73,7 @@ public class MarkedStatement
 }
 ```
 
-**Tool**: `dotnet-find-marked-statements`
+**Tool**: `spelunk-find-marked-statements`
 - Input: optional marker ID filter, optional file filter
 - Process:
   1. Search annotated trees for marked nodes
@@ -82,7 +82,7 @@ public class MarkedStatement
 - Output: List of marked statements with current locations
 
 #### 3. Unmark Statement
-**Tool**: `dotnet-unmark-statement`
+**Tool**: `spelunk-unmark-statement`
 - Input: marker ID
 - Process:
   1. Find nodes with the annotation

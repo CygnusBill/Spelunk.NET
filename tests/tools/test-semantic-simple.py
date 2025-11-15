@@ -16,7 +16,7 @@ def main():
     client = TestClient(allowed_paths=["test-workspace"])
     
     print("Loading workspace...")
-    result = client.call_tool("dotnet-load-workspace", {
+    result = client.call_tool("spelunk-load-workspace", {
         "path": os.path.abspath("test-workspace/TestProject.csproj")
     })
     
@@ -31,7 +31,7 @@ def main():
     
     # Now test query-syntax with semantic info
     print("\nTesting query-syntax with semantic info...")
-    result = client.call_tool("dotnet-query-syntax", {
+    result = client.call_tool("spelunk-query-syntax", {
         "roslynPath": "//method",
         "file": "test-workspace/Program.cs",
         "includeSemanticInfo": True

@@ -21,7 +21,7 @@ def test_fsharp_detection():
     print("Testing file:", fsharp_file)
     
     # Test query-syntax with F# file
-    result = client.call_tool("dotnet-query-syntax", {
+    result = client.call_tool("spelunk-query-syntax", {
         "file": fsharp_file,
         "roslynPath": "//function"
     })

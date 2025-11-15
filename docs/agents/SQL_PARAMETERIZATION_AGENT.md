@@ -339,17 +339,17 @@ dotnet add package Dapper
 ## Tools Required
 
 ### Essential Tools
-- `dotnet-find-statements` - Find SQL patterns
-- `dotnet-get-statement-context` - Understand code semantics
-- `dotnet-replace-statement` - Replace SQL construction
-- `dotnet-insert-statement` - Add parameter statements
-- `dotnet-edit-code` - Update method signatures
+- `spelunk-find-statements` - Find SQL patterns
+- `spelunk-get-statement-context` - Understand code semantics
+- `spelunk-replace-statement` - Replace SQL construction
+- `spelunk-insert-statement` - Add parameter statements
+- `spelunk-edit-code` - Update method signatures
 
 ### Supporting Tools  
-- `dotnet-find-method` - Locate containing methods
-- `dotnet-find-method-callers` - Find affected code
+- `spelunk-find-method` - Locate containing methods
+- `spelunk-find-method-callers` - Find affected code
 - `search_for_pattern` - Flexible SQL detection
-- `dotnet-analyze-syntax` - Parse complex expressions
+- `spelunk-analyze-syntax` - Parse complex expressions
 
 ## Success Criteria
 

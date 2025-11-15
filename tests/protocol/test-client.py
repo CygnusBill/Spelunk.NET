@@ -110,7 +110,7 @@ class McpTestClient:
                     self.send_request("tools/list", {})
                 elif command == "status":
                     self.send_request("tools/call", {
-                        "name": "dotnet-workspace-status",
+                        "name": "spelunk-workspace-status",
                         "arguments": {}
                     })
                 elif command == "load":
@@ -118,7 +118,7 @@ class McpTestClient:
                         print("Usage: load <path>")
                         continue
                     self.send_request("tools/call", {
-                        "name": "dotnet-load-workspace",
+                        "name": "spelunk-load-workspace",
                         "arguments": {"path": parts[1]}
                     })
                 elif command == "call":

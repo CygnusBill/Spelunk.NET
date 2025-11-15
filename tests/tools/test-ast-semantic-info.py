@@ -21,7 +21,7 @@ def test_ast_with_semantic_info():
     with TestClient() as client:
         # Load the test workspace
         print("Loading workspace...")
-        result = client.call_tool("dotnet-load-workspace", {
+        result = client.call_tool("spelunk-load-workspace", {
             "path": str(Path(__file__).parent.parent.parent / "test-workspace" / "TestProject.csproj")
         })
         
@@ -56,7 +56,7 @@ namespace TestProject
         
         # Test getting AST without semantic info
         print("\nGetting AST without semantic info...")
-        result = client.call_tool("dotnet-get-ast", {
+        result = client.call_tool("spelunk-get-ast", {
             "file": str(test_file),
             "depth": 3,
             "includeSemanticInfo": False
@@ -74,7 +74,7 @@ namespace TestProject
             
         # Test getting AST with semantic info
         print("\nGetting AST with semantic info...")
-        result = client.call_tool("dotnet-get-ast", {
+        result = client.call_tool("spelunk-get-ast", {
             "file": str(test_file),
             "depth": 3,
             "includeSemanticInfo": True

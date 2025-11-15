@@ -157,7 +157,7 @@ Process terminated with code: 137
 **Status**: Unresolved  
 
 #### Description
-Some tools (particularly `dotnet-load-workspace`) process requests successfully but don't return JSON responses to stdout, causing client timeouts.
+Some tools (particularly `spelunk-load-workspace`) process requests successfully but don't return JSON responses to stdout, causing client timeouts.
 
 #### Error Symptoms
 ```
@@ -168,7 +168,7 @@ TimeoutError: No response received within 60 seconds
 #### Technical Details
 - **Server Processing**: Logs show successful processing and completion
 - **Response Missing**: No JSON response written to stdout despite successful operation
-- **Affected Tools**: `dotnet-load-workspace` confirmed, potentially others
+- **Affected Tools**: `spelunk-load-workspace` confirmed, potentially others
 - **Working Tools**: `initialize` works correctly
 
 #### Investigation Needed

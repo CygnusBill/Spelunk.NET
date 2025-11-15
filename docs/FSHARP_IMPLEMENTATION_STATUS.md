@@ -9,8 +9,8 @@
    - ✅ F# Core libraries are present
 
 2. **Tool Definitions**
-   - ✅ `dotnet-fsharp-projects` - Tool defined but returns disabled message
-   - ✅ `dotnet-load-fsharp-project` - Tool defined but returns disabled message
+   - ✅ `spelunk-fsharp-projects` - Tool defined but returns disabled message
+   - ✅ `spelunk-load-fsharp-project` - Tool defined but returns disabled message
    - ✅ Tool descriptions exist in ToolDescriptions.cs
 
 3. **Detection Infrastructure**

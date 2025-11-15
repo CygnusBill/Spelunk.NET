@@ -3041,17 +3041,17 @@ public class MyHub : Hub
 ## Tools Required
 
 ### Essential Tools
-- `dotnet-find-statements` - Find I/O operations
-- `dotnet-edit-code` - Make methods async
-- `dotnet-replace-statement` - Add await keywords
-- `dotnet-find-method-callers` - Find propagation points
-- `dotnet-find-implementations` - Handle interfaces
+- `spelunk-find-statements` - Find I/O operations
+- `spelunk-edit-code` - Make methods async
+- `spelunk-replace-statement` - Add await keywords
+- `spelunk-find-method-callers` - Find propagation points
+- `spelunk-find-implementations` - Handle interfaces
 
 ### Supporting Tools
-- `dotnet-find-overrides` - Handle inheritance
-- `dotnet-get-data-flow` - Understand dependencies
-- `dotnet-find-references` - Update all usages
-- `dotnet-workspace-status` - Verify compilation
+- `spelunk-find-overrides` - Handle inheritance
+- `spelunk-get-data-flow` - Understand dependencies
+- `spelunk-find-references` - Update all usages
+- `spelunk-workspace-status` - Verify compilation
 
 ## Success Criteria
 

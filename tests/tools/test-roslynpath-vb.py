@@ -21,7 +21,7 @@ def test_roslynpath_vb():
     
     # Test 1: Load VB workspace
     print("\n1. Loading VB.NET workspace...")
-    load_result = client.call_tool("dotnet-load-workspace", {
+    load_result = client.call_tool("spelunk-load-workspace", {
         "path": vb_project_path
     })
     
@@ -34,7 +34,7 @@ def test_roslynpath_vb():
     
     # Test 2: Find VB.NET methods using language-agnostic RoslynPath
     print("\n2. Finding VB.NET methods using RoslynPath...")
-    methods_result = client.call_tool("dotnet-find-statements", {
+    methods_result = client.call_tool("spelunk-find-statements", {
         "pattern": "//method",
         "patternType": "roslynpath",
         "workspacePath": workspace_id
@@ -52,7 +52,7 @@ def test_roslynpath_vb():
     
     # Test 3: Find VB.NET Sub methods (void equivalents)
     print("\n3. Finding VB.NET Sub methods (void return type)...")
-    sub_result = client.call_tool("dotnet-find-statements", {
+    sub_result = client.call_tool("spelunk-find-statements", {
         "pattern": "//method[@returns='void']",
         "patternType": "roslynpath",
         "workspacePath": workspace_id
@@ -69,7 +69,7 @@ def test_roslynpath_vb():
     
     # Test 4: Find async methods across languages
     print("\n4. Finding async methods using RoslynPath...")
-    async_result = client.call_tool("dotnet-find-statements", {
+    async_result = client.call_tool("spelunk-find-statements", {
         "pattern": "//method[@async]",
         "patternType": "roslynpath",
         "workspacePath": workspace_id
@@ -87,7 +87,7 @@ def test_roslynpath_vb():
     
     # Test 5: Find public methods
     print("\n5. Finding public methods using RoslynPath...")
-    public_result = client.call_tool("dotnet-find-statements", {
+    public_result = client.call_tool("spelunk-find-statements", {
         "pattern": "//method[@public]",
         "patternType": "roslynpath",
         "workspacePath": workspace_id
@@ -104,7 +104,7 @@ def test_roslynpath_vb():
     
     # Test 6: Find properties with getters and setters
     print("\n6. Finding properties with getters using RoslynPath...")
-    property_result = client.call_tool("dotnet-find-statements", {
+    property_result = client.call_tool("spelunk-find-statements", {
         "pattern": "//property[@has-getter]",
         "patternType": "roslynpath",
         "workspacePath": workspace_id
@@ -121,7 +121,7 @@ def test_roslynpath_vb():
     
     # Test 7: Find Shared (static) methods in VB.NET
     print("\n7. Finding Shared (static) methods using RoslynPath...")
-    static_result = client.call_tool("dotnet-find-statements", {
+    static_result = client.call_tool("spelunk-find-statements", {
         "pattern": "//method[@static]",
         "patternType": "roslynpath",
         "workspacePath": workspace_id
@@ -138,7 +138,7 @@ def test_roslynpath_vb():
     
     # Test 8: Find abstract (MustInherit) classes
     print("\n8. Finding abstract classes using RoslynPath...")
-    abstract_result = client.call_tool("dotnet-find-statements", {
+    abstract_result = client.call_tool("spelunk-find-statements", {
         "pattern": "//class[@abstract]",
         "patternType": "roslynpath",
         "workspacePath": workspace_id
@@ -155,7 +155,7 @@ def test_roslynpath_vb():
     
     # Test 9: Find virtual (Overridable) methods
     print("\n9. Finding virtual methods using language-agnostic RoslynPath...")
-    virtual_result = client.call_tool("dotnet-find-statements", {
+    virtual_result = client.call_tool("spelunk-find-statements", {
         "pattern": "//method[@virtual]",
         "patternType": "roslynpath",
         "workspacePath": workspace_id

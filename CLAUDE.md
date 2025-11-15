@@ -154,7 +154,7 @@ The server provides two complementary tool categories:
 - ✅ XUnit test suite (46/55 tests passing, 9 tests for unimplemented function argument parsing)
 
 ### Previously Completed (Earlier 2025)
-- ✅ Fixed field symbol detection in `dotnet-get-symbols` (special handling for FieldDeclarationSyntax)
+- ✅ Fixed field symbol detection in `spelunk-get-symbols` (special handling for FieldDeclarationSyntax)
 - ✅ Fixed workspace parameter handling (now accepts both workspace IDs and paths)
 - ✅ Fixed SpelunkPath parser to handle `//method[Name]//statement` patterns correctly
 - ✅ Removed artificial restrictions on SpelunkPath patterns

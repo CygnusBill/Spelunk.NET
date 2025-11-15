@@ -80,7 +80,7 @@ class RoslynPathIntegrationTester:
             "id": 1,
             "method": "tools/call",
             "params": {
-                "name": "dotnet-load-workspace",
+                "name": "spelunk-load-workspace",
                 "arguments": {"path": filepath}
             }
         })
@@ -95,7 +95,7 @@ class RoslynPathIntegrationTester:
             "id": 2,
             "method": "tools/call",
             "params": {
-                "name": "dotnet-query-syntax",
+                "name": "spelunk-query-syntax",
                 "arguments": {
                     "file": filepath,
                     "roslynPath": roslyn_path

@@ -21,7 +21,7 @@ def test_diagnostics():
     
     # Test 1: Load workspace with compilation errors
     print("\n1. Loading workspace with intentional compilation errors...")
-    load_result = client.call_tool("dotnet-load-workspace", {
+    load_result = client.call_tool("spelunk-load-workspace", {
         "path": project_path
     })
     
@@ -35,7 +35,7 @@ def test_diagnostics():
     
     # Test 2: Get all diagnostics
     print("\n2. Getting all compilation diagnostics...")
-    all_diagnostics = client.call_tool("dotnet-get-diagnostics", {
+    all_diagnostics = client.call_tool("spelunk-get-diagnostics", {
         "workspaceId": workspace_id
     })
     
@@ -70,7 +70,7 @@ def test_diagnostics():
     
     # Test 3: Filter by file
     print("\n3. Testing file filtering...")
-    file_filtered = client.call_tool("dotnet-get-diagnostics", {
+    file_filtered = client.call_tool("spelunk-get-diagnostics", {
         "workspaceId": workspace_id,
         "filePath": "Program.cs"
     })
@@ -86,7 +86,7 @@ def test_diagnostics():
     
     # Test 4: Filter by severity
     print("\n4. Testing severity filtering...")
-    error_only = client.call_tool("dotnet-get-diagnostics", {
+    error_only = client.call_tool("spelunk-get-diagnostics", {
         "workspaceId": workspace_id,
         "severity": "Error"
     })
@@ -109,7 +109,7 @@ def test_diagnostics():
     
     # Test 5: Test with non-existent workspace
     print("\n5. Testing error handling with invalid workspace...")
-    invalid_workspace = client.call_tool("dotnet-get-diagnostics", {
+    invalid_workspace = client.call_tool("spelunk-get-diagnostics", {
         "workspaceId": "nonexistent-workspace"
     })
     

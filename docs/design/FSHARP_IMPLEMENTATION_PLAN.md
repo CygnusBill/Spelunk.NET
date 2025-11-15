@@ -19,11 +19,11 @@ This document outlines the plan for implementing F# introspection capabilities i
    - Supports F#-specific constructs (modules, let bindings, pattern matching)
 
 3. **F# Tool Implementations**
-   - `dotnet-fsharp-load-project`: Load F# projects
-   - `dotnet-fsharp-find-symbols`: Find F# symbols (functions, types, modules)
-   - `dotnet-fsharp-query`: Query F# AST with FSharpPath
-   - `dotnet-fsharp-get-ast`: Get F# AST structure
-   - `dotnet-fsharp-get-semantic-info`: Get type information
+   - `spelunk-fsharp-load-project`: Load F# projects
+   - `spelunk-fsharp-find-symbols`: Find F# symbols (functions, types, modules)
+   - `spelunk-fsharp-query`: Query F# AST with FSharpPath
+   - `spelunk-fsharp-get-ast`: Get F# AST structure
+   - `spelunk-fsharp-get-semantic-info`: Get type information
 
 ## Implementation Phases
 

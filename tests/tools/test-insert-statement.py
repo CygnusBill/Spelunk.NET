@@ -83,7 +83,7 @@ def main():
         # Load workspace
         print("\n=== Loading workspace ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet-load-workspace",
+            "name": "spelunk-load-workspace",
             "arguments": {
                 "path": "./test-workspace/TestProject.csproj"
             }
@@ -92,7 +92,7 @@ def main():
         # First, find a statement to use as reference
         print("\n=== Finding Main method for reference ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet-find-statements",
+            "name": "spelunk-find-statements",
             "arguments": {
                 "pattern": "Console.WriteLine"
             }
@@ -101,7 +101,7 @@ def main():
         # Test 1: Insert before Console.WriteLine
         print("\n=== Test 1: Insert before first Console.WriteLine ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet-insert-statement",
+            "name": "spelunk-insert-statement",
             "arguments": {
                 "position": "before",
                 "location": {
@@ -116,7 +116,7 @@ def main():
         # Test 2: Insert after Console.WriteLine  
         print("\n=== Test 2: Insert after Console.WriteLine ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet-insert-statement",
+            "name": "spelunk-insert-statement",
             "arguments": {
                 "position": "after",
                 "location": {
@@ -131,7 +131,7 @@ def main():
         # Test 3: Insert variable declaration
         print("\n=== Test 3: Insert variable before calculation ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet-insert-statement",
+            "name": "spelunk-insert-statement",
             "arguments": {
                 "position": "before",
                 "location": {
@@ -146,14 +146,14 @@ def main():
         # Test 4: Insert in method body
         print("\n=== Test 4: Insert logging in Add method ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet-find-statements",
+            "name": "spelunk-find-statements",
             "arguments": {
                 "pattern": "return a + b"
             }
         })
         
         response = send_request(process, "tools/call", {
-            "name": "dotnet-insert-statement",
+            "name": "spelunk-insert-statement",
             "arguments": {
                 "position": "before",
                 "location": {
@@ -168,7 +168,7 @@ def main():
         # Test 5: Test error handling - invalid syntax
         print("\n=== Test 5: Error handling - invalid syntax ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet-insert-statement",
+            "name": "spelunk-insert-statement",
             "arguments": {
                 "position": "after",
                 "location": {
@@ -183,7 +183,7 @@ def main():
         # Test 6: Test error handling - invalid position
         print("\n=== Test 6: Error handling - invalid position ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet-insert-statement",
+            "name": "spelunk-insert-statement",
             "arguments": {
                 "position": "middle",  # Invalid position
                 "location": {

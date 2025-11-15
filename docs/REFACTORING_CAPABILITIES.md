@@ -8,7 +8,7 @@ The MCP Dotnet toolset provides comprehensive refactoring capabilities through a
 
 ### 1. Symbol Renaming
 
-#### `dotnet-rename-symbol`
+#### `spelunk-rename-symbol`
 Safely renames any symbol (type, method, property, field) across the entire codebase with all references updated.
 
 **Capabilities:**
@@ -34,7 +34,7 @@ Safely renames any symbol (type, method, property, field) across the entire code
 
 ### 2. Structural Code Modifications
 
-#### `dotnet-edit-code`
+#### `spelunk-edit-code`
 Performs complex structural edits using Roslyn's syntax transformation capabilities.
 
 **Supported Operations:**
@@ -94,7 +94,7 @@ Add exception handling to method bodies:
 
 ### 3. Pattern-Based Transformations
 
-#### `dotnet-fix-pattern`
+#### `spelunk-fix-pattern`
 Apply semantic-aware transformations across the codebase using pattern matching.
 
 **Transformation Types:**
@@ -137,7 +137,7 @@ Apply semantic-aware transformations across the codebase using pattern matching.
 
 ### 4. Statement-Level Refactoring
 
-#### `dotnet-replace-statement`
+#### `spelunk-replace-statement`
 Replace specific statements while preserving context and formatting:
 ```json
 {
@@ -148,7 +148,7 @@ Replace specific statements while preserving context and formatting:
 }
 ```
 
-#### `dotnet-insert-statement`
+#### `spelunk-insert-statement`
 Insert new statements with proper context:
 ```json
 {
@@ -160,7 +160,7 @@ Insert new statements with proper context:
 }
 ```
 
-#### `dotnet-remove-statement`
+#### `spelunk-remove-statement`
 Clean removal of statements:
 ```json
 {
@@ -282,7 +282,7 @@ create_extracted_method(params, returns)
 
 ### Current Limitations
 
-1. **Multi-Statement Replacement**: `dotnet-replace-statement` only uses the first statement when given multiple
+1. **Multi-Statement Replacement**: `spelunk-replace-statement` only uses the first statement when given multiple
    - **Workaround**: Use multiple replace operations or insert + remove
 
 2. **No Direct Extract Method**: Not a single-operation refactoring

@@ -16,14 +16,14 @@ def test_query_syntax_semantic(client):
     """Test query-syntax with semantic info"""
     
     # Load workspace first
-    workspace_result = client.call_tool("dotnet-load-workspace", {
+    workspace_result = client.call_tool("spelunk-load-workspace", {
         "path": os.path.abspath("test-workspace/TestProject.csproj")
     })
     if not workspace_result.get("success"):
         raise AssertionError(f"Failed to load workspace: {workspace_result.get('message')}")
     
     # Test 1: Query methods with semantic info
-    result = client.call_tool("dotnet-query-syntax", {
+    result = client.call_tool("spelunk-query-syntax", {
         "roslynPath": "//method",
         "file": "test-workspace/Program.cs",
         "includeSemanticInfo": True
@@ -51,7 +51,7 @@ def test_query_syntax_semantic(client):
 def test_navigate_semantic(client):
     """Test navigate with semantic info"""
     
-    result = client.call_tool("dotnet-navigate", {
+    result = client.call_tool("spelunk-navigate", {
         "from": {
             "file": "test-workspace/Program.cs",
             "line": 10,
@@ -79,7 +79,7 @@ def test_navigate_semantic(client):
 def test_get_ast_semantic(client):
     """Test get-ast with semantic info"""
     
-    result = client.call_tool("dotnet-get-ast", {
+    result = client.call_tool("spelunk-get-ast", {
         "file": "test-workspace/Program.cs",
         "root": "//method[Main]",
         "depth": 2,
@@ -111,7 +111,7 @@ def test_get_ast_semantic(client):
 def test_semantic_info_without_flag(client):
     """Test that semantic info is not included when flag is false"""
     
-    result = client.call_tool("dotnet-query-syntax", {
+    result = client.call_tool("spelunk-query-syntax", {
         "roslynPath": "//method",
         "file": "test-workspace/Program.cs"
         # includeSemanticInfo not specified, defaults to false
@@ -133,7 +133,7 @@ def test_semantic_info_types(client):
     """Test various semantic info for different node types"""
     
     # Test variable declarations
-    result = client.call_tool("dotnet-query-syntax", {
+    result = client.call_tool("spelunk-query-syntax", {
         "roslynPath": "//local-declaration-statement",
         "file": "test-workspace/Program.cs",
         "includeSemanticInfo": True

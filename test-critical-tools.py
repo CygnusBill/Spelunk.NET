@@ -59,7 +59,7 @@ def test_critical_tools():
         "id": 2,
         "method": "tools/call",
         "params": {
-            "name": "dotnet-load-workspace",
+            "name": "spelunk-load-workspace",
             "arguments": {
                 "path": "/Users/bill/Repos/McpDotnet/test-workspace/TestProject.csproj"
             }
@@ -88,7 +88,7 @@ def test_critical_tools():
         "id": 3,
         "method": "tools/call",
         "params": {
-            "name": "dotnet-find-statements",
+            "name": "spelunk-find-statements",
             "arguments": {
                 "pattern": "//method[Test*]//statement",
                 "patternType": "roslynpath"
@@ -136,7 +136,7 @@ public class DataFlowTest {
         "id": 4,
         "method": "tools/call",
         "params": {
-            "name": "dotnet-get-data-flow",
+            "name": "spelunk-get-data-flow",
             "arguments": {
                 "file": "/Users/bill/Repos/McpDotnet/test-workspace/DataFlowTest.cs",
                 "startLine": 3,
@@ -179,7 +179,7 @@ public class DataFlowTest {
         "id": 5,
         "method": "tools/call",
         "params": {
-            "name": "dotnet-get-symbols",
+            "name": "spelunk-get-symbols",
             "arguments": {
                 "filePath": "/nonexistent/file.cs"
             }
@@ -210,7 +210,7 @@ public class DataFlowTest {
         "id": 6,
         "method": "tools/call",
         "params": {
-            "name": "dotnet-mark-statement",
+            "name": "spelunk-mark-statement",
             "arguments": {
                 "filePath": "/Users/bill/Repos/McpDotnet/test-workspace/DataFlowTest.cs",
                 "line": 4,
@@ -239,7 +239,7 @@ public class DataFlowTest {
             "id": 7,
             "method": "tools/call",
             "params": {
-                "name": "dotnet-find-marked-statements",
+                "name": "spelunk-find-marked-statements",
                 "arguments": {}
             }
         }

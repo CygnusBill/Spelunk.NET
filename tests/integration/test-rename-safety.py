@@ -63,7 +63,7 @@ def test_rename_safety():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet-load-workspace",
+                "name": "spelunk-load-workspace",
                 "arguments": {"path": "./src/McpRoslyn/McpRoslyn.sln"}
             },
             "id": 2
@@ -85,7 +85,7 @@ def test_rename_safety():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet-rename-symbol",
+                "name": "spelunk-rename-symbol",
                 "arguments": {
                     "oldName": "GetUserAsync",
                     "newName": "class",
@@ -107,7 +107,7 @@ def test_rename_safety():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet-rename-symbol",
+                "name": "spelunk-rename-symbol",
                 "arguments": {
                     "oldName": "string",
                     "newName": "MyString",
@@ -128,7 +128,7 @@ def test_rename_safety():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet-rename-symbol",
+                "name": "spelunk-rename-symbol",
                 "arguments": {
                     "oldName": "UserController",
                     "newName": "UserManager",
@@ -149,7 +149,7 @@ def test_rename_safety():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet-rename-symbol",
+                "name": "spelunk-rename-symbol",
                 "arguments": {
                     "oldName": "GetDefaultUserName",
                     "newName": "Name",
@@ -171,7 +171,7 @@ def test_rename_safety():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet-rename-symbol",
+                "name": "spelunk-rename-symbol",
                 "arguments": {
                     "oldName": "GetByIdAsync",
                     "newName": "FetchByIdAsync",
@@ -192,7 +192,7 @@ def test_rename_safety():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet-rename-symbol",
+                "name": "spelunk-rename-symbol",
                 "arguments": {
                     "oldName": "ProcessUser",
                     "newName": "",

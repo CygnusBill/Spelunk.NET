@@ -71,14 +71,14 @@ namespace AstTestNamespace
             f.write(csproj_content)
         
         # Load the project
-        result = client.call_tool("dotnet-load-workspace", {
+        result = client.call_tool("spelunk-load-workspace", {
             "path": csproj_file
         })
         assert result["success"], f"Failed to load workspace: {result.get('error')}"
         
         # Test 1: Get AST for class with semantic info
         print("\n=== Test 1: Get AST for class with semantic info ===")
-        result = client.call_tool("dotnet-get-ast", {
+        result = client.call_tool("spelunk-get-ast", {
             "file": test_file,
             "root": "//class[@name='DataProcessor']",
             "depth": 2,
@@ -120,7 +120,7 @@ namespace AstTestNamespace
         
         # Test 2: Get AST for method body with expression semantics
         print("\n=== Test 2: Get AST for method body with expression semantics ===")
-        result = client.call_tool("dotnet-get-ast", {
+        result = client.call_tool("spelunk-get-ast", {
             "file": test_file,
             "root": "//method[@name='Process']/block",
             "depth": 3,
@@ -164,7 +164,7 @@ namespace AstTestNamespace
         
         # Test 3: Get AST without semantic info (default)
         print("\n=== Test 3: Get AST without semantic info (default) ===")
-        result = client.call_tool("dotnet-get-ast", {
+        result = client.call_tool("spelunk-get-ast", {
             "file": test_file,
             "root": "//interface",
             "depth": 2
@@ -181,7 +181,7 @@ namespace AstTestNamespace
         
         # Test 4: Get full file AST with semantic info (performance test)
         print("\n=== Test 4: Get full file AST with semantic info ===")
-        result = client.call_tool("dotnet-get-ast", {
+        result = client.call_tool("spelunk-get-ast", {
             "file": test_file,
             "depth": 10,  # Deep traversal
             "includeSemanticInfo": True
@@ -212,7 +212,7 @@ namespace AstTestNamespace
         
         # Test 5: Verify semantic info propagates to expression level
         print("\n=== Test 5: Verify semantic info at expression level ===")
-        result = client.call_tool("dotnet-get-ast", {
+        result = client.call_tool("spelunk-get-ast", {
             "file": test_file,
             "root": "//invocation[@name='Where']",
             "depth": 2,

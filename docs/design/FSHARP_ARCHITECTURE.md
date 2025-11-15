@@ -204,7 +204,7 @@ When finding references across languages:
 **Problem**: MSBuildWorkspace can't load F# projects
 **Solution**: 
 - Detect and track F# projects separately
-- Provide explicit `dotnet-load-fsharp-project` tool
+- Provide explicit `spelunk-load-fsharp-project` tool
 - Report skipped projects with reasons
 
 ### Challenge 2: Different AST Structures

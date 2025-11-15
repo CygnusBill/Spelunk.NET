@@ -46,14 +46,14 @@ def main():
     
     try:
         # Load workspace
-        result = client.call_tool("dotnet-load-workspace", {
+        result = client.call_tool("spelunk-load-workspace", {
             "path": os.path.abspath("../test-workspace/TestProject.csproj")
         })
         print(f"Workspace loaded: {result}")
         
         # Get AST
         print("\n=== Full AST Structure ===")
-        result = client.call_tool("dotnet-get-ast", {
+        result = client.call_tool("spelunk-get-ast", {
             "file": test_file,
             "depth": 6
         })
@@ -83,7 +83,7 @@ def main():
         
         # Position (15,13) - should be in "var x = 1 + 2;"
         print("\nNavigating from position (15,13):")
-        result = client.call_tool("dotnet-navigate", {
+        result = client.call_tool("spelunk-navigate", {
             "from": {
                 "file": test_file,
                 "line": 15,
@@ -98,7 +98,7 @@ def main():
             print(f"  Path: {nav.get('path')}")
         
         # Test following-sibling
-        result = client.call_tool("dotnet-navigate", {
+        result = client.call_tool("spelunk-navigate", {
             "from": {
                 "file": test_file,
                 "line": 15,

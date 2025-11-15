@@ -42,70 +42,70 @@ The server leverages Roslyn's unique ability to seamlessly move between syntacti
 ## Available Tools
 
 ### Search & Discovery
-- `dotnet/find-class` - Find classes by name with wildcards
-- `dotnet/find-method` - Find methods by name with wildcards
-- `dotnet/find-property` - Find properties by name with wildcards
-- `dotnet/find-references` - Find all references to any symbol
-- `dotnet/find-implementations` - Find all implementations of an interface
-- `dotnet/find-overrides` - Find all overrides of a virtual/abstract method
-- `dotnet/find-derived-types` - Find all types that inherit from a base class
+- `spelunk/find-class` - Find classes by name with wildcards
+- `spelunk/find-method` - Find methods by name with wildcards
+- `spelunk/find-property` - Find properties by name with wildcards
+- `spelunk/find-references` - Find all references to any symbol
+- `spelunk/find-implementations` - Find all implementations of an interface
+- `spelunk/find-overrides` - Find all overrides of a virtual/abstract method
+- `spelunk/find-derived-types` - Find all types that inherit from a base class
 
 ### Call Analysis
-- `dotnet/find-method-calls` - Find what methods a given method calls
-- `dotnet/find-method-callers` - Find what methods call a given method
+- `spelunk/find-method-calls` - Find what methods a given method calls
+- `spelunk/find-method-callers` - Find what methods call a given method
 
 ### Statement-Level Operations
-- `dotnet/find-statements` - Find statements matching patterns with stable IDs
-- `dotnet/replace-statement` - Replace any statement precisely
-- `dotnet/insert-statement` - Insert statements before/after existing ones
-- `dotnet/remove-statement` - Remove statements while preserving comments
+- `spelunk/find-statements` - Find statements matching patterns with stable IDs
+- `spelunk/replace-statement` - Replace any statement precisely
+- `spelunk/insert-statement` - Insert statements before/after existing ones
+- `spelunk/remove-statement` - Remove statements while preserving comments
 
 ### SpelunkPath Query Tools
-- `dotnet/query-syntax` - Query AST with XPath-style expressions
-- `dotnet/navigate` - Navigate from a position using axes
-- `dotnet/get-ast` - Get AST structure at any level
-- `dotnet/mark-statement` - Mark statements with ephemeral markers
-- `dotnet/find-marked-statements` - Find previously marked statements
-- `dotnet/unmark-statement` - Remove specific markers
-- `dotnet/clear-markers` - Clear all markers
+- `spelunk/query-syntax` - Query AST with XPath-style expressions
+- `spelunk/navigate` - Navigate from a position using axes
+- `spelunk/get-ast` - Get AST structure at any level
+- `spelunk/mark-statement` - Mark statements with ephemeral markers
+- `spelunk/find-marked-statements` - Find previously marked statements
+- `spelunk/unmark-statement` - Remove specific markers
+- `spelunk/clear-markers` - Clear all markers
 
 ### Code Modification
-- `dotnet/rename-symbol` - Safely rename any symbol with full validation
+- `spelunk/rename-symbol` - Safely rename any symbol with full validation
   - Prevents renaming system types
   - Validates identifiers (including @keyword support)
   - Shows impact analysis
   - Detects naming conflicts
   
-- `dotnet/edit-code` - Perform surgical code edits
+- `spelunk/edit-code` - Perform surgical code edits
   - `add-method` - Add methods to classes
   - `add-property` - Add properties to classes
   - `make-async` - Convert synchronous methods to async
   
-- `dotnet/fix-pattern` - Find and fix code patterns across the codebase
+- `spelunk/fix-pattern` - Find and fix code patterns across the codebase
 
 ### Workspace Management
-- `dotnet/load-workspace` - Load a .NET solution or project
-- `dotnet/analyze-syntax` - Get syntax tree information
-- `dotnet/workspace-status` - Check workspace loading status
+- `spelunk/load-workspace` - Load a .NET solution or project
+- `spelunk/analyze-syntax` - Get syntax tree information
+- `spelunk/workspace-status` - Check workspace loading status
 
 ### F# Support
-- `dotnet-fsharp-load-project` - Load an F# project (.fsproj)
-- `dotnet-fsharp-find-symbols` - Find F# symbols with pattern matching
-- `dotnet-fsharp-query` - Query F# AST using FSharpPath expressions
-- `dotnet-fsharp-get-ast` - Get F# abstract syntax tree structure
+- `spelunk-fsharp-load-project` - Load an F# project (.fsproj)
+- `spelunk-fsharp-find-symbols` - Find F# symbols with pattern matching
+- `spelunk-fsharp-query` - Query F# AST using FSharpPath expressions
+- `spelunk-fsharp-get-ast` - Get F# abstract syntax tree structure
 
 ### Advanced AST Navigation
-- `dotnet/query-syntax` - Query AST using enhanced SpelunkPath expressions
+- `spelunk/query-syntax` - Query AST using enhanced SpelunkPath expressions
   - Support for expression-level nodes (binary-expression, literal, identifier)
   - Advanced predicates (@operator, @literal-value, @contains)
   - Find specific patterns like null checks, string comparisons
 
-- `dotnet/navigate` - Navigate from any position using XPath-style axes
+- `spelunk/navigate` - Navigate from any position using XPath-style axes
   - Navigate to parent, ancestor, child, descendant nodes
   - Find siblings with following-sibling:: and preceding-sibling::
   - Chain navigation paths like "parent::method/following-sibling::method"
 
-- `dotnet/get-ast` - Get abstract syntax tree structure
+- `spelunk/get-ast` - Get abstract syntax tree structure
   - Visualize code hierarchy and node relationships
   - Debug SpelunkPath queries
   - Understand AST node types for pattern matching
@@ -211,7 +211,7 @@ For detailed Docker usage, see [DOCKER.md](DOCKER.md).
 ```json
 // Load a workspace
 {
-  "tool": "dotnet/load-workspace",
+  "tool": "spelunk/load-workspace",
   "arguments": {
     "path": "/path/to/MySolution.sln"
   }
@@ -219,7 +219,7 @@ For detailed Docker usage, see [DOCKER.md](DOCKER.md).
 
 // Find all references to a method
 {
-  "tool": "dotnet/find-references", 
+  "tool": "spelunk/find-references", 
   "arguments": {
     "symbolName": "GetUserAsync",
     "symbolType": "method",
@@ -232,7 +232,7 @@ For detailed Docker usage, see [DOCKER.md](DOCKER.md).
 ```json
 // Find all Console.WriteLine statements
 {
-  "tool": "dotnet/find-statements",
+  "tool": "spelunk/find-statements",
   "arguments": {
     "pattern": "Console.WriteLine",
     "patternType": "text"
@@ -241,7 +241,7 @@ For detailed Docker usage, see [DOCKER.md](DOCKER.md).
 
 // Replace a specific statement
 {
-  "tool": "dotnet/replace-statement",
+  "tool": "spelunk/replace-statement",
   "arguments": {
     "location": {
       "file": "/path/to/Program.cs",
@@ -254,7 +254,7 @@ For detailed Docker usage, see [DOCKER.md](DOCKER.md).
 
 // Insert validation at the start of a method
 {
-  "tool": "dotnet/insert-statement",
+  "tool": "spelunk/insert-statement",
   "arguments": {
     "position": "before",
     "location": {
@@ -268,7 +268,7 @@ For detailed Docker usage, see [DOCKER.md](DOCKER.md).
 
 // Mark statements for multi-step refactoring
 {
-  "tool": "dotnet/mark-statement",
+  "tool": "spelunk/mark-statement",
   "arguments": {
     "location": {
       "file": "/path/to/OrderService.cs",
@@ -284,7 +284,7 @@ For detailed Docker usage, see [DOCKER.md](DOCKER.md).
 ```json
 // Add a method to a class
 {
-  "tool": "dotnet/edit-code",
+  "tool": "spelunk/edit-code",
   "arguments": {
     "file": "Services/UserService.cs",
     "operation": "add-method",
@@ -295,7 +295,7 @@ For detailed Docker usage, see [DOCKER.md](DOCKER.md).
 
 // Fix a pattern across the codebase
 {
-  "tool": "dotnet/fix-pattern",
+  "tool": "spelunk/fix-pattern",
   "arguments": {
     "findPattern": "DateTime.Now",
     "replacePattern": "DateTime.UtcNow",

@@ -44,41 +44,41 @@ The MCP Roslyn Server provides tools for inspecting, analyzing, and eventually r
 
 | ID | Priority | Status | Tool Name | Description |
 |---|---|---|---|---|
-| MCP-ROSLYN-TOOL-001 | P0 | 📋 Specified | `dotnet-analyze-syntax` | Analyze syntax tree of C#/VB.NET files |
-| MCP-ROSLYN-TOOL-002 | P0 | 📋 Specified | `dotnet-get-symbols` | Retrieve symbol information from code |
-| MCP-ROSLYN-TOOL-003 | P0 | 📋 Specified | `dotnet-find-references` | Find all references to a symbol |
-| MCP-ROSLYN-TOOL-004 | P0 | 📋 Specified | `dotnet-get-diagnostics` | Retrieve compiler diagnostics and warnings |
+| MCP-ROSLYN-TOOL-001 | P0 | 📋 Specified | `spelunk-analyze-syntax` | Analyze syntax tree of C#/VB.NET files |
+| MCP-ROSLYN-TOOL-002 | P0 | 📋 Specified | `spelunk-get-symbols` | Retrieve symbol information from code |
+| MCP-ROSLYN-TOOL-003 | P0 | 📋 Specified | `spelunk-find-references` | Find all references to a symbol |
+| MCP-ROSLYN-TOOL-004 | P0 | 📋 Specified | `spelunk-get-diagnostics` | Retrieve compiler diagnostics and warnings |
 
 ### Code Understanding Tools
 
 | ID | Priority | Status | Tool Name | Description |
 |---|---|---|---|---|
-| MCP-ROSLYN-TOOL-005 | P1 | 📋 Specified | `dotnet-get-type-hierarchy` | Retrieve inheritance hierarchy |
-| MCP-ROSLYN-TOOL-006 | P1 | 📋 Specified | `dotnet-analyze-dependencies` | Analyze project dependencies |
-| MCP-ROSLYN-TOOL-007 | P2 | 📋 Specified | `dotnet-get-metrics` | Calculate code metrics |
+| MCP-ROSLYN-TOOL-005 | P1 | 📋 Specified | `spelunk-get-type-hierarchy` | Retrieve inheritance hierarchy |
+| MCP-ROSLYN-TOOL-006 | P1 | 📋 Specified | `spelunk-analyze-dependencies` | Analyze project dependencies |
+| MCP-ROSLYN-TOOL-007 | P2 | 📋 Specified | `spelunk-get-metrics` | Calculate code metrics |
 
 ### Navigation Tools
 
 | ID | Priority | Status | Tool Name | Description |
 |---|---|---|---|---|
-| MCP-ROSLYN-TOOL-008 | P1 | 📋 Specified | `dotnet-go-to-definition` | Navigate to symbol definition |
-| MCP-ROSLYN-TOOL-009 | P1 | 📋 Specified | `dotnet-find-implementations` | Find interface implementations |
+| MCP-ROSLYN-TOOL-008 | P1 | 📋 Specified | `spelunk-go-to-definition` | Navigate to symbol definition |
+| MCP-ROSLYN-TOOL-009 | P1 | 📋 Specified | `spelunk-find-implementations` | Find interface implementations |
 
 ### Workspace Management Tools
 
 | ID | Priority | Status | Tool Name | Description |
 |---|---|---|---|---|
-| MCP-ROSLYN-TOOL-010 | P0 | 📋 Specified | `dotnet-load-workspace` | Load solution/project into workspace |
-| MCP-ROSLYN-TOOL-011 | P0 | 📋 Specified | `dotnet-workspace-status` | Get loading progress and workspace info |
-| MCP-ROSLYN-TOOL-012 | P1 | 📋 Specified | `dotnet-unload-workspace` | Remove workspace from memory |
+| MCP-ROSLYN-TOOL-010 | P0 | 📋 Specified | `spelunk-load-workspace` | Load solution/project into workspace |
+| MCP-ROSLYN-TOOL-011 | P0 | 📋 Specified | `spelunk-workspace-status` | Get loading progress and workspace info |
+| MCP-ROSLYN-TOOL-012 | P1 | 📋 Specified | `spelunk-unload-workspace` | Remove workspace from memory |
 
 ### Future Tools (Phase 2)
 
 | ID | Priority | Status | Tool Name | Description |
 |---|---|---|---|---|
-| MCP-ROSLYN-TOOL-013 | P2 | 📋 Specified | `dotnet-refactor` | Code refactoring operations |
-| MCP-ROSLYN-TOOL-014 | P2 | 📋 Specified | `dotnet-quick-fix` | Apply compiler-suggested fixes |
-| MCP-ROSLYN-TOOL-015 | P3 | 📋 Specified | `dotnet-format` | Format code per EditorConfig |
+| MCP-ROSLYN-TOOL-013 | P2 | 📋 Specified | `spelunk-refactor` | Code refactoring operations |
+| MCP-ROSLYN-TOOL-014 | P2 | 📋 Specified | `spelunk-quick-fix` | Apply compiler-suggested fixes |
+| MCP-ROSLYN-TOOL-015 | P3 | 📋 Specified | `spelunk-format` | Format code per EditorConfig |
 
 ## Performance Requirements
 
@@ -124,7 +124,7 @@ The MCP Roslyn Server provides tools for inspecting, analyzing, and eventually r
 
 ## Detailed Tool Specifications
 
-### MCP-ROSLYN-TOOL-001: `dotnet-analyze-syntax`
+### MCP-ROSLYN-TOOL-001: `spelunk-analyze-syntax`
 
 **Parameters:**
 ```typescript
@@ -145,7 +145,7 @@ The MCP Roslyn Server provides tools for inspecting, analyzing, and eventually r
 }
 ```
 
-### MCP-ROSLYN-TOOL-002: `dotnet-get-symbols`
+### MCP-ROSLYN-TOOL-002: `spelunk-get-symbols`
 
 **Parameters:**
 ```typescript
@@ -169,7 +169,7 @@ The MCP Roslyn Server provides tools for inspecting, analyzing, and eventually r
 }
 ```
 
-### MCP-ROSLYN-TOOL-003: `dotnet-find-references`
+### MCP-ROSLYN-TOOL-003: `spelunk-find-references`
 
 **Parameters:**
 ```typescript
@@ -193,7 +193,7 @@ The MCP Roslyn Server provides tools for inspecting, analyzing, and eventually r
 }
 ```
 
-### MCP-ROSLYN-TOOL-010: `dotnet-load-workspace`
+### MCP-ROSLYN-TOOL-010: `spelunk-load-workspace`
 
 **Parameters:**
 ```typescript
@@ -214,7 +214,7 @@ The MCP Roslyn Server provides tools for inspecting, analyzing, and eventually r
 }
 ```
 
-### MCP-ROSLYN-TOOL-011: `dotnet-workspace-status`
+### MCP-ROSLYN-TOOL-011: `spelunk-workspace-status`
 
 **Parameters:**
 ```typescript

@@ -68,7 +68,7 @@ def test_find_patterns():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet-load-workspace",
+                "name": "spelunk-load-workspace",
                 "arguments": {"path": "./src/McpRoslyn/McpRoslyn.sln"}
             },
             "id": 2
@@ -98,7 +98,7 @@ def test_find_patterns():
                 "jsonrpc": "2.0",
                 "method": "tools/call",
                 "params": {
-                    "name": "dotnet-find-class",
+                    "name": "spelunk-find-class",
                     "arguments": {"pattern": pattern}
                 },
                 "id": id_counter

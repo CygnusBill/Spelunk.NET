@@ -37,7 +37,7 @@ public static class DotnetTools
         });
     }
 
-    [McpServerTool(Name = "dotnet-load-workspace"), Description(ToolDescriptions.LoadWorkspace)]
+    [McpServerTool(Name = "spelunk-load-workspace"), Description(ToolDescriptions.LoadWorkspace)]
     public static async Task<string> DotnetLoadWorkspace(
         [Description("Full path to the solution (.sln) or project file (relative paths are not supported)")] string path,
         [Description("Optional workspace ID")] string? workspaceId = null)
@@ -76,7 +76,7 @@ public static class DotnetTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-workspace-status"), Description(ToolDescriptions.WorkspaceStatus)]
+    [McpServerTool(Name = "spelunk-workspace-status"), Description(ToolDescriptions.WorkspaceStatus)]
     public static string DotnetWorkspaceStatus(
         [Description("Optional workspace ID to get specific status")] string? workspaceId = null)
     {
@@ -89,7 +89,7 @@ public static class DotnetTools
         return JsonSerializer.Serialize(status, new JsonSerializerOptions { WriteIndented = true });
     }
 
-    [McpServerTool(Name = "dotnet-analyze-syntax"), Description(ToolDescriptions.AnalyzeSyntax)]
+    [McpServerTool(Name = "spelunk-analyze-syntax"), Description(ToolDescriptions.AnalyzeSyntax)]
     public static async Task<string> DotnetAnalyzeSyntax(
         [Description("Path to the source file")] string filePath,
         [Description("Workspace ID for context")] string? workspaceId = null)
@@ -111,7 +111,7 @@ public static class DotnetTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-get-symbols"), Description(ToolDescriptions.GetSymbols)]
+    [McpServerTool(Name = "spelunk-get-symbols"), Description(ToolDescriptions.GetSymbols)]
     public static async Task<string> DotnetGetSymbols(
         [Description("Path to the source file")] string filePath,
         [Description("Workspace ID for context")] string? workspaceId = null,
@@ -143,7 +143,7 @@ public static class DotnetTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-find-class"), Description(ToolDescriptions.FindClass)]
+    [McpServerTool(Name = "spelunk-find-class"), Description(ToolDescriptions.FindClass)]
     public static async Task<string> DotnetFindClass(
         [Description("Pattern to match class names (supports wildcards like User*)")] string pattern,
         [Description("Workspace ID for context")] string? workspaceId = null)
@@ -165,7 +165,7 @@ public static class DotnetTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-find-method"), Description(ToolDescriptions.FindMethod)]
+    [McpServerTool(Name = "spelunk-find-method"), Description(ToolDescriptions.FindMethod)]
     public static async Task<string> DotnetFindMethod(
         [Description("Pattern to match method names (supports wildcards like Get*)")] string methodPattern,
         [Description("Optional pattern to match class names")] string? classPattern = null,
@@ -188,7 +188,7 @@ public static class DotnetTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-find-property"), Description(ToolDescriptions.FindProperty)]
+    [McpServerTool(Name = "spelunk-find-property"), Description(ToolDescriptions.FindProperty)]
     public static async Task<string> DotnetFindProperty(
         [Description("Pattern to match property names (supports wildcards like Name*)")] string propertyPattern,
         [Description("Optional pattern to match class names")] string? classPattern = null,
@@ -211,7 +211,7 @@ public static class DotnetTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-find-method-calls"), Description(ToolDescriptions.FindMethodCalls)]
+    [McpServerTool(Name = "spelunk-find-method-calls"), Description(ToolDescriptions.FindMethodCalls)]
     public static async Task<string> DotnetFindMethodCalls(
         [Description("Method name to find calls to")] string methodName,
         [Description("Optional class name that contains the method")] string? className = null,
@@ -234,7 +234,7 @@ public static class DotnetTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-find-method-callers"), Description(ToolDescriptions.FindMethodCallers)]
+    [McpServerTool(Name = "spelunk-find-method-callers"), Description(ToolDescriptions.FindMethodCallers)]
     public static async Task<string> DotnetFindMethodCallers(
         [Description("Method name to find callers of")] string methodName,
         [Description("Optional class name that contains the method")] string? className = null,
@@ -257,7 +257,7 @@ public static class DotnetTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-find-references"), Description(ToolDescriptions.FindReferences)]
+    [McpServerTool(Name = "spelunk-find-references"), Description(ToolDescriptions.FindReferences)]
     public static async Task<string> DotnetFindReferences(
         [Description("Symbol name to find references to")] string symbolName,
         [Description("Type of symbol (class, method, property, field, etc.)")] string? symbolType = null,
@@ -281,7 +281,7 @@ public static class DotnetTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-find-implementations"), Description(ToolDescriptions.FindImplementations)]
+    [McpServerTool(Name = "spelunk-find-implementations"), Description(ToolDescriptions.FindImplementations)]
     public static async Task<string> DotnetFindImplementations(
         [Description("Interface name to find implementations of")] string interfaceName,
         [Description("Workspace ID for context")] string? workspaceId = null)
@@ -303,7 +303,7 @@ public static class DotnetTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-find-overrides"), Description(ToolDescriptions.FindOverrides)]
+    [McpServerTool(Name = "spelunk-find-overrides"), Description(ToolDescriptions.FindOverrides)]
     public static async Task<string> DotnetFindOverrides(
         [Description("Method name to find overrides of")] string methodName,
         [Description("Class name that contains the base method")] string className,
@@ -326,7 +326,7 @@ public static class DotnetTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-find-derived-types"), Description(ToolDescriptions.FindDerivedTypes)]
+    [McpServerTool(Name = "spelunk-find-derived-types"), Description(ToolDescriptions.FindDerivedTypes)]
     public static async Task<string> DotnetFindDerivedTypes(
         [Description("Base class name to find derived types of")] string baseClassName,
         [Description("Workspace ID for context")] string? workspaceId = null)
@@ -348,7 +348,7 @@ public static class DotnetTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-rename-symbol"), Description(ToolDescriptions.RenameSymbol)]
+    [McpServerTool(Name = "spelunk-rename-symbol"), Description(ToolDescriptions.RenameSymbol)]
     public static async Task<string> DotnetRenameSymbol(
         [Description("Current name of the symbol")] string oldName,
         [Description("New name for the symbol")] string newName,
@@ -374,7 +374,7 @@ public static class DotnetTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-edit-code"), Description(ToolDescriptions.EditCode)]
+    [McpServerTool(Name = "spelunk-edit-code"), Description(ToolDescriptions.EditCode)]
     public static async Task<string> DotnetEditCode(
         [Description("File path to edit")] string file,
         [Description("Operation: add-method, modify-method, remove-method, add-property, etc.")] string operation,
@@ -408,7 +408,7 @@ public static class DotnetTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-fix-pattern"), Description(ToolDescriptions.FixPattern)]
+    [McpServerTool(Name = "spelunk-fix-pattern"), Description(ToolDescriptions.FixPattern)]
     public static async Task<string> DotnetFixPattern(
         [Description("Pattern to find (supports regex)")] string findPattern,
         [Description("Replacement pattern")] string replacePattern,
@@ -433,7 +433,7 @@ public static class DotnetTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-find-statements"), Description(ToolDescriptions.FindStatements)]
+    [McpServerTool(Name = "spelunk-find-statements"), Description(ToolDescriptions.FindStatements)]
     public static async Task<string> DotnetFindStatements(
         [Description("Text, regex, or SpelunkPath pattern to match in statements. SpelunkPath allows XPath-style queries like '//method[Get*]//statement[@type=ThrowStatement]'")] string pattern,
         [Description("Pattern type: 'text' (default), 'regex', or 'spelunkpath' for XPath-style queries")] string patternType = "text",
@@ -466,7 +466,7 @@ public static class DotnetTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-replace-statement"), Description(ToolDescriptions.ReplaceStatement)]
+    [McpServerTool(Name = "spelunk-replace-statement"), Description(ToolDescriptions.ReplaceStatement)]
     public static async Task<string> DotnetReplaceStatement(
         [Description("File path containing the statement")] string filePath,
         [Description("Line number (1-based)")] int line,
@@ -492,7 +492,7 @@ public static class DotnetTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-insert-statement"), Description(ToolDescriptions.InsertStatement)]
+    [McpServerTool(Name = "spelunk-insert-statement"), Description(ToolDescriptions.InsertStatement)]
     public static async Task<string> DotnetInsertStatement(
         [Description("Position: 'before' or 'after'")] string position,
         [Description("File path containing the reference statement")] string filePath,
@@ -518,7 +518,7 @@ public static class DotnetTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-remove-statement"), Description(ToolDescriptions.RemoveStatement)]
+    [McpServerTool(Name = "spelunk-remove-statement"), Description(ToolDescriptions.RemoveStatement)]
     public static async Task<string> DotnetRemoveStatement(
         [Description("File path containing the statement")] string filePath,
         [Description("Line number (1-based)")] int line,
@@ -543,7 +543,7 @@ public static class DotnetTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-mark-statement"), Description(ToolDescriptions.MarkStatement)]
+    [McpServerTool(Name = "spelunk-mark-statement"), Description(ToolDescriptions.MarkStatement)]
     public static async Task<string> DotnetMarkStatement(
         [Description("File path containing the statement")] string filePath,
         [Description("Line number (1-based)")] int line,
@@ -568,7 +568,7 @@ public static class DotnetTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-find-marked-statements"), Description(ToolDescriptions.FindMarkedStatements)]
+    [McpServerTool(Name = "spelunk-find-marked-statements"), Description(ToolDescriptions.FindMarkedStatements)]
     public static async Task<string> DotnetFindMarkedStatements(
         [Description("Marker ID to search for (optional - finds all if not specified)")] string? markerId = null,
         [Description("Optional file path to search in")] string? filePath = null)
@@ -590,7 +590,7 @@ public static class DotnetTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-unmark-statement"), Description(ToolDescriptions.UnmarkStatement)]
+    [McpServerTool(Name = "spelunk-unmark-statement"), Description(ToolDescriptions.UnmarkStatement)]
     public static async Task<string> DotnetUnmarkStatement(
         [Description("Marker ID to remove")] string markerId)
     {
@@ -611,7 +611,7 @@ public static class DotnetTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-clear-markers"), Description(ToolDescriptions.ClearMarkers)]
+    [McpServerTool(Name = "spelunk-clear-markers"), Description(ToolDescriptions.ClearMarkers)]
     public static async Task<string> DotnetClearMarkers()
     {
         if (_workspaceManager == null)
@@ -631,7 +631,7 @@ public static class DotnetTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-get-statement-context"), Description(ToolDescriptions.GetStatementContext)]
+    [McpServerTool(Name = "spelunk-get-statement-context"), Description(ToolDescriptions.GetStatementContext)]
     public static async Task<string> DotnetGetStatementContext(
         [Description("Statement ID from find-statements (e.g., 'stmt-123')")] string? statementId = null,
         [Description("File path (alternative to statementId)")] string? file = null,
@@ -691,7 +691,7 @@ public static class DotnetTools
         }
     }
 
-    [McpServerTool(Name = "dotnet-get-data-flow"), Description(ToolDescriptions.GetDataFlow)]
+    [McpServerTool(Name = "spelunk-get-data-flow"), Description(ToolDescriptions.GetDataFlow)]
     public static async Task<string> DotnetGetDataFlow(
         [Description("File path to analyze")] string file,
         [Description("Start line of region (1-based)")] int startLine,

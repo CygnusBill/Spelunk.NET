@@ -151,14 +151,14 @@ if __name__ == "__main__":
     client = SimpleClient(allowed_paths=["test-workspace"])
     
     # Load workspace
-    result = client.call_tool("dotnet-load-workspace", {
+    result = client.call_tool("spelunk-load-workspace", {
         "path": os.path.abspath("test-workspace/TestProject.csproj")
     })
     print(f"\nWorkspace load result: {result['success']}")
     
     # Test semantic query
     if result["success"]:
-        result = client.call_tool("dotnet-query-syntax", {
+        result = client.call_tool("spelunk-query-syntax", {
             "roslynPath": "//method",
             "file": os.path.abspath("test-workspace/Program.cs"),
             "includeSemanticInfo": True

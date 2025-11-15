@@ -21,7 +21,7 @@ def test_null_check_detection():
     with TestClient() as client:
         # Load the test workspace
         print("Loading workspace...")
-        result = client.call_tool("dotnet-load-workspace", {
+        result = client.call_tool("spelunk-load-workspace", {
             "path": str(Path(__file__).parent.parent.parent / "test-workspace" / "TestProject.csproj")
         })
         
@@ -54,7 +54,7 @@ namespace TestProject
 }
 """)
         
-        result = client.call_tool("dotnet-fix-pattern", {
+        result = client.call_tool("spelunk-fix-pattern", {
             "findPattern": "user.UpdateProfile()",
             "replacePattern": "",
             "patternType": "text",
@@ -90,7 +90,7 @@ namespace TestProject
 }
 """)
         
-        result = client.call_tool("dotnet-fix-pattern", {
+        result = client.call_tool("spelunk-fix-pattern", {
             "findPattern": "user.UpdateProfile()",
             "replacePattern": "",
             "patternType": "text",
@@ -125,7 +125,7 @@ namespace TestProject
 }
 """)
         
-        result = client.call_tool("dotnet-fix-pattern", {
+        result = client.call_tool("spelunk-fix-pattern", {
             "findPattern": "user.UpdateProfile()",
             "replacePattern": "",
             "patternType": "text",
@@ -159,7 +159,7 @@ namespace TestProject
 }
 """)
         
-        result = client.call_tool("dotnet-fix-pattern", {
+        result = client.call_tool("spelunk-fix-pattern", {
             "findPattern": "user.UpdateProfile()",
             "replacePattern": "",
             "patternType": "text",
@@ -199,7 +199,7 @@ namespace TestProject
 }
 """)
         
-        result = client.call_tool("dotnet-fix-pattern", {
+        result = client.call_tool("spelunk-fix-pattern", {
             "findPattern": "user.UpdateProfile()",
             "replacePattern": "",
             "patternType": "text",

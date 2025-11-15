@@ -195,14 +195,14 @@ print("CATEGORY 1: WORKSPACE AND LOADING TOOLS")
 print("="*80)
 
 tester.test_tool(
-    "dotnet-load-workspace",
+    "spelunk-load-workspace",
     {"path": "/Users/bill/Repos/SampleAppForMcp/SampleAppForMcp.sln"},
     "Load a solution file",
     "Should load workspace and return project info"
 )
 
 tester.test_tool(
-    "dotnet-workspace-status",
+    "spelunk-workspace-status",
     {},
     "Get workspace status after loading",
     "Should return loading progress and workspace info"
@@ -214,28 +214,28 @@ print("CATEGORY 2: SYMBOL DISCOVERY TOOLS")
 print("="*80)
 
 tester.test_tool(
-    "dotnet-find-class",
+    "spelunk-find-class",
     {"pattern": "Program"},
     "Find class by name pattern",
     "Should find Program class"
 )
 
 tester.test_tool(
-    "dotnet-find-class",
+    "spelunk-find-class",
     {"pattern": "NonExistent*"},
     "Find non-existent class pattern",
     "Should return empty with clear message"
 )
 
 tester.test_tool(
-    "dotnet-find-method",
+    "spelunk-find-method",
     {"methodPattern": "Main"},
     "Find Main method",
     "Should find Main method"
 )
 
 tester.test_tool(
-    "dotnet-find-property",
+    "spelunk-find-property",
     {"propertyPattern": "*"},
     "Find all properties",
     "Should list properties or indicate none exist"
@@ -247,42 +247,42 @@ print("CATEGORY 3: REFERENCE AND INHERITANCE TOOLS")
 print("="*80)
 
 tester.test_tool(
-    "dotnet-find-references",
+    "spelunk-find-references",
     {"symbolName": "Main"},
     "Find references to Main method",
     "Should find references or indicate none"
 )
 
 tester.test_tool(
-    "dotnet-find-method-callers",
+    "spelunk-find-method-callers",
     {"methodName": "WriteLine"},
     "Find callers of WriteLine",
     "Should find methods calling WriteLine"
 )
 
 tester.test_tool(
-    "dotnet-find-method-calls",
+    "spelunk-find-method-calls",
     {"methodName": "Main"},
     "Find methods called by Main",
     "Should list methods called from Main"
 )
 
 tester.test_tool(
-    "dotnet-find-derived-types",
+    "spelunk-find-derived-types",
     {"baseClassName": "Object"},
     "Find types derived from Object",
     "Should find derived types"
 )
 
 tester.test_tool(
-    "dotnet-find-implementations",
+    "spelunk-find-implementations",
     {"interfaceName": "IDisposable"},
     "Find IDisposable implementations",
     "Should find implementations or indicate none"
 )
 
 tester.test_tool(
-    "dotnet-find-overrides",
+    "spelunk-find-overrides",
     {"methodName": "ToString", "className": "Object"},
     "Find ToString overrides",
     "Should find overrides or indicate none"
@@ -296,14 +296,14 @@ print("="*80)
 test_file = "/Users/bill/Repos/SampleAppForMcp/ConsoleApp/Program.cs"
 
 tester.test_tool(
-    "dotnet-find-statements",
+    "spelunk-find-statements",
     {"pattern": "Console.WriteLine", "filePath": test_file},
     "Find Console.WriteLine statements",
     "Should find print statements with IDs"
 )
 
 tester.test_tool(
-    "dotnet-find-statements",
+    "spelunk-find-statements",
     {"pattern": "//if-statement", "patternType": "roslynpath"},
     "Find if statements using RoslynPath",
     "Should find if statements or indicate none"
@@ -315,21 +315,21 @@ print("CATEGORY 5: MARKER SYSTEM TOOLS")
 print("="*80)
 
 tester.test_tool(
-    "dotnet-mark-statement",
+    "spelunk-mark-statement",
     {"filePath": test_file, "line": 10, "column": 1},
     "Mark a statement at line 10",
     "Should mark statement or explain why it can't"
 )
 
 tester.test_tool(
-    "dotnet-find-marked-statements",
+    "spelunk-find-marked-statements",
     {},
     "Find all marked statements",
     "Should list marked statements or indicate none"
 )
 
 tester.test_tool(
-    "dotnet-clear-markers",
+    "spelunk-clear-markers",
     {},
     "Clear all markers",
     "Should clear markers successfully"
@@ -341,28 +341,28 @@ print("CATEGORY 6: ANALYSIS TOOLS")
 print("="*80)
 
 tester.test_tool(
-    "dotnet-analyze-syntax",
+    "spelunk-analyze-syntax",
     {"filePath": test_file},
     "Analyze syntax tree of a file",
     "Should return AST analysis"
 )
 
 tester.test_tool(
-    "dotnet-get-symbols",
+    "spelunk-get-symbols",
     {"filePath": test_file},
     "Get symbols from a file",
     "Should return symbol information"
 )
 
 tester.test_tool(
-    "dotnet-get-statement-context",
+    "spelunk-get-statement-context",
     {"file": test_file, "line": 10, "column": 1},
     "Get context for a statement",
     "Should return semantic context or explain requirements"
 )
 
 tester.test_tool(
-    "dotnet-get-data-flow",
+    "spelunk-get-data-flow",
     {
         "file": test_file,
         "startLine": 10, "startColumn": 1,
@@ -379,14 +379,14 @@ print("CATEGORY 7: MODIFICATION TOOLS")
 print("="*80)
 
 tester.test_tool(
-    "dotnet-rename-symbol",
+    "spelunk-rename-symbol",
     {"oldName": "NonExistentMethod", "newName": "NewName", "preview": True},
     "Rename non-existent symbol (preview)",
     "Should indicate symbol not found"
 )
 
 tester.test_tool(
-    "dotnet-edit-code",
+    "spelunk-edit-code",
     {
         "file": test_file,
         "operation": "add-method",
@@ -399,7 +399,7 @@ tester.test_tool(
 )
 
 tester.test_tool(
-    "dotnet-fix-pattern",
+    "spelunk-fix-pattern",
     {
         "findPattern": "Console.WriteLine",
         "replacePattern": "logger.Log",
@@ -416,7 +416,7 @@ print("CATEGORY 8: STATEMENT MODIFICATION TOOLS")
 print("="*80)
 
 tester.test_tool(
-    "dotnet-replace-statement",
+    "spelunk-replace-statement",
     {
         "filePath": test_file,
         "line": 9999,
@@ -428,7 +428,7 @@ tester.test_tool(
 )
 
 tester.test_tool(
-    "dotnet-insert-statement",
+    "spelunk-insert-statement",
     {
         "filePath": test_file,
         "line": 10,
@@ -441,7 +441,7 @@ tester.test_tool(
 )
 
 tester.test_tool(
-    "dotnet-remove-statement",
+    "spelunk-remove-statement",
     {
         "filePath": test_file,
         "line": 9999,

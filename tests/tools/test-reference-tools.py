@@ -82,7 +82,7 @@ def test_reference_tools():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet-load-workspace",
+                "name": "spelunk-load-workspace",
                 "arguments": {"path": "./src/McpRoslyn/McpRoslyn.sln"}
             },
             "id": 2
@@ -103,7 +103,7 @@ def test_reference_tools():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet-find-references",
+                "name": "spelunk-find-references",
                 "arguments": {
                     "symbolName": "UserController",
                     "symbolType": "type"
@@ -121,7 +121,7 @@ def test_reference_tools():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet-find-references",
+                "name": "spelunk-find-references",
                 "arguments": {
                     "symbolName": "GetDefaultUserName",
                     "symbolType": "method",
@@ -140,7 +140,7 @@ def test_reference_tools():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet-find-references",
+                "name": "spelunk-find-references",
                 "arguments": {
                     "symbolName": "Name",
                     "symbolType": "property",
@@ -159,7 +159,7 @@ def test_reference_tools():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet-find-implementations",
+                "name": "spelunk-find-implementations",
                 "arguments": {
                     "interfaceName": "IWorkspaceService"
                 }
@@ -175,7 +175,7 @@ def test_reference_tools():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet-find-implementations",
+                "name": "spelunk-find-implementations",
                 "arguments": {
                     "interfaceName": "IMessageLogger"
                 }
@@ -192,7 +192,7 @@ def test_reference_tools():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet-find-overrides",
+                "name": "spelunk-find-overrides",
                 "arguments": {
                     "methodName": "GetByIdAsync",
                     "className": "BaseRepository"
@@ -210,7 +210,7 @@ def test_reference_tools():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet-find-derived-types",
+                "name": "spelunk-find-derived-types",
                 "arguments": {
                     "baseClassName": "BaseRepository"
                 }
@@ -226,7 +226,7 @@ def test_reference_tools():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet-find-derived-types",
+                "name": "spelunk-find-derived-types",
                 "arguments": {
                     "baseClassName": "WorkspaceInfo"
                 }

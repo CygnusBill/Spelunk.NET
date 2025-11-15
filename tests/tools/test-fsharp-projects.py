@@ -21,7 +21,7 @@ def test_fsharp_projects():
     
     # Test 1: Try to load F# project through regular workspace loading (should fail)
     print("\n1. Attempting to load F# project through regular workspace loading...")
-    load_result = client.call_tool("dotnet-load-workspace", {
+    load_result = client.call_tool("spelunk-load-workspace", {
         "path": fsharp_project_path
     })
     
@@ -35,7 +35,7 @@ def test_fsharp_projects():
     
     # Test 2: Check for detected F# projects
     print("\n2. Checking for detected F# projects...")
-    fsharp_result = client.call_tool("dotnet-fsharp-projects", {
+    fsharp_result = client.call_tool("spelunk-fsharp-projects", {
         "workspaceId": workspace_id,
         "includeLoaded": True
     })
@@ -57,7 +57,7 @@ def test_fsharp_projects():
     
     # Test 3: Load F# project using dedicated F# loader
     print("\n3. Loading F# project using dotnet-load-fsharp-project...")
-    load_fsharp_result = client.call_tool("dotnet-load-fsharp-project", {
+    load_fsharp_result = client.call_tool("spelunk-load-fsharp-project", {
         "projectPath": fsharp_project_path
     })
     
@@ -81,7 +81,7 @@ def test_fsharp_projects():
     # Test finding functions
     library_path = os.path.join(os.getcwd(), "test-workspace", "FSharpTestProject", "Library.fs")
     
-    functions_result = client.call_tool("dotnet-fsharp-find-symbols", {
+    functions_result = client.call_tool("spelunk-fsharp-find-symbols", {
         "filePath": library_path,
         "query": "//function"
     })
@@ -99,7 +99,7 @@ def test_fsharp_projects():
     # Test 5: Find specific F# constructs
     print("\n5. Finding recursive F# functions...")
     
-    recursive_result = client.call_tool("dotnet-fsharp-find-symbols", {
+    recursive_result = client.call_tool("spelunk-fsharp-find-symbols", {
         "filePath": library_path,
         "query": "//function[@recursive]"
     })
@@ -118,7 +118,7 @@ def test_fsharp_projects():
     
     types_path = os.path.join(os.getcwd(), "test-workspace", "FSharpTestProject", "TestTypes.fs")
     
-    types_result = client.call_tool("dotnet-fsharp-find-symbols", {
+    types_result = client.call_tool("spelunk-fsharp-find-symbols", {
         "filePath": types_path,
         "query": "//type"
     })

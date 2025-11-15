@@ -59,7 +59,7 @@ def main():
         print("=== Loading VB.NET project ===")
         vb_project_path = os.path.join(project_root, "test-workspace/VBTestProject/VBTestProject.vbproj")
         send_request(process, "tools/call", {
-            "name": "dotnet-load-workspace",
+            "name": "spelunk-load-workspace",
             "arguments": {
                 "path": vb_project_path
             }
@@ -71,7 +71,7 @@ def main():
         # Test 1: Find all statements
         print("=== Test 1: Find all statements ===")
         send_request(process, "tools/call", {
-            "name": "dotnet-find-statements",
+            "name": "spelunk-find-statements",
             "arguments": {
                 "pattern": "Return",
                 "patternType": "text"
@@ -84,7 +84,7 @@ def main():
         # Test 2: Find statements with specific pattern
         print("=== Test 2: Find Throw statements ===")
         send_request(process, "tools/call", {
-            "name": "dotnet-find-statements",
+            "name": "spelunk-find-statements",
             "arguments": {
                 "pattern": "Throw",
                 "patternType": "text"
@@ -97,7 +97,7 @@ def main():
         # Test 3: Find statements in specific method
         print("=== Test 3: Find statements in Divide method ===")
         send_request(process, "tools/call", {
-            "name": "dotnet-find-statements",
+            "name": "spelunk-find-statements",
             "arguments": {
                 "pattern": ".*",
                 "patternType": "regex",

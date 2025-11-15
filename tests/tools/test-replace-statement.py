@@ -83,7 +83,7 @@ def main():
         # Load workspace
         print("\n=== Loading workspace ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet-load-workspace",
+            "name": "spelunk-load-workspace",
             "arguments": {
                 "path": "./test-workspace/TestProject.csproj"
             }
@@ -92,7 +92,7 @@ def main():
         # First, find a statement to replace
         print("\n=== Finding Console.WriteLine statements ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet-find-statements",
+            "name": "spelunk-find-statements",
             "arguments": {
                 "pattern": "Console.WriteLine"
             }
@@ -105,7 +105,7 @@ def main():
         # Test 1: Replace the Hello World statement
         print("\n=== Test 1: Replace Hello World with Hello MCP ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet-replace-statement",
+            "name": "spelunk-replace-statement",
             "arguments": {
                 "location": {
                     "file": "./test-workspace/Program.cs",
@@ -120,14 +120,14 @@ def main():
         # Test 2: Replace a variable declaration
         print("\n=== Test 2: Find and replace variable declaration ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet-find-statements",
+            "name": "spelunk-find-statements",
             "arguments": {
                 "pattern": "var calculator"
             }
         })
         
         response = send_request(process, "tools/call", {
-            "name": "dotnet-replace-statement",
+            "name": "spelunk-replace-statement",
             "arguments": {
                 "location": {
                     "file": "./test-workspace/Program.cs",
@@ -142,14 +142,14 @@ def main():
         # Test 3: Replace method call with more complex statement
         print("\n=== Test 3: Replace method call ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet-find-statements",
+            "name": "spelunk-find-statements",
             "arguments": {
                 "pattern": "calculator.Add"
             }
         })
         
         response = send_request(process, "tools/call", {
-            "name": "dotnet-replace-statement",
+            "name": "spelunk-replace-statement",
             "arguments": {
                 "location": {
                     "file": "./test-workspace/Program.cs",
@@ -165,7 +165,7 @@ def main():
         # Test 4: Test error handling - invalid syntax
         print("\n=== Test 4: Error handling - invalid syntax ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet-replace-statement",
+            "name": "spelunk-replace-statement",
             "arguments": {
                 "location": {
                     "file": "./test-workspace/Program.cs",
@@ -180,7 +180,7 @@ def main():
         # Test 5: Test with statement ID error message
         print("\n=== Test 5: Test with statement ID (should show error) ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet-replace-statement",
+            "name": "spelunk-replace-statement",
             "arguments": {
                 "statementId": "stmt-1",
                 "newStatement": 'Console.WriteLine("Test");'

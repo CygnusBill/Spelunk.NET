@@ -124,7 +124,7 @@ client = MCPClient()
 # Load workspace
 print("Loading test workspace...")
 response = client.send_request("tools/call", {
-    "name": "dotnet-load-workspace",
+    "name": "spelunk-load-workspace",
     "arguments": {
         "workspacePath": "/Users/bill/Repos/McpDotnet/test-workspace/TestProject.csproj"
     }
@@ -140,7 +140,7 @@ def analyze_data_flow(client, start_line, end_line, description):
     print("-" * 60)
     
     response = client.send_request("tools/call", {
-        "name": "dotnet-get-data-flow",
+        "name": "spelunk-get-data-flow",
         "arguments": {
             "file": "/Users/bill/Repos/McpDotnet/test-workspace/DataFlowTest.cs",
             "startLine": start_line,

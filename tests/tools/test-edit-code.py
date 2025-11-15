@@ -67,7 +67,7 @@ def test_edit_code():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet-load-workspace",
+                "name": "spelunk-load-workspace",
                 "arguments": {"path": "./src/McpRoslyn/McpRoslyn.sln"}
             },
             "id": 2
@@ -89,7 +89,7 @@ def test_edit_code():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet-edit-code",
+                "name": "spelunk-edit-code",
                 "arguments": {
                     "file": "./src/McpRoslyn/McpDotnet.Server/TestClasses.cs",
                     "operation": "add-method",
@@ -115,7 +115,7 @@ def test_edit_code():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet-edit-code",
+                "name": "spelunk-edit-code",
                 "arguments": {
                     "file": "./src/McpRoslyn/McpDotnet.Server/TestClasses.cs",
                     "operation": "add-property",
@@ -137,7 +137,7 @@ def test_edit_code():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet-edit-code",
+                "name": "spelunk-edit-code",
                 "arguments": {
                     "file": "./src/McpRoslyn/McpDotnet.Server/TestClasses.cs",
                     "operation": "make-async",
@@ -159,7 +159,7 @@ def test_edit_code():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet-edit-code",
+                "name": "spelunk-edit-code",
                 "arguments": {
                     "file": "./src/McpRoslyn/McpDotnet.Server/TestClasses.cs",
                     "operation": "make-async",

@@ -18,7 +18,7 @@ class TestFixPatternRefactored(ToolTestBase):
     async def test_add_null_check_transformation(self):
         """Test adding null checks before method calls."""
         # First load the workspace
-        load_result = await self.call_tool("dotnet-load-workspace", {
+        load_result = await self.call_tool("spelunk-load-workspace", {
             "path": "./test-workspace/TestProject.csproj"
         })
         self.assertIn("success", json.dumps(load_result).lower())
@@ -66,7 +66,7 @@ namespace TestProject
         
         try:
             # Find method calls that might need null checks
-            result = await self.call_tool("dotnet-fix-pattern", {
+            result = await self.call_tool("spelunk-fix-pattern", {
                 "findPattern": "//statement[@type=ExpressionStatement and @contains='.']",
                 "replacePattern": "",
                 "patternType": "add-null-check",
@@ -119,12 +119,12 @@ namespace TestProject
         
         try:
             # Load workspace
-            await self.call_tool("dotnet-load-workspace", {
+            await self.call_tool("spelunk-load-workspace", {
                 "path": "./test-workspace/TestProject.csproj"
             })
             
             # Find File.* method calls to convert to async
-            result = await self.call_tool("dotnet-fix-pattern", {
+            result = await self.call_tool("spelunk-fix-pattern", {
                 "findPattern": "//statement[@contains='File.Read' or @contains='File.Write']",
                 "replacePattern": "",
                 "patternType": "convert-to-async",
@@ -170,12 +170,12 @@ namespace TestProject
         
         try:
             # Load workspace
-            await self.call_tool("dotnet-load-workspace", {
+            await self.call_tool("spelunk-load-workspace", {
                 "path": "./test-workspace/TestProject.csproj"
             })
             
             # Find string.Format calls
-            result = await self.call_tool("dotnet-fix-pattern", {
+            result = await self.call_tool("spelunk-fix-pattern", {
                 "findPattern": "//statement[@contains='string.Format' or @contains='String.Format']",
                 "replacePattern": "",
                 "patternType": "convert-to-interpolation",
@@ -243,12 +243,12 @@ namespace TestProject
         
         try:
             # Load workspace
-            await self.call_tool("dotnet-load-workspace", {
+            await self.call_tool("spelunk-load-workspace", {
                 "path": "./test-workspace/TestProject.csproj"
             })
             
             # Find if-null patterns
-            result = await self.call_tool("dotnet-fix-pattern", {
+            result = await self.call_tool("spelunk-fix-pattern", {
                 "findPattern": "//statement[@type=IfStatement and @contains='!= null']",
                 "replacePattern": "",
                 "patternType": "simplify-conditional",
@@ -302,12 +302,12 @@ namespace TestProject
         
         try:
             # Load workspace
-            await self.call_tool("dotnet-load-workspace", {
+            await self.call_tool("spelunk-load-workspace", {
                 "path": "./test-workspace/TestProject.csproj"
             })
             
             # Find async method calls without await
-            result = await self.call_tool("dotnet-fix-pattern", {
+            result = await self.call_tool("spelunk-fix-pattern", {
                 "findPattern": "//method[*Async]//statement[@contains='Async()' and not(@contains='await')]",
                 "replacePattern": "",
                 "patternType": "add-await",
@@ -355,12 +355,12 @@ namespace TestProject
         
         try:
             # Load workspace
-            await self.call_tool("dotnet-load-workspace", {
+            await self.call_tool("spelunk-load-workspace", {
                 "path": "./test-workspace/TestProject.csproj"
             })
             
             # Replace Console.WriteLine with logger calls
-            result = await self.call_tool("dotnet-fix-pattern", {
+            result = await self.call_tool("spelunk-fix-pattern", {
                 "findPattern": "//statement[@contains='Console.WriteLine']",
                 "replacePattern": "logger.LogInformation",
                 "patternType": "custom",
@@ -407,12 +407,12 @@ namespace TestProject
         
         try:
             # Load workspace
-            await self.call_tool("dotnet-load-workspace", {
+            await self.call_tool("spelunk-load-workspace", {
                 "path": "./test-workspace/TestProject.csproj"
             })
             
             # Find SQL concatenation patterns
-            result = await self.call_tool("dotnet-fix-pattern", {
+            result = await self.call_tool("spelunk-fix-pattern", {
                 "findPattern": "//statement[@contains='SqlCommand' and @contains=' + ']",
                 "replacePattern": "",
                 "patternType": "parameterize-query",
@@ -463,12 +463,12 @@ namespace TestProject
         
         try:
             # Load workspace
-            await self.call_tool("dotnet-load-workspace", {
+            await self.call_tool("spelunk-load-workspace", {
                 "path": "./test-workspace/TestProject.csproj"
             })
             
             # Find throws only in Get* methods
-            result = await self.call_tool("dotnet-fix-pattern", {
+            result = await self.call_tool("spelunk-fix-pattern", {
                 "findPattern": "//method[Get*]//statement[@type=ThrowStatement]",
                 "replacePattern": "return default;",
                 "patternType": "custom",

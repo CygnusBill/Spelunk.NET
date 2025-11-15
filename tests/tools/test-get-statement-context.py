@@ -18,13 +18,13 @@ class TestGetStatementContext(ToolTestBase):
     async def test_get_context_by_location(self):
         """Test getting statement context by file location."""
         # First load the workspace
-        load_result = await self.call_tool("dotnet-load-workspace", {
+        load_result = await self.call_tool("spelunk-load-workspace", {
             "path": "./test-workspace/TestProject.csproj"
         })
         self.assertIn("success", json.dumps(load_result).lower())
         
         # Get context for a specific statement
-        result = await self.call_tool("dotnet-get-statement-context", {
+        result = await self.call_tool("spelunk-get-statement-context", {
             "file": "./test-workspace/Program.cs",
             "line": 15,  # Adjust based on actual test file
             "column": 9
@@ -59,13 +59,13 @@ class TestGetStatementContext(ToolTestBase):
     async def test_get_context_by_statement_id(self):
         """Test getting statement context using statement ID."""
         # First load the workspace
-        load_result = await self.call_tool("dotnet-load-workspace", {
+        load_result = await self.call_tool("spelunk-load-workspace", {
             "path": "./test-workspace/TestProject.csproj"
         })
         self.assertIn("success", json.dumps(load_result).lower())
         
         # Find some statements first
-        find_result = await self.call_tool("dotnet-find-statements", {
+        find_result = await self.call_tool("spelunk-find-statements", {
             "pattern": "Console.WriteLine",
             "patternType": "text"
         })
@@ -77,7 +77,7 @@ class TestGetStatementContext(ToolTestBase):
         statement_id = find_result["statements"][0]["statementId"]
         
         # Get context using statement ID
-        result = await self.call_tool("dotnet-get-statement-context", {
+        result = await self.call_tool("spelunk-get-statement-context", {
             "statementId": statement_id
         })
         
@@ -90,12 +90,12 @@ class TestGetStatementContext(ToolTestBase):
     async def test_semantic_info_details(self):
         """Test detailed semantic information in context."""
         # Load workspace
-        await self.call_tool("dotnet-load-workspace", {
+        await self.call_tool("spelunk-load-workspace", {
             "path": "./test-workspace/TestProject.csproj"
         })
         
         # Find a method call statement
-        find_result = await self.call_tool("dotnet-find-statements", {
+        find_result = await self.call_tool("spelunk-find-statements", {
             "pattern": "GetUser",
             "patternType": "text"
         })
@@ -104,7 +104,7 @@ class TestGetStatementContext(ToolTestBase):
             stmt = find_result["statements"][0]
             
             # Get context
-            result = await self.call_tool("dotnet-get-statement-context", {
+            result = await self.call_tool("spelunk-get-statement-context", {
                 "file": stmt["location"]["file"],
                 "line": stmt["location"]["line"],
                 "column": stmt["location"]["column"]
@@ -124,12 +124,12 @@ class TestGetStatementContext(ToolTestBase):
     async def test_data_flow_info(self):
         """Test data flow information in context."""
         # Load workspace
-        await self.call_tool("dotnet-load-workspace", {
+        await self.call_tool("spelunk-load-workspace", {
             "path": "./test-workspace/TestProject.csproj"
         })
         
         # Find a variable declaration
-        find_result = await self.call_tool("dotnet-find-statements", {
+        find_result = await self.call_tool("spelunk-find-statements", {
             "pattern": "var ",
             "patternType": "text"
         })
@@ -138,7 +138,7 @@ class TestGetStatementContext(ToolTestBase):
             stmt = find_result["statements"][0]
             
             # Get context
-            result = await self.call_tool("dotnet-get-statement-context", {
+            result = await self.call_tool("spelunk-get-statement-context", {
                 "file": stmt["location"]["file"],
                 "line": stmt["location"]["line"],
                 "column": stmt["location"]["column"]
@@ -173,12 +173,12 @@ namespace TestProject
         
         try:
             # Load workspace
-            await self.call_tool("dotnet-load-workspace", {
+            await self.call_tool("spelunk-load-workspace", {
                 "path": "./test-workspace/TestProject.csproj"
             })
             
             # Get context for error statement
-            result = await self.call_tool("dotnet-get-statement-context", {
+            result = await self.call_tool("spelunk-get-statement-context", {
                 "file": test_file,
                 "line": 8,
                 "column": 13

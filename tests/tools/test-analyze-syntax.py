@@ -83,7 +83,7 @@ def test_analyze_syntax():
         # Load workspace
         print("\n=== Loading workspace ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet-load-workspace",
+            "name": "spelunk-load-workspace",
             "arguments": {
                 "path": os.path.join(workspace_dir, "test-workspace", "TestProject.csproj")
             }
@@ -92,7 +92,7 @@ def test_analyze_syntax():
         # Test 1: Analyze syntax without trivia
         print("\n=== Test 1: Analyze syntax without trivia ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet-analyze-syntax",
+            "name": "spelunk-analyze-syntax",
             "arguments": {
                 "filePath": os.path.join(workspace_dir, "test-workspace", "Program.cs"),
                 "includeTrivia": False
@@ -102,7 +102,7 @@ def test_analyze_syntax():
         # Test 2: Analyze syntax with trivia
         print("\n=== Test 2: Analyze syntax with trivia ===")
         response = send_request(process, "tools/call", {
-            "name": "dotnet-analyze-syntax",
+            "name": "spelunk-analyze-syntax",
             "arguments": {
                 "filePath": os.path.join(workspace_dir, "test-workspace", "Program.cs"),
                 "includeTrivia": True

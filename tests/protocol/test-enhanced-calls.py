@@ -72,7 +72,7 @@ def test_method_calls():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet-load-workspace",
+                "name": "spelunk-load-workspace",
                 "arguments": {"path": "./src/McpRoslyn/McpRoslyn.sln"}
             },
             "id": 2
@@ -93,7 +93,7 @@ def test_method_calls():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet-find-method-calls",
+                "name": "spelunk-find-method-calls",
                 "arguments": {
                     "methodName": "GetUserAsync",
                     "className": "UserController"
@@ -110,7 +110,7 @@ def test_method_calls():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet-find-method-callers",
+                "name": "spelunk-find-method-callers",
                 "arguments": {
                     "methodName": "ProcessUser",
                     "className": "UserController"
@@ -127,7 +127,7 @@ def test_method_calls():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet-find-method-callers",
+                "name": "spelunk-find-method-callers",
                 "arguments": {
                     "methodName": "GetDefaultUserName",
                     "className": "UserController"
@@ -144,7 +144,7 @@ def test_method_calls():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet-find-method-calls",
+                "name": "spelunk-find-method-calls",
                 "arguments": {
                     "methodName": "GetByIdAsync",
                     "className": "UserRepository"
@@ -161,7 +161,7 @@ def test_method_calls():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet-find-method-callers",
+                "name": "spelunk-find-method-callers",
                 "arguments": {
                     "methodName": "Log",
                     "className": "IMessageLogger"

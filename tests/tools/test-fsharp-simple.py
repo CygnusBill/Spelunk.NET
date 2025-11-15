@@ -13,12 +13,12 @@ from utils.simple_client import SimpleClient
 client = SimpleClient(allowed_paths=["test-workspace"])
 
 # Load workspace
-client.call_tool("dotnet-load-workspace", {
+client.call_tool("spelunk-load-workspace", {
     "path": os.path.abspath("test-workspace/TestProject.csproj")
 })
 
 # Test F# file
-result = client.call_tool("dotnet-query-syntax", {
+result = client.call_tool("spelunk-query-syntax", {
     "roslynPath": "//method",
     "file": os.path.abspath("test-workspace/FSharpDetectionTest.fs")
 })

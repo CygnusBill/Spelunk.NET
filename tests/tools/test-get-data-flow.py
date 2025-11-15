@@ -18,7 +18,7 @@ class TestGetDataFlow(ToolTestBase):
     async def test_simple_data_flow(self):
         """Test data flow analysis for a simple code region."""
         # First load the workspace
-        load_result = await self.call_tool("dotnet-load-workspace", {
+        load_result = await self.call_tool("spelunk-load-workspace", {
             "path": "./test-workspace/TestProject.csproj"
         })
         self.assertIn("success", json.dumps(load_result).lower())
@@ -44,7 +44,7 @@ namespace TestProject
         
         try:
             # Analyze data flow for the method body
-            result = await self.call_tool("dotnet-get-data-flow", {
+            result = await self.call_tool("spelunk-get-data-flow", {
                 "file": test_file,
                 "startLine": 8,
                 "startColumn": 13,
@@ -113,12 +113,12 @@ namespace TestProject
         
         try:
             # Load workspace
-            await self.call_tool("dotnet-load-workspace", {
+            await self.call_tool("spelunk-load-workspace", {
                 "path": "./test-workspace/TestProject.csproj"
             })
             
             # Analyze the entire method body
-            result = await self.call_tool("dotnet-get-data-flow", {
+            result = await self.call_tool("spelunk-get-data-flow", {
                 "file": test_file,
                 "startLine": 8,
                 "startColumn": 13,
@@ -171,12 +171,12 @@ namespace TestProject
         
         try:
             # Load workspace
-            await self.call_tool("dotnet-load-workspace", {
+            await self.call_tool("spelunk-load-workspace", {
                 "path": "./test-workspace/TestProject.csproj"
             })
             
             # Analyze method body
-            result = await self.call_tool("dotnet-get-data-flow", {
+            result = await self.call_tool("spelunk-get-data-flow", {
                 "file": test_file,
                 "startLine": 8,
                 "startColumn": 13,
@@ -222,12 +222,12 @@ namespace TestProject
         
         try:
             # Load workspace
-            await self.call_tool("dotnet-load-workspace", {
+            await self.call_tool("spelunk-load-workspace", {
                 "path": "./test-workspace/TestProject.csproj"
             })
             
             # Analyze method body
-            result = await self.call_tool("dotnet-get-data-flow", {
+            result = await self.call_tool("spelunk-get-data-flow", {
                 "file": test_file,
                 "startLine": 8,
                 "startColumn": 13,
@@ -280,12 +280,12 @@ namespace TestProject
         
         try:
             # Load workspace
-            await self.call_tool("dotnet-load-workspace", {
+            await self.call_tool("spelunk-load-workspace", {
                 "path": "./test-workspace/TestProject.csproj"
             })
             
             # Analyze the lambda region
-            result = await self.call_tool("dotnet-get-data-flow", {
+            result = await self.call_tool("spelunk-get-data-flow", {
                 "file": test_file,
                 "startLine": 11,
                 "startColumn": 13,

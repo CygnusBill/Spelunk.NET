@@ -7,7 +7,7 @@
 **Semantic Approach:**
 ```json
 {
-  "tool": "dotnet-find-method",
+  "tool": "spelunk-find-method",
   "pattern": "*",
   "accessibility": "public"
 }
@@ -17,7 +17,7 @@ Returns: Full method signatures with types, parameters, attributes
 **Syntactic Approach:**
 ```json
 {
-  "tool": "dotnet-query-syntax",
+  "tool": "spelunk-query-syntax",
   "roslynPath": "//method[@public]"
 }
 ```
@@ -32,7 +32,7 @@ Returns: Method syntax nodes with text and location
 **Semantic Approach:**
 ```json
 {
-  "tool": "dotnet-find-method",
+  "tool": "spelunk-find-method",
   "pattern": "*",
   "includeAsync": true,
   "returnTypePattern": "Task<*>"
@@ -42,7 +42,7 @@ Returns: Method syntax nodes with text and location
 **Syntactic Approach:**
 ```json
 {
-  "tool": "dotnet-query-syntax",
+  "tool": "spelunk-query-syntax",
   "roslynPath": "//method[@async and @returns-generic='Task']"
 }
 ```
@@ -54,7 +54,7 @@ Returns: Method syntax nodes with text and location
 **Only Syntactic (semantic tools can't do this):**
 ```json
 {
-  "tool": "dotnet-query-syntax",
+  "tool": "spelunk-query-syntax",
   "roslynPath": "//try-statement[not(finally-clause)]"
 }
 ```
@@ -64,7 +64,7 @@ Returns: Method syntax nodes with text and location
 **Only Syntactic:**
 ```json
 {
-  "tool": "dotnet-query-syntax",
+  "tool": "spelunk-query-syntax",
   "roslynPath": "//for-statement//binary-expression[@operator='+' and @involves-string]",
   "includeSemanticInfo": true
 }
@@ -78,7 +78,7 @@ Note: includeSemanticInfo helps confirm string types
 **Semantic Approach:**
 ```json
 {
-  "tool": "dotnet-find-class",
+  "tool": "spelunk-find-class",
   "pattern": "*",
   "minimumInterfaceCount": 2
 }
@@ -87,7 +87,7 @@ Note: includeSemanticInfo helps confirm string types
 **Syntactic Approach:**
 ```json
 {
-  "tool": "dotnet-query-syntax",
+  "tool": "spelunk-query-syntax",
   "roslynPath": "//class[count(base-list/simple-base-type) > 1]"
 }
 ```
@@ -99,7 +99,7 @@ Note: includeSemanticInfo helps confirm string types
 **Semantic (for instances):**
 ```json
 {
-  "tool": "dotnet-find-type-references",
+  "tool": "spelunk-find-type-references",
   "typeName": "List<*>"
 }
 ```
@@ -107,7 +107,7 @@ Note: includeSemanticInfo helps confirm string types
 **Syntactic (for declarations):**
 ```json
 {
-  "tool": "dotnet-query-syntax",
+  "tool": "spelunk-query-syntax",
   "roslynPath": "//generic-name"
 }
 ```
@@ -119,7 +119,7 @@ Note: includeSemanticInfo helps confirm string types
 **Syntactic Only:**
 ```json
 {
-  "tool": "dotnet-query-syntax",
+  "tool": "spelunk-query-syntax",
   "roslynPath": "//catch-clause[block[not(statement)]]"
 }
 ```
@@ -129,7 +129,7 @@ Note: includeSemanticInfo helps confirm string types
 **Syntactic Only:**
 ```json
 {
-  "tool": "dotnet-query-syntax",
+  "tool": "spelunk-query-syntax",
   "roslynPath": "//method[block[@line-count > 50]]"
 }
 ```
@@ -139,7 +139,7 @@ Note: includeSemanticInfo helps confirm string types
 **Syntactic:**
 ```json
 {
-  "tool": "dotnet-query-syntax",
+  "tool": "spelunk-query-syntax",
   "roslynPath": "//comment[@contains='TODO']"
 }
 ```
@@ -151,7 +151,7 @@ Note: includeSemanticInfo helps confirm string types
 **Semantic Only:**
 ```json
 {
-  "tool": "dotnet-find-references",
+  "tool": "spelunk-find-references",
   "symbolName": "OrderService.ProcessOrder"
 }
 ```
@@ -177,7 +177,7 @@ for method in methods:
 **Syntactic with Semantic Enrichment:**
 ```json
 {
-  "tool": "dotnet-query-syntax",
+  "tool": "spelunk-query-syntax",
   "roslynPath": "//return-statement[expression[@text='null']]",
   "includeSemanticInfo": true
 }
@@ -189,7 +189,7 @@ Then filter results where semantic info shows Task return type
 **Syntactic:**
 ```json
 {
-  "tool": "dotnet-query-syntax",
+  "tool": "spelunk-query-syntax",
   "roslynPath": "//switch-statement[switch-section/case-label[pattern-syntax]]"
 }
 ```
@@ -201,7 +201,7 @@ Then filter results where semantic info shows Task return type
 **Semantic:**
 ```json
 {
-  "tool": "dotnet-go-to-definition",
+  "tool": "spelunk-go-to-definition",
   "file": "Program.cs",
   "line": 42,
   "column": 15
@@ -211,7 +211,7 @@ Then filter results where semantic info shows Task return type
 **Syntactic Navigation:**
 ```json
 {
-  "tool": "dotnet-navigate",
+  "tool": "spelunk-navigate",
   "from": {"file": "Program.cs", "line": 42, "column": 15},
   "path": "ancestor::method[1]",
   "includeSemanticInfo": true
@@ -225,7 +225,7 @@ Then filter results where semantic info shows Task return type
 **Fast (Syntactic):**
 ```json
 {
-  "tool": "dotnet-query-syntax",
+  "tool": "spelunk-query-syntax",
   "roslynPath": "//query-expression | //invocation[@name='Where' or @name='Select']"
 }
 ```
@@ -233,7 +233,7 @@ Then filter results where semantic info shows Task return type
 **Accurate (Semantic):**
 ```json
 {
-  "tool": "dotnet-find-references",
+  "tool": "spelunk-find-references",
   "symbolName": "System.Linq.Enumerable.*"
 }
 ```
@@ -245,7 +245,7 @@ Then filter results where semantic info shows Task return type
 **Finding Properties - Language Agnostic:**
 ```json
 {
-  "tool": "dotnet-find-property",
+  "tool": "spelunk-find-property",
   "pattern": "*Price*"
 }
 ```
@@ -254,7 +254,7 @@ Works for both: `public decimal Price { get; set; }` (C#) and `Public Property P
 **RoslynPath - Language Aware:**
 ```json
 {
-  "tool": "dotnet-query-syntax",
+  "tool": "spelunk-query-syntax",
   "roslynPath": "//property[@name='*Price*']"
 }
 ```
@@ -265,7 +265,7 @@ Handles both syntaxes transparently
 **F# Function Composition:**
 ```json
 {
-  "tool": "dotnet-query-syntax",
+  "tool": "spelunk-query-syntax",
   "file": "Library.fs",
   "roslynPath": "//function[@name >> function]"
 }
@@ -274,7 +274,7 @@ Handles both syntaxes transparently
 **F# Discriminated Unions:**
 ```json
 {
-  "tool": "dotnet-query-syntax", 
+  "tool": "spelunk-query-syntax", 
   "file": "Types.fs",
   "roslynPath": "//type[union-case]"
 }

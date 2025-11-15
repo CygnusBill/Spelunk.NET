@@ -88,14 +88,14 @@ namespace TestProject
             f.write(csproj_content)
         
         # Load the project
-        result = client.call_tool("dotnet-load-workspace", {
+        result = client.call_tool("spelunk-load-workspace", {
             "path": csproj_file
         })
         assert result["success"], f"Failed to load workspace: {result.get('error')}"
         
         # Test 1: Query method declarations with semantic info
         print("\n=== Test 1: Query methods with semantic information ===")
-        result = client.call_tool("dotnet-query-syntax", {
+        result = client.call_tool("spelunk-query-syntax", {
             "roslynPath": "//method[@name='ProcessAsync']",
             "workspacePath": workspace_path,
             "includeSemanticInfo": True
@@ -122,7 +122,7 @@ namespace TestProject
         
         # Test 2: Query property access with type information
         print("\n=== Test 2: Query property access with type information ===")
-        result = client.call_tool("dotnet-query-syntax", {
+        result = client.call_tool("spelunk-query-syntax", {
             "roslynPath": "//property[@name='Id']",
             "workspacePath": workspace_path,
             "includeSemanticInfo": True
@@ -143,7 +143,7 @@ namespace TestProject
         
         # Test 3: Query binary expressions with semantic analysis
         print("\n=== Test 3: Query null comparisons with semantic info ===")
-        result = client.call_tool("dotnet-query-syntax", {
+        result = client.call_tool("spelunk-query-syntax", {
             "roslynPath": "//binary-expression[@operator='==' and @right-text='0']",
             "workspacePath": workspace_path,
             "includeSemanticInfo": True
@@ -166,7 +166,7 @@ namespace TestProject
         
         # Test 4: Query with enclosing context
         print("\n=== Test 4: Query with enclosing context ===")
-        result = client.call_tool("dotnet-query-syntax", {
+        result = client.call_tool("spelunk-query-syntax", {
             "roslynPath": "//throw-statement",
             "workspacePath": workspace_path,
             "includeSemanticInfo": True
@@ -188,7 +188,7 @@ namespace TestProject
         
         # Test 5: Query without semantic info (default behavior)
         print("\n=== Test 5: Query without semantic info (default) ===")
-        result = client.call_tool("dotnet-query-syntax", {
+        result = client.call_tool("spelunk-query-syntax", {
             "roslynPath": "//class",
             "workspacePath": workspace_path
             # includeSemanticInfo not specified, defaults to false

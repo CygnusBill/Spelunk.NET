@@ -60,7 +60,7 @@ async def extract_method(file_path, start_line, end_line, method_name):
     # Step 1: Analyze the code region with data flow analysis
     print("Analyzing selected code region...")
     
-    data_flow_result = await call_tool("dotnet-get-data-flow", {
+    data_flow_result = await call_tool("spelunk-get-data-flow", {
         "file": file_path,
         "startLine": start_line,
         "startColumn": 1,
@@ -77,7 +77,7 @@ async def extract_method(file_path, start_line, end_line, method_name):
     print(f"Found {len(returns_needed)} values to return")
     
     # Step 2: Get the actual code to extract
-    statement_result = await call_tool("dotnet-find-statements", {
+    statement_result = await call_tool("spelunk-find-statements", {
         "filePath": file_path,
         "pattern": "//statement",  # Get all statements
         "patternType": "roslynpath"
@@ -90,7 +90,7 @@ async def extract_method(file_path, start_line, end_line, method_name):
     ]
     
     # Step 3: Get context about the containing class
-    context_result = await call_tool("dotnet-get-statement-context", {
+    context_result = await call_tool("spelunk-get-statement-context", {
         "file": file_path,
         "line": start_line,
         "column": 1
@@ -149,7 +149,7 @@ async def extract_method(file_path, start_line, end_line, method_name):
     
     # Step 7: Find where to insert the method
     # Get the last method in the class to insert after
-    class_methods = await call_tool("dotnet-find-method", {
+    class_methods = await call_tool("spelunk-find-method", {
         "classPattern": containing_class,
         "methodPattern": "*"
     })
@@ -163,7 +163,7 @@ async def extract_method(file_path, start_line, end_line, method_name):
         }
     else:
         # No methods, find class declaration
-        class_result = await call_tool("dotnet-find-class", {
+        class_result = await call_tool("spelunk-find-class", {
             "pattern": containing_class
         })
         insert_location = {
@@ -175,7 +175,7 @@ async def extract_method(file_path, start_line, end_line, method_name):
     # Step 8: Insert the new method
     print("Inserting new method into class...")
     
-    await call_tool("dotnet-insert-statement", {
+    await call_tool("spelunk-insert-statement", {
         "position": "after",
         "filePath": insert_location["filePath"],
         "line": insert_location["line"],
@@ -204,7 +204,7 @@ async def extract_method(file_path, start_line, end_line, method_name):
     # We need to replace multiple statements with one
     # First, mark the statements to track them
     for i, stmt in enumerate(statements_to_extract):
-        await call_tool("dotnet-mark-statement", {
+        await call_tool("spelunk-mark-statement", {
             "filePath": file_path,
             "line": stmt["Line"],
             "column": stmt["Column"],
@@ -212,7 +212,7 @@ async def extract_method(file_path, start_line, end_line, method_name):
         })
     
     # Replace first statement with method call
-    await call_tool("dotnet-replace-statement", {
+    await call_tool("spelunk-replace-statement", {
         "filePath": file_path,
         "line": statements_to_extract[0]["Line"],
         "column": statements_to_extract[0]["Column"],
@@ -221,7 +221,7 @@ async def extract_method(file_path, start_line, end_line, method_name):
     
     # Remove the rest
     for i in range(1, len(statements_to_extract)):
-        await call_tool("dotnet-remove-statement", {
+        await call_tool("spelunk-remove-statement", {
             "filePath": file_path,
             "line": statements_to_extract[i]["Line"],
             "column": statements_to_extract[i]["Column"]
@@ -230,7 +230,7 @@ async def extract_method(file_path, start_line, end_line, method_name):
     # Step 11: Verify compilation
     print("Verifying code compiles...")
     
-    workspace_status = await call_tool("dotnet-workspace-status", {})
+    workspace_status = await call_tool("spelunk-workspace-status", {})
     
     if workspace_status["HasErrors"]:
         print("⚠️ Compilation errors detected:")

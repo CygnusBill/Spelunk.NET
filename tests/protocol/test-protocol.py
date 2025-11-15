@@ -73,7 +73,7 @@ def test_mcp_protocol():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet-load-workspace",
+                "name": "spelunk-load-workspace",
                 "arguments": {
                     "path": "./src/McpRoslyn/McpRoslyn.sln"
                 }
@@ -88,7 +88,7 @@ def test_mcp_protocol():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet-workspace-status",
+                "name": "spelunk-workspace-status",
                 "arguments": {}
             },
             "id": 4
@@ -101,7 +101,7 @@ def test_mcp_protocol():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet-find-class",
+                "name": "spelunk-find-class",
                 "arguments": {
                     "pattern": "*Manager"
                 }
@@ -116,7 +116,7 @@ def test_mcp_protocol():
             "jsonrpc": "2.0",
             "method": "tools/call",
             "params": {
-                "name": "dotnet-find-class",
+                "name": "spelunk-find-class",
                 "arguments": {
                     "pattern": "I*"
                 }

@@ -26,7 +26,7 @@ def main():
         
         # Load workspace
         print("Loading test workspace...")
-        response = runner.call_tool("dotnet-load-workspace", {
+        response = runner.call_tool("spelunk-load-workspace", {
             "path": os.path.abspath("test-workspace/TestProject.csproj")
         })
         assert_exists(response, "Id")
@@ -34,7 +34,7 @@ def main():
         
         # Test 1: Query syntax with enhanced RoslynPath
         print("\nTest 1: Query null comparisons with enhanced RoslynPath")
-        response = runner.call_tool("dotnet-query-syntax", {
+        response = runner.call_tool("spelunk-query-syntax", {
             "roslynPath": "//binary-expression[@operator='==']",
             "file": os.path.abspath("test-workspace/src/Program.cs")
         })
@@ -43,7 +43,7 @@ def main():
         
         # Test 2: Navigate from position
         print("\nTest 2: Navigate to parent method")
-        response = runner.call_tool("dotnet-navigate", {
+        response = runner.call_tool("spelunk-navigate", {
             "from": {
                 "file": os.path.abspath("test-workspace/src/Program.cs"),
                 "line": 10,
@@ -60,7 +60,7 @@ def main():
         
         # Test 3: Get AST structure
         print("\nTest 3: Get AST structure")
-        response = runner.call_tool("dotnet-get-ast", {
+        response = runner.call_tool("spelunk-get-ast", {
             "file": os.path.abspath("test-workspace/src/Program.cs"),
             "depth": 2
         })
@@ -69,7 +69,7 @@ def main():
         
         # Test 4: Query with low-level node types
         print("\nTest 4: Query if-statements")
-        response = runner.call_tool("dotnet-query-syntax", {
+        response = runner.call_tool("spelunk-query-syntax", {
             "roslynPath": "//if-statement",
             "file": os.path.abspath("test-workspace/src/Program.cs")
         })

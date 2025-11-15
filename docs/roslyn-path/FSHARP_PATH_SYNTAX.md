@@ -104,13 +104,13 @@ descendant::function[@async]                      - All async functions (explici
 
 ## Wildcards in FSharpPath
 
-Currently, FSharpPath uses exact matching. For pattern-based matching, use the `dotnet-fsharp-find-symbols` tool which supports:
+Currently, FSharpPath uses exact matching. For pattern-based matching, use the `spelunk-fsharp-find-symbols` tool which supports:
 - `*` - Matches any sequence of characters
 - `?` - Matches any single character
 
 ## Query Context
 
-When using `dotnet-fsharp-query`, you can include context:
+When using `spelunk-fsharp-query`, you can include context:
 ```json
 {
   "fsharpPath": "//let[@name='factorial']",
@@ -151,4 +151,4 @@ When using `dotnet-fsharp-query`, you can include context:
 2. Use `/` for performance when you know the structure
 3. Combine node types with predicates for precise queries
 4. Use axes explicitly for complex navigation
-5. Test queries with `dotnet-fsharp-get-ast` to understand structure
+5. Test queries with `spelunk-fsharp-get-ast` to understand structure

@@ -66,14 +66,14 @@ namespace TestProject
     try:
         # Load workspace
         print("Loading workspace...")
-        result = run_mcp_command("dotnet-load-workspace", {
+        result = run_mcp_command("spelunk-load-workspace", {
             "path": "./test-workspace/TestProject.csproj"
         })
         print(f"Workspace loaded: {result.get('Success', False)}")
         
         # Test fix-pattern
         print("\nRunning fix-pattern...")
-        result = run_mcp_command("dotnet-fix-pattern", {
+        result = run_mcp_command("spelunk-fix-pattern", {
             "findPattern": "//statement[@contains='string.Format' or @contains='String.Format']",
             "replacePattern": "",
             "patternType": "convert-to-interpolation",
@@ -126,7 +126,7 @@ namespace TestProject
     try:
         # Test fix-pattern
         print("Running fix-pattern for null checks...")
-        result = run_mcp_command("dotnet-fix-pattern", {
+        result = run_mcp_command("spelunk-fix-pattern", {
             "findPattern": "//statement[@type=ExpressionStatement and @contains='.']",
             "replacePattern": "",
             "patternType": "add-null-check", 

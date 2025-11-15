@@ -21,7 +21,7 @@ def test_vb_find_classes():
     
     # Test 1: Load VB workspace
     print("\n1. Loading VB.NET workspace...")
-    load_result = client.call_tool("dotnet-load-workspace", {
+    load_result = client.call_tool("spelunk-load-workspace", {
         "path": vb_project_path
     })
     
@@ -34,7 +34,7 @@ def test_vb_find_classes():
     
     # Test 2: Find all classes
     print("\n2. Finding all classes...")
-    find_result = client.call_tool("dotnet-find-class", {
+    find_result = client.call_tool("spelunk-find-class", {
         "pattern": "*",
         "workspacePath": workspace_id
     })
@@ -55,7 +55,7 @@ def test_vb_find_classes():
     
     # Test 3: Find specific classes by pattern
     print("\n3. Finding classes with 'Logger' pattern...")
-    logger_result = client.call_tool("dotnet-find-class", {
+    logger_result = client.call_tool("spelunk-find-class", {
         "pattern": "*Logger",
         "workspacePath": workspace_id
     })
@@ -73,7 +73,7 @@ def test_vb_find_classes():
     
     # Test 4: Find abstract classes using RoslynPath
     print("\n4. Finding abstract (MustInherit) classes using RoslynPath...")
-    abstract_result = client.call_tool("dotnet-find-statements", {
+    abstract_result = client.call_tool("spelunk-find-statements", {
         "pattern": "//class[@abstract]",
         "patternType": "roslynpath",
         "workspacePath": workspace_id
@@ -90,7 +90,7 @@ def test_vb_find_classes():
     
     # Test 5: Find classes with specific modifiers
     print("\n5. Finding public classes using RoslynPath...")
-    public_result = client.call_tool("dotnet-find-statements", {
+    public_result = client.call_tool("spelunk-find-statements", {
         "pattern": "//class[@public]",
         "patternType": "roslynpath",
         "workspacePath": workspace_id
@@ -108,7 +108,7 @@ def test_vb_find_classes():
     
     # Test 6: Find interface implementations
     print("\n6. Finding interface implementations...")
-    interface_result = client.call_tool("dotnet-find-class", {
+    interface_result = client.call_tool("spelunk-find-class", {
         "pattern": "I*",  # Interface pattern
         "workspacePath": workspace_id
     })
