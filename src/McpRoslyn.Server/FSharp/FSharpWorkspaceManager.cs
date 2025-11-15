@@ -42,8 +42,8 @@ public class FSharpWorkspaceManager : IDisposable
             parallelReferenceResolution: FSharpOption<bool>.Some(true),
             captureIdentifiersWhenParsing: FSharpOption<bool>.Some(true),
             documentSource: null,
-            useSyntaxTreeCache: FSharpOption<bool>.None,
-            useTransparentCompiler: FSharpOption<bool>.Some(false));
+            useTransparentCompiler: FSharpOption<bool>.Some(false),
+            transparentCompilerCacheSizes: null);
             
         _projectOptionsCache = new Dictionary<string, FSharpProjectOptions>();
         _fileCache = new Dictionary<string, (DateTime, FSharpParseFileResults, FSharpCheckFileResults)>();

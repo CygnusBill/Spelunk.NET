@@ -20,6 +20,15 @@ class Program
                     .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
                     .AddJsonFile($"appsettings.{context.HostingEnvironment.EnvironmentName}.json", optional: true, reloadOnChange: true)
                     .AddJsonFile("mcp-roslyn.config.json", optional: true, reloadOnChange: true);
+
+                // Add user-level configuration file from home directory
+                var userConfigPath = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                    ".config", "mcp-roslyn", "config.json");
+                if (File.Exists(userConfigPath))
+                {
+                    config.AddJsonFile(userConfigPath, optional: true, reloadOnChange: true);
+                }
                 
                 // Support legacy environment variable for backward compatibility
                 var legacyAllowedPaths = Environment.GetEnvironmentVariable("MCP_ROSLYN_ALLOWED_PATHS");

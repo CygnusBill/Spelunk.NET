@@ -82,10 +82,8 @@ public class McpJsonRpcServer
         {
             try
             {
-                var line = await reader.ReadLineAsync();
+                var line = await reader.ReadLineAsync(cancellationToken);
                 if (line == null) break;
-                
-                cancellationToken.ThrowIfCancellationRequested();
                 
                 // Skip empty lines
                 if (string.IsNullOrWhiteSpace(line)) continue;
@@ -113,6 +111,12 @@ public class McpJsonRpcServer
                     _logger.LogWarning("Null response returned from ProcessRequestAsync");
                 }
             }
+            catch (OperationCanceledException)
+            {
+                // Cancellation requested - exit gracefully
+                _logger.LogInformation("Server cancellation requested");
+                break;
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error processing request");
@@ -129,7 +133,7 @@ public class McpJsonRpcServer
                 });
             }
         }
-        
+
         _logger.LogInformation("MCP Roslyn Server shutting down");
     }
     
@@ -2435,6 +2439,11 @@ public class McpJsonRpcServer
     
     private async Task<object> FixPatternAsync(JsonElement? args)
     {
+        // DEPRECATED: This tool represents a monolithic refactoring approach.
+        // Refactorings should be implemented as agent workflows using primitive tools.
+        // See docs/REFACTORING_AS_AGENTS.md and docs/agents/ for the new approach.
+        // This method is retained for backward compatibility only.
+        
         var findPattern = args?.GetProperty("findPattern").GetString();
         var replacePattern = args?.GetProperty("replacePattern").GetString();
         var patternType = args?.GetProperty("patternType").GetString();

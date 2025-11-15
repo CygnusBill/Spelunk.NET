@@ -177,6 +177,42 @@ See examples in `docs/roslyn-path/examples/`:
 - `demo-roslyn-path-complex.cs` - Complex query demonstrations
 - `test-roslyn-path-simple.cs` - Simple standalone test
 
+### Configuration
+
+#### User-Level Configuration
+The server supports a user-level configuration file for setting allowed directories and other options.
+
+**Location**: `~/.config/mcp-roslyn/config.json`
+
+**Example**:
+```json
+{
+  "McpRoslyn": {
+    "AllowedPaths": [
+      "/Users/bill/Repos",
+      "/Users/bill/Desktop",
+      "/Users/bill/Documents"
+    ],
+    "Logging": {
+      "MinimumLevel": "Information"
+    },
+    "Server": {
+      "RequestTimeoutSeconds": 120,
+      "MaxWorkspaces": 10
+    }
+  }
+}
+```
+
+**Configuration Priority** (highest to lowest):
+1. Command line arguments
+2. Environment variables (e.g., `MCP_ROSLYN_ALLOWED_PATHS`)
+3. User config (`~/.config/mcp-roslyn/config.json`)
+4. Project config (`mcp-roslyn.config.json` in working directory)
+5. Default settings
+
+See `~/.config/mcp-roslyn/README.md` for detailed configuration documentation.
+
 ## Important Notes
 
 1. **Line Numbers Are Fragile**: Always prefer RoslynPath over line/column positions

@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Connections;
 using Microsoft.Build.Locator;
 using ModelContextProtocol.AspNetCore;
 using McpRoslyn.Server.Sse.Tools;
+using McpRoslyn.Server.Configuration;
+using Microsoft.Extensions.Options;
 
 // Register MSBuild once at startup
 MSBuildLocator.RegisterDefaults();
@@ -12,28 +14,45 @@ var builder = WebApplication.CreateBuilder(args);
 var port = args.FirstOrDefault(a => a.StartsWith("--port="))?.Split('=')[1] ?? "3333";
 builder.WebHost.UseUrls($"http://localhost:{port}");
 
-// Get allowed paths from command line or environment
-var allowedPaths = new List<string>();
-var envPaths = Environment.GetEnvironmentVariable("MCP_ROSLYN_ALLOWED_PATHS");
-if (!string.IsNullOrEmpty(envPaths))
+// User config path
+var userConfigPath = Path.Combine(
+    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+    ".config", "mcp-roslyn", "config.json");
+
+// Add user configuration source (after default sources but before command line)
+if (File.Exists(userConfigPath))
 {
-    allowedPaths.AddRange(envPaths.Split(';'));
+    builder.Configuration.AddJsonFile(userConfigPath, optional: true, reloadOnChange: true);
 }
 
-// Parse command line for allowed paths
-for (int i = 0; i < args.Length; i++)
+// Support legacy environment variable
+var legacyAllowedPaths = Environment.GetEnvironmentVariable("MCP_ROSLYN_ALLOWED_PATHS");
+if (!string.IsNullOrEmpty(legacyAllowedPaths))
 {
-    if (args[i] == "--allowed-path" && i + 1 < args.Length)
+    var paths = legacyAllowedPaths.Split(Path.PathSeparator);
+    var inMemoryConfig = new Dictionary<string, string?>();
+    for (int i = 0; i < paths.Length; i++)
     {
-        allowedPaths.Add(args[i + 1]);
+        inMemoryConfig[$"McpRoslyn:AllowedPaths:{i}"] = paths[i];
     }
+    builder.Configuration.AddInMemoryCollection(inMemoryConfig);
 }
 
-// Default to current directory if no paths specified
-if (allowedPaths.Count == 0)
-{
-    allowedPaths.Add(Environment.CurrentDirectory);
-}
+builder.Configuration.AddEnvironmentVariables("MCP_ROSLYN__");
+
+// Configure and validate options
+builder.Services.AddOptions<McpRoslynOptions>()
+    .Bind(builder.Configuration.GetSection(McpRoslynOptions.SectionName))
+    .Configure(options =>
+    {
+        // Default to current directory if no allowed paths specified
+        if (options.AllowedPaths.Count == 0)
+        {
+            options.AllowedPaths.Add(Directory.GetCurrentDirectory());
+        }
+    })
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
 
 // Add logging
 builder.Services.AddLogging(logging =>
@@ -49,14 +68,16 @@ builder.Services.AddMcpServer()
 
 var app = builder.Build();
 
-// Initialize the static tools with configuration
-RoslynTools.Initialize(allowedPaths, app.Services.GetRequiredService<ILogger<Program>>());
+// Initialize the static tools with configuration from IOptionsMonitor
+var optionsMonitor = app.Services.GetRequiredService<IOptionsMonitor<McpRoslynOptions>>();
+var logger = app.Services.GetRequiredService<ILogger<Program>>();
+RoslynTools.Initialize(optionsMonitor, logger);
 
 // Map MCP endpoints
 app.MapMcp();
 
 app.Logger.LogInformation("MCP Roslyn SSE Server starting on port {Port}", port);
-app.Logger.LogInformation("Allowed paths: {Paths}", string.Join(", ", allowedPaths));
+app.Logger.LogInformation("Allowed paths: {Paths}", string.Join(", ", optionsMonitor.CurrentValue.AllowedPaths));
 
 try
 {

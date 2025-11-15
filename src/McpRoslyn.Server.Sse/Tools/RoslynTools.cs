@@ -4,7 +4,9 @@ using ModelContextProtocol.Server;
 using System.ComponentModel;
 using System.Text.Json;
 using McpRoslyn.Server;
+using McpRoslyn.Server.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace McpRoslyn.Server.Sse.Tools;
 
@@ -12,20 +14,27 @@ namespace McpRoslyn.Server.Sse.Tools;
 public static class RoslynTools
 {
     private static RoslynWorkspaceManager? _workspaceManager;
-    private static readonly List<string> _allowedPaths = new();
+    private static IOptionsMonitor<McpRoslynOptions>? _optionsMonitor;
     private static ILogger<Program>? _logger;
+    private static IDisposable? _optionsChangeToken;
 
-    public static void Initialize(List<string> allowedPaths, ILogger<Program> logger)
+    public static void Initialize(IOptionsMonitor<McpRoslynOptions> optionsMonitor, ILogger<Program> logger)
     {
         _logger = logger;
-        _allowedPaths.Clear();
-        _allowedPaths.AddRange(allowedPaths);
-        
+        _optionsMonitor = optionsMonitor;
+
         // Create a typed logger for RoslynWorkspaceManager
         var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
         var workspaceLogger = loggerFactory.CreateLogger<RoslynWorkspaceManager>();
-        
+
         _workspaceManager = new RoslynWorkspaceManager(workspaceLogger);
+
+        // Subscribe to configuration changes using IOptionsMonitor
+        _optionsChangeToken = optionsMonitor.OnChange(options =>
+        {
+            _logger?.LogInformation("Configuration changed. Allowed paths: {Paths}",
+                string.Join(", ", options.AllowedPaths));
+        });
     }
 
     [McpServerTool(Name = "dotnet-load-workspace"), Description(ToolDescriptions.LoadWorkspace)]
@@ -719,8 +728,15 @@ public static class RoslynTools
 
     private static bool IsPathAllowed(string path)
     {
+        if (_optionsMonitor == null)
+        {
+            throw new InvalidOperationException("RoslynTools not initialized");
+        }
+
         var normalizedPath = Path.GetFullPath(path);
-        return _allowedPaths.Any(allowed => 
+        var allowedPaths = _optionsMonitor.CurrentValue.AllowedPaths;
+
+        return allowedPaths.Any(allowed =>
             normalizedPath.StartsWith(Path.GetFullPath(allowed), StringComparison.OrdinalIgnoreCase));
     }
 }

@@ -6,6 +6,15 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <NoWarn>$(NoWarn);CS1998</NoWarn>
+
+    <!-- Package as .NET global tool -->
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>mcp-dotnet</ToolCommandName>
+    <PackageId>McpDotnet</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>Bill</Authors>
+    <Description>MCP server for .NET code analysis using Roslyn compiler platform</Description>
+    <PackageTags>mcp;roslyn;dotnet;code-analysis;refactoring</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,13 +28,13 @@
     <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.0" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.0" />
     <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" Version="10.0.0" />
-    <PackageReference Include="ModelContextProtocol" Version="0.3.0-preview.3" />
-    <PackageReference Include="ModelContextProtocol.Core" Version="0.3.0-preview.3" />
-    <PackageReference Include="Microsoft.CodeAnalysis.Workspaces.MSBuild" Version="4.12.0" />
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.12.0" />
-    <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic.Workspaces" Version="4.12.0" />
-    <PackageReference Include="FSharp.Compiler.Service" Version="43.8.300" />
-    <PackageReference Include="Microsoft.Build.Locator" Version="1.7.8" />
+    <PackageReference Include="ModelContextProtocol" Version="0.4.0-preview.3" />
+    <PackageReference Include="ModelContextProtocol.Core" Version="0.4.0-preview.3" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Workspaces.MSBuild" Version="5.0.0-2.final" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.0.0-2.final" />
+    <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic.Workspaces" Version="5.0.0-2.final" />
+    <PackageReference Include="FSharp.Compiler.Service" Version="43.10.100" />
+    <PackageReference Include="Microsoft.Build.Locator" Version="1.10.12" />
   </ItemGroup>
 
 </Project>

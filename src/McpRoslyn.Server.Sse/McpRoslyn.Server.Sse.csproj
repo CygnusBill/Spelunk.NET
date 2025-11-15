@@ -5,11 +5,21 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <NoWarn>$(NoWarn);CS1998</NoWarn>
+
+    <!-- Package as .NET global tool -->
+    <IsPackable>true</IsPackable>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>mcp-dotnet-sse</ToolCommandName>
+    <PackageId>McpDotnetSse</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>Bill</Authors>
+    <Description>MCP SSE server for .NET code analysis using Roslyn compiler platform</Description>
+    <PackageTags>mcp;roslyn;dotnet;code-analysis;sse</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\McpRoslyn.Server\McpRoslyn.Server.csproj" />
-    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="0.3.0-preview.3" />
+    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="0.4.0-preview.3" />
   </ItemGroup>
 
 </Project>

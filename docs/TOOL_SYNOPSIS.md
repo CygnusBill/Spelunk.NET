@@ -1346,8 +1346,10 @@ Preview:
 
 **Use Case**: Add methods/properties, convert to async, add parameters, add error handling
 
-#### `dotnet-fix-pattern`
+#### `dotnet-fix-pattern` (DEPRECATED)
 **MCP Description**: "Transform code using semantic-aware patterns with RoslynPath queries and statement-level operations"
+
+> **⚠️ DEPRECATED**: This tool represents a monolithic refactoring approach. Refactorings should be implemented as agent workflows using primitive tools. See [REFACTORING_AS_AGENTS.md](REFACTORING_AS_AGENTS.md) for the new approach. This tool is retained for backward compatibility only.
 
 **Purpose**: Apply powerful semantic-aware transformations using RoslynPath queries and statement-level operations.
 

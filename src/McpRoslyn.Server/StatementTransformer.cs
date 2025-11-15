@@ -12,11 +12,16 @@ namespace McpRoslyn.Server;
 
 /// <summary>
 /// Handles semantic-aware transformations of statements
+/// DEPRECATED: Refactorings should be implemented as agent workflows using primitive tools.
+/// See docs/REFACTORING_AS_AGENTS.md for the new approach.
+/// This class is retained for backward compatibility only.
 /// </summary>
+[Obsolete("Use agent orchestration with primitive tools instead. See docs/REFACTORING_AS_AGENTS.md")]
 public class StatementTransformer
 {
     private readonly SemanticModel _semanticModel;
     private readonly SourceText _sourceText;
+    private Document? _document;
     
     public StatementTransformer(SemanticModel semanticModel, SourceText sourceText)
     {
@@ -24,9 +29,27 @@ public class StatementTransformer
         _sourceText = sourceText;
     }
     
+    public void SetDocument(Document document)
+    {
+        _document = document;
+    }
+    
+    private async Task<Document?> GetDocumentAsync()
+    {
+        // Try to get document from the semantic model's compilation
+        if (_document == null && _semanticModel.SyntaxTree != null)
+        {
+            // This is a fallback - ideally the document should be set explicitly
+            return null;
+        }
+        return _document;
+    }
+    
     /// <summary>
     /// Transform a statement based on the provided rule
+    /// DEPRECATED: Use agent orchestration instead.
     /// </summary>
+    [Obsolete("Use agent orchestration with primitive tools instead")]
     public async Task<string?> TransformStatementAsync(
         SyntaxNode statement,
         StatementContextResult context,
@@ -238,40 +261,63 @@ public class StatementTransformer
     {
         if (statement.Language == LanguageNames.CSharp)
         {
-            // Look for SQL command creation with concatenation
-            if (statement.ToString().Contains("SqlCommand") && 
-                (statement.ToString().Contains(" + ") || statement.ToString().Contains("$\"")))
+            // Use the new SqlParameterizer for robust AST-based transformation
+            var document = _document ?? await GetDocumentAsync();
+            if (document != null)
             {
-                // This is a simplified example - real implementation would parse the SQL
-                var modifiedStatement = statement.ToString();
+                var parameterizer = new Transformers.SqlParameterizer(document, _semanticModel);
                 
-                // Find string concatenations in SQL
-                if (statement is CS.LocalDeclarationStatementSyntax localDecl)
+                // Analyze the SQL usage
+                var sqlInfo = await parameterizer.AnalyzeSqlUsageAsync(statement);
+                if (sqlInfo != null)
                 {
-                    foreach (var variable in localDecl.Declaration.Variables)
+                    // Transform to parameterized version
+                    var transformedNode = await parameterizer.TransformToParameterizedAsync(sqlInfo);
+                    if (transformedNode != null)
                     {
-                        if (variable.Initializer?.Value.ToString().Contains("\"SELECT") == true)
+                        // Return the transformed syntax as string
+                        return transformedNode.ToFullString();
+                    }
+                }
+            }
+            
+            // Fallback to the old implementation if needed
+            // This ensures backward compatibility while we transition
+            return await ParameterizeQueryLegacyAsync(statement, context, rule);
+        }
+        
+        return null;
+    }
+    
+    private async Task<string?> ParameterizeQueryLegacyAsync(SyntaxNode statement, StatementContextResult context, TransformationRule rule)
+    {
+        // Keep the old implementation as fallback for now
+        if (statement.ToString().Contains("SqlCommand") && 
+            (statement.ToString().Contains(" + ") || statement.ToString().Contains("$\"")))
+        {
+            var modifiedStatement = statement.ToString();
+            
+            if (statement is CS.LocalDeclarationStatementSyntax localDecl)
+            {
+                foreach (var variable in localDecl.Declaration.Variables)
+                {
+                    if (variable.Initializer?.Value.ToString().Contains("\"SELECT") == true)
+                    {
+                        var sql = variable.Initializer.Value.ToString();
+                        var parameterized = ConvertToParameterizedSql(sql);
+                        
+                        if (parameterized != null)
                         {
-                            // Extract the SQL and parameters
-                            var sql = variable.Initializer.Value.ToString();
-                            var parameterized = ConvertToParameterizedSql(sql);
+                            var indent = GetIndentation(statement);
+                            var cmdVar = variable.Identifier.Text;
+                            var result = modifiedStatement.Replace(sql, parameterized.Sql) + "\n";
                             
-                            if (parameterized != null)
+                            foreach (var param in parameterized.Parameters)
                             {
-                                var indent = GetIndentation(statement);
-                                var cmdVar = variable.Identifier.Text;
-                                
-                                // Create parameterized version
-                                var result = modifiedStatement.Replace(sql, parameterized.Sql) + "\n";
-                                
-                                // Add parameter statements
-                                foreach (var param in parameterized.Parameters)
-                                {
-                                    result += $"{indent}{cmdVar}.Parameters.AddWithValue(\"{param.Name}\", {param.Value});\n";
-                                }
-                                
-                                return result.TrimEnd();
+                                result += $"{indent}{cmdVar}.Parameters.AddWithValue(\"{param.Name}\", {param.Value});\n";
                             }
+                            
+                            return result.TrimEnd();
                         }
                     }
                 }
@@ -416,7 +462,9 @@ public class StatementTransformer
 
 /// <summary>
 /// Defines a transformation rule for statement-level refactoring
+/// DEPRECATED: Use agent workflows instead of transformation rules.
 /// </summary>
+[Obsolete("Use agent orchestration with primitive tools instead")]
 public class TransformationRule
 {
     public string Name { get; set; } = "";
@@ -428,7 +476,9 @@ public class TransformationRule
 
 /// <summary>
 /// Types of transformations supported
+/// DEPRECATED: Each transformation should be an agent workflow.
 /// </summary>
+[Obsolete("Use agent orchestration with primitive tools instead")]
 public enum TransformationType
 {
     AddNullCheck,
