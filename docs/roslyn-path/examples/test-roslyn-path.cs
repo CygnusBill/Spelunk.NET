@@ -1,8 +1,8 @@
 using System;
 using System.Linq;
-using McpRoslyn.Server.RoslynPath;
+using Spelunk.Server.SpelunkPath;
 
-class RoslynPathDemo
+class SpelunkPathDemo
 {
     static void Main()
     {
@@ -67,9 +67,9 @@ namespace MyApp.Services
     }
 }";
 
-        Console.WriteLine("=== RoslynPath Demo ===\n");
+        Console.WriteLine("=== SpelunkPath Demo ===\n");
 
-        // Test various RoslynPath expressions
+        // Test various SpelunkPath expressions
         TestPath(sourceCode, "Find all methods", 
             "//method");
 
@@ -124,7 +124,7 @@ namespace MyApp.Services
 
         try
         {
-            var results = RoslynPath.Find(sourceCode, path).ToList();
+            var results = SpelunkPath.Find(sourceCode, path).ToList();
             
             if (results.Count == 0)
             {

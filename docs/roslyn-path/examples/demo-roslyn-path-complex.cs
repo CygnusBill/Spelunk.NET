@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis.CSharp;
-using McpRoslyn.Server.RoslynPath;
+using Spelunk.Server.SpelunkPath;
 
-class ComplexRoslynPathDemo
+class ComplexSpelunkPathDemo
 {
     static void Main()
     {
@@ -115,7 +115,7 @@ namespace MyApp.Services
     }
 }";
 
-        Console.WriteLine("=== Complex RoslynPath Query Demo ===\n");
+        Console.WriteLine("=== Complex SpelunkPath Query Demo ===\n");
 
         // The complex query: Find async methods that might be missing await
         var complexQuery = @"//method[@async and (
@@ -132,7 +132,7 @@ namespace MyApp.Services
 
         try
         {
-            var results = RoslynPath.Find(sourceCode, complexQuery).ToList();
+            var results = SpelunkPath.Find(sourceCode, complexQuery).ToList();
             
             Console.WriteLine($"Found {results.Count} suspicious async methods:\n");
 
@@ -169,7 +169,7 @@ namespace MyApp.Services
             Console.WriteLine("For comparison, here are the GOOD async methods:");
             
             var goodAsyncQuery = @"//method[@async and .//expression[@type=AwaitExpression]]";
-            var goodResults = RoslynPath.Find(sourceCode, goodAsyncQuery).ToList();
+            var goodResults = SpelunkPath.Find(sourceCode, goodAsyncQuery).ToList();
             
             foreach (var result in goodResults)
             {

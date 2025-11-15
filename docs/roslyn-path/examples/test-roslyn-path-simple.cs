@@ -1,9 +1,9 @@
-// Simple RoslynPath Test - Copy and run this code
+// Simple SpelunkPath Test - Copy and run this code
 using System;
 using System.Linq;
 
-// Minimal RoslynPath implementation for testing
-public static class SimpleRoslynPath
+// Minimal SpelunkPath implementation for testing
+public static class SimpleSpelunkPath
 {
     public static void FindStatements(string code, string path)
     {
@@ -76,23 +76,23 @@ public class OrderService
     }
 }";
 
-        Console.WriteLine("=== RoslynPath Demo ===");
+        Console.WriteLine("=== SpelunkPath Demo ===");
         Console.WriteLine("\nTest Code:");
         Console.WriteLine(testCode);
         
-        // Test different RoslynPath queries
-        Console.WriteLine("\n=== Testing RoslynPath Queries ===");
+        // Test different SpelunkPath queries
+        Console.WriteLine("\n=== Testing SpelunkPath Queries ===");
         
-        SimpleRoslynPath.FindStatements(testCode, 
+        SimpleSpelunkPath.FindStatements(testCode, 
             "//statement[@contains='Console.WriteLine']");
             
-        SimpleRoslynPath.FindStatements(testCode, 
+        SimpleSpelunkPath.FindStatements(testCode, 
             "//method[@async]");
             
-        SimpleRoslynPath.FindStatements(testCode, 
+        SimpleSpelunkPath.FindStatements(testCode, 
             "//statement[@type=IfStatement and @contains='== null']");
             
-        SimpleRoslynPath.FindStatements(testCode, 
+        SimpleSpelunkPath.FindStatements(testCode, 
             "//method[GetOrderAsync]//statement[@type=ReturnStatement]");
         
         Console.WriteLine("\n=== Key Benefits ===");
