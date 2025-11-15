@@ -2,6 +2,17 @@
 
 A Model Context Protocol (MCP) server that provides powerful code analysis and modification tools for .NET projects using Microsoft's Roslyn compiler platform.
 
+## Architecture Philosophy
+
+**Primitive Tools, Intelligent Agents**
+
+MCP Dotnet follows a **primitive tools** philosophy:
+- Tools are simple, focused, and composable building blocks
+- Complex refactorings are **agent workflows** that orchestrate these primitives  
+- This approach provides flexibility, transparency, and adaptability
+
+> **Important**: Refactoring operations (like SQL parameterization, async conversion, etc.) are not implemented as monolithic tools but as agent workflows. See [REFACTORING_AS_AGENTS.md](docs/REFACTORING_AS_AGENTS.md) for details.
+
 ## Overview
 
 This MCP server exposes Roslyn's advanced code analysis capabilities, allowing AI agents to:
@@ -102,8 +113,9 @@ The server leverages Roslyn's unique ability to seamlessly move between syntacti
 ## Building and Running
 
 ### Prerequisites
-- .NET 8.0 or later (tested with .NET 10.0 preview)
+- .NET 10.0 SDK (or .NET 8.0 or later)
 - MSBuild (comes with .NET SDK)
+- **OR** Docker (if running in container)
 
 ### Build
 ```bash
@@ -119,6 +131,22 @@ dotnet run --project McpRoslyn.Server/McpRoslyn.Server.csproj -- --allowed-path 
 # SSE mode (for HTTP-based clients)
 dotnet run --project McpRoslyn.Server.Sse/McpRoslyn.Server.Sse.csproj
 ```
+
+### Docker
+The server can also run in a Docker container:
+
+```bash
+# Build the image
+docker build -t mcp-roslyn:latest .
+
+# Run with mounted code directory
+docker run -i \
+  -v /path/to/your/code:/workspace \
+  -e MCP_ROSLYN_ALLOWED_PATHS=/workspace \
+  mcp-roslyn:latest
+```
+
+For detailed Docker usage, see [DOCKER.md](DOCKER.md).
 
 ## Usage Examples
 

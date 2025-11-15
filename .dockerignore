@@ -1,0 +1,65 @@
+# Build output
+**/bin/
+**/obj/
+**/out/
+
+# IDE and editor files
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.swp
+*.swo
+*~
+
+# Test files
+**/tests/
+test-workspace/
+
+# Documentation (not needed in container)
+docs/
+*.md
+!README.md
+
+# Git files
+.git/
+.gitignore
+.gitattributes
+
+# CI/CD
+.github/
+
+# Scripts (not needed in container)
+scripts/
+
+# Python test files
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.py
+
+# Local configuration
+.claude/
+mcp-config.json
+appsettings.Development.json
+appsettings.*.json
+
+# Packages
+*.nupkg
+*.snupkg
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# SSE server (we only want stdio in this Dockerfile)
+src/McpRoslyn.Server.Sse/
+
+# Logs
+*.log
+logs/
