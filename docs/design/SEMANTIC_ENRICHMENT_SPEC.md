@@ -8,9 +8,9 @@ This specification defines how semantic information (type info, symbol details, 
 
 The following tools will support semantic enrichment via an `includeSemanticInfo` parameter:
 
-1. **dotnet-query-syntax** - Enhanced SpelunkPath query results
-2. **dotnet-navigate** - Navigation with semantic context
-3. **dotnet-get-ast** - AST visualization with type information
+1. **spelunk-query-syntax** - Enhanced SpelunkPath query results
+2. **spelunk-navigate** - Navigation with semantic context
+3. **spelunk-get-ast** - AST visualization with type information
 
 ## API Design
 
@@ -82,7 +82,7 @@ interface SemanticInfo {
 
 ### Tool-Specific Enrichment
 
-#### dotnet-query-syntax
+#### spelunk-query-syntax
 
 **Request:**
 ```json
@@ -124,7 +124,7 @@ interface SemanticInfo {
 }
 ```
 
-#### dotnet-navigate
+#### spelunk-navigate
 
 **Request:**
 ```json
@@ -154,7 +154,7 @@ interface SemanticInfo {
 }
 ```
 
-#### dotnet-get-ast
+#### spelunk-get-ast
 
 **Request:**
 ```json

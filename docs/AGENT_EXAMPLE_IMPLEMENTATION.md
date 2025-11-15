@@ -381,15 +381,15 @@ Agents can learn from successful patterns and improve over time.
 
 This example demonstrates how these primitive tools combine:
 
-1. **dotnet-get-data-flow** - Understand variable dependencies
-2. **dotnet-find-statements** - Locate code to extract
-3. **dotnet-get-statement-context** - Get type information
-4. **dotnet-find-method** - Find insertion point
-5. **dotnet-insert-statement** - Add new method
-6. **dotnet-mark-statement** - Track statements
-7. **dotnet-replace-statement** - Replace with method call
-8. **dotnet-remove-statement** - Clean up extra lines
-9. **dotnet-workspace-status** - Verify compilation
+1. **spelunk-get-data-flow** - Understand variable dependencies
+2. **spelunk-find-statements** - Locate code to extract
+3. **spelunk-get-statement-context** - Get type information
+4. **spelunk-find-method** - Find insertion point
+5. **spelunk-insert-statement** - Add new method
+6. **spelunk-mark-statement** - Track statements
+7. **spelunk-replace-statement** - Replace with method call
+8. **spelunk-remove-statement** - Clean up extra lines
+9. **spelunk-workspace-status** - Verify compilation
 
 ## Comparison
 

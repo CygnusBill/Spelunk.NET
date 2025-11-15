@@ -22,31 +22,31 @@ You excel at:
 
 ```python
 # Find I/O operations that have async equivalents
-io_operations = dotnet-find-statements(
+io_operations = spelunk-find-statements(
     pattern="//invocation[@name='Read' or @name='Write' or @name='Execute' or @name='Send' or @name='Download']",
     patternType="roslynpath"
 )
 
 # Find file operations
-file_operations = dotnet-find-statements(
+file_operations = spelunk-find-statements(
     pattern="File.Read|File.Write|File.Open|StreamReader|StreamWriter",
     patternType="text"
 )
 
 # Find database operations
-db_operations = dotnet-find-statements(
+db_operations = spelunk-find-statements(
     pattern="ExecuteReader|ExecuteScalar|ExecuteNonQuery|SaveChanges",
     patternType="text"
 )
 
 # Find HTTP operations
-http_operations = dotnet-find-statements(
+http_operations = spelunk-find-statements(
     pattern="HttpClient|WebClient|HttpWebRequest",
     patternType="text"
 )
 
 # Find methods already returning Task but not async
-task_returns = dotnet-find-method(
+task_returns = spelunk-find-method(
     methodPattern="*"
 ) |> filter(method => method.returnType.contains("Task") && !method.isAsync)
 ```
@@ -58,13 +58,13 @@ task_returns = dotnet-find-method(
 ```python
 def analyze_async_dependencies(method):
     # Get the method's callers
-    callers = dotnet-find-method-callers(methodName=method.name)
+    callers = spelunk-find-method-callers(methodName=method.name)
     
     # Check if method is in interface
-    interfaces = dotnet-find-implementations(method.containingType)
+    interfaces = spelunk-find-implementations(method.containingType)
     
     # Check for overrides
-    overrides = dotnet-find-overrides(
+    overrides = spelunk-find-overrides(
         methodName=method.name,
         className=method.containingType
     )
@@ -91,7 +91,7 @@ def analyze_async_dependencies(method):
 # Build dependency graph
 graph = {}
 for method in methods_to_convert:
-    graph[method] = dotnet-find-method-calls(methodName=method.name)
+    graph[method] = spelunk-find-method-calls(methodName=method.name)
 
 # Topological sort - convert from leaves up
 conversion_order = topological_sort(graph)
@@ -123,14 +123,14 @@ public async Task<string> ReadFileAsync(string path)
 **Implementation:**
 ```python
 # Update method signature
-dotnet-edit-code(
+spelunk-edit-code(
     operation="make-async",
     methodName=method.name,
     className=method.containingType
 )
 
 # Find synchronous calls to replace
-sync_calls = dotnet-find-statements(
+sync_calls = spelunk-find-statements(
     pattern=f"//invocation[@has-async-version]",
     filePath=method.file
 )
@@ -140,7 +140,7 @@ for call in sync_calls:
     async_name = call.name + "Async"
     
     # Replace with async version
-    dotnet-replace-statement(
+    spelunk-replace-statement(
         filePath=call.file,
         line=call.line,
         column=call.column,
@@ -175,14 +175,14 @@ def propagate_async_chain(method):
     make_method_async(method)
     
     # Find all callers
-    callers = dotnet-find-method-callers(methodName=method.name)
+    callers = spelunk-find-method-callers(methodName=method.name)
     
     for caller in callers:
         # Get the statement calling our method
         call_statement = find_call_statement(caller, method)
         
         # Add await
-        dotnet-replace-statement(
+        spelunk-replace-statement(
             filePath=caller.file,
             line=call_statement.line,
             column=call_statement.column,
@@ -234,7 +234,7 @@ public class DataService : IDataService
 # Constructors can't be async - use factory pattern
 if method.is_constructor and has_async_operations(method):
     # Create static factory method
-    dotnet-edit-code(
+    spelunk-edit-code(
         operation="add-method",
         className=method.containingType,
         code=f"""
@@ -248,7 +248,7 @@ if method.is_constructor and has_async_operations(method):
     )
     
     # Move async operations to InitializeAsync
-    dotnet-edit-code(
+    spelunk-edit-code(
         operation="add-method",
         className=method.containingType,
         code="private async Task InitializeAsync() { ... }"
@@ -261,16 +261,16 @@ if method.is_constructor and has_async_operations(method):
 # Properties can't be async - convert to methods
 if method.is_property and has_async_operations(method):
     # Convert property to method
-    dotnet-replace-statement(
+    spelunk-replace-statement(
         filePath=method.file,
         line=method.line,
         newStatement=f"public async Task<{method.returnType}> Get{method.name}Async()"
     )
     
     # Update all property accesses to method calls
-    references = dotnet-find-references(symbolName=method.name)
+    references = spelunk-find-references(symbolName=method.name)
     for ref in references:
-        dotnet-replace-statement(
+        spelunk-replace-statement(
             filePath=ref.file,
             line=ref.line,
             newStatement=f"await {ref.object}.Get{method.name}Async()"
@@ -365,14 +365,14 @@ def convert_webforms_async(page_class):
     page_directive = find_page_directive(page_class.file)
     if "Async=\"true\"" not in page_directive:
         # Add Async="true" to directive
-        dotnet-replace-statement(
+        spelunk-replace-statement(
             filePath=page_class.file,
             line=page_directive.line,
             newStatement=page_directive.replace("<%@ Page", '<%@ Page Async="true"')
         )
     
     # Step 2: Find async void Page_Load methods
-    page_load = dotnet-find-method(
+    page_load = spelunk-find-method(
         methodPattern="Page_Load",
         classPattern=page_class.name
     )
@@ -397,8 +397,8 @@ def convert_webforms_async(page_class):
         }}
         """
         
-        dotnet-replace-statement(page_load.location, new_page_load)
-        dotnet-insert-statement(after=page_load.location, statement=new_method)
+        spelunk-replace-statement(page_load.location, new_page_load)
+        spelunk-insert-statement(after=page_load.location, statement=new_method)
 ```
 
 #### MVC 5 Async Pattern
@@ -463,7 +463,7 @@ public async Task<Data> ProcessRequestAsync()
 ```python
 def detect_httpcontext_usage(method):
     # Find HttpContext.Current usage after await
-    statements = dotnet-find-statements(
+    statements = spelunk-find-statements(
         pattern="HttpContext.Current",
         filePath=method.file
     )
@@ -476,14 +476,14 @@ def detect_httpcontext_usage(method):
 
 def fix_httpcontext_pattern(method):
     # Insert context capture at method start
-    dotnet-insert-statement(
+    spelunk-insert-statement(
         position="after",
         location=method.start,
         statement="var httpContext = HttpContext.Current;"
     )
     
     # Replace HttpContext.Current with httpContext
-    dotnet-fix-pattern(
+    spelunk-fix-pattern(
         findPattern="HttpContext.Current",
         replacePattern="httpContext",
         filePath=method.file
@@ -944,7 +944,7 @@ def consolidate_webforms_lifecycle(page_class):
     io_operations_by_lifecycle = {}
     
     for method_name in lifecycle_methods:
-        method = dotnet-find-method(
+        method = spelunk-find-method(
             methodPattern=method_name,
             classPattern=page_class.name
         )
@@ -969,7 +969,7 @@ def consolidate_webforms_lifecycle(page_class):
     )
     
     # Step 4: Replace Page_Load with RegisterAsyncTask
-    page_load = dotnet-find-method(
+    page_load = spelunk-find-method(
         methodPattern="Page_Load",
         classPattern=page_class.name
     )
@@ -982,14 +982,14 @@ def consolidate_webforms_lifecycle(page_class):
     }
     """
     
-    dotnet-replace-statement(
+    spelunk-replace-statement(
         filePath=page_load.file,
         line=page_load.line,
         newStatement=new_page_load
     )
     
     # Step 5: Add consolidated async method
-    dotnet-insert-statement(
+    spelunk-insert-statement(
         position="after",
         location=page_load.location,
         statement=consolidated_method
@@ -1189,7 +1189,7 @@ def find_io_operations_in_method(method):
     
     operations = []
     for pattern in io_patterns:
-        ops = dotnet-find-statements(
+        ops = spelunk-find-statements(
             pattern=pattern,
             filePath=method.file,
             within=method.location
@@ -2431,7 +2431,7 @@ def detect_and_fix_antipatterns(project):
     ]
     
     for antipattern in antipatterns:
-        matches = dotnet-find-statements(
+        matches = spelunk-find-statements(
             pattern=antipattern["pattern"],
             patternType="roslynpath"
         )

@@ -119,7 +119,7 @@ attribute          - Attributes/annotations
 
 ### 4. New Tools
 
-#### dotnet-query-syntax
+#### spelunk-query-syntax
 
 Query any node type with full SpelunkPath:
 
@@ -153,7 +153,7 @@ Response:
 }
 ```
 
-#### dotnet-navigate
+#### spelunk-navigate
 
 Navigate from a position using SpelunkPath:
 
@@ -177,7 +177,7 @@ Response:
 }
 ```
 
-#### dotnet-get-ast
+#### spelunk-get-ast
 
 Get AST structure for learning:
 
@@ -244,9 +244,9 @@ Response:
 4. Add metrics calculation
 
 ### Phase 3: Implement New Tools
-1. Create dotnet-query-syntax tool
-2. Create dotnet-navigate tool  
-3. Create dotnet-get-ast tool
+1. Create spelunk-query-syntax tool
+2. Create spelunk-navigate tool  
+3. Create spelunk-get-ast tool
 4. Add tests for each tool
 
 ### Phase 4: Documentation

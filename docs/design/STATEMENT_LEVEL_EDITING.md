@@ -54,7 +54,7 @@ The most effective way to edit code is at the **statement level**. This provides
 
 ### 1. Find Statements
 ```yaml
-dotnet-find-statements:
+spelunk-find-statements:
   pattern: "= new SqlCommand("  # Find SQL command creation
   scope: "method:ProcessData"   # Optional scope
   returns:
@@ -66,7 +66,7 @@ dotnet-find-statements:
 
 ### 2. Replace Statement
 ```yaml
-dotnet-replace-statement:
+spelunk-replace-statement:
   statementId: "stmt-123"
   newStatement: |
     var cmd = new SqlCommand(sql, connection);
@@ -75,7 +75,7 @@ dotnet-replace-statement:
 
 ### 3. Insert Statement
 ```yaml
-dotnet-insert-statement:
+spelunk-insert-statement:
   position: "after"
   referenceId: "stmt-123"  # or location
   statement: "logger.LogDebug(\"Command created\");"
@@ -83,13 +83,13 @@ dotnet-insert-statement:
 
 ### 4. Remove Statement
 ```yaml
-dotnet-remove-statement:
+spelunk-remove-statement:
   statementId: "stmt-123"
 ```
 
 ### 5. Get Statement Context
 ```yaml
-dotnet-get-statement-context:
+spelunk-get-statement-context:
   statementId: "stmt-123"
   returns:
     containingMethod: "ProcessData"
@@ -260,7 +260,7 @@ statementGroup:
 
 ```yaml
 # Find statements in a span
-dotnet-find-statements-in-span:
+spelunk-find-statements-in-span:
   file: "DataAccess.cs"
   startLine: 45
   endLine: 48
@@ -268,7 +268,7 @@ dotnet-find-statements-in-span:
   returns: statementGroup (as above)
 
 # Replace multiple statements atomically
-dotnet-replace-statement-group:
+spelunk-replace-statement-group:
   groupId: "group-456"
   newStatements: |
     var sql = BuildQuery(userName);
@@ -277,7 +277,7 @@ dotnet-replace-statement-group:
     logger.LogDebug("Command created");
 
 # Extract statement group to method
-dotnet-extract-statements:
+spelunk-extract-statements:
   groupId: "group-456"
   newMethodName: "CreateCommand"
   parameters: ["userName", "connection"]

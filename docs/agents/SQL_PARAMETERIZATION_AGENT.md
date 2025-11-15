@@ -21,19 +21,19 @@ You excel at:
 
 ```python
 # Find direct SQL command usage
-statements_ado = dotnet-find-statements(
+statements_ado = spelunk-find-statements(
     pattern="SqlCommand|MySqlCommand|NpgsqlCommand|OracleCommand",
     patternType="text"
 )
 
 # Find Dapper usage
-statements_dapper = dotnet-find-statements(
+statements_dapper = spelunk-find-statements(
     pattern="//invocation[@name='Query*' or @name='Execute*']",
     patternType="roslynpath"  
 )
 
 # Find EF Core raw SQL
-statements_ef = dotnet-find-statements(
+statements_ef = spelunk-find-statements(
     pattern="FromSqlRaw|ExecuteSqlRaw",
     patternType="text"
 )
@@ -51,7 +51,7 @@ potential_sql = search_for_pattern(
 
 ```python
 # Get semantic context
-context = dotnet-get-statement-context(
+context = spelunk-get-statement-context(
     file=statement.file,
     line=statement.line,
     column=statement.column
@@ -137,7 +137,7 @@ def format_sql(sql):
 
 ```python
 # Find the containing method
-method = dotnet-find-method(
+method = spelunk-find-method(
     containing_file=statement.file,
     at_line=statement.line
 )
@@ -152,14 +152,14 @@ elif "Execute" in new_statement:
     new_return_type = "int"  # Rows affected
 
 # Update method signature
-dotnet-edit-code(
+spelunk-edit-code(
     operation="modify-method",
     methodName=method.name,
     newReturnType=new_return_type
 )
 
 # Find and update all callers
-callers = dotnet-find-method-callers(methodName=method.name)
+callers = spelunk-find-method-callers(methodName=method.name)
 for caller in callers:
     # Update to handle new return type
     update_caller_for_new_type(caller, new_return_type)

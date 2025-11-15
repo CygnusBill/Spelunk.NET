@@ -4,7 +4,7 @@ This document contains the exact descriptions returned by the MCP server for eac
 
 ## Important Note
 
-The McpDotnet project has two server implementations:
+The Spelunk.NET project has two server implementations:
 1. **STDIO Server** (`McpDotnet.Server`) - Primary implementation using JSON-RPC over stdio
 2. **SSE Server** (`McpDotnet.Server.Sse`) - Experimental Server-Sent Events implementation
 

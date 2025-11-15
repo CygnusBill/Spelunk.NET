@@ -160,11 +160,11 @@ spelunk sse restart
 
 ### Configuration
 
-Configure allowed directories in `~/.config/mcp-dotnet/config.json`:
+Configure allowed directories in `~/.config/spelunk/config.json`:
 
 ```json
 {
-  "McpDotnet": {
+  "Spelunk": {
     "AllowedPaths": [
       "/Users/yourname/Repos",
       "/path/to/your/projects"
@@ -176,7 +176,7 @@ Configure allowed directories in `~/.config/mcp-dotnet/config.json`:
 Or use environment variables:
 
 ```bash
-export MCP_DOTNET_ALLOWED_PATHS="/path/to/code:/another/path"
+export SPELUNK_ALLOWED_PATHS="/path/to/code:/another/path"
 spelunk stdio
 ```
 
@@ -194,13 +194,13 @@ The server can also run in a Docker container:
 
 ```bash
 # Build the image
-docker build -t mcp-dotnet:latest .
+docker build -t spelunk:latest .
 
 # Run with mounted code directory
 docker run -i \
   -v /path/to/your/code:/workspace \
-  -e MCP_DOTNET_ALLOWED_PATHS=/workspace \
-  mcp-dotnet:latest
+  -e SPELUNK_ALLOWED_PATHS=/workspace \
+  spelunk:latest
 ```
 
 For detailed Docker usage, see [DOCKER.md](DOCKER.md).

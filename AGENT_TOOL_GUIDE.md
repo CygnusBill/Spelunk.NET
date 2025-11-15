@@ -1,7 +1,7 @@
-# McpDotnet Tool Guide for AI Agents
+# Spelunk.NET Tool Guide for AI Agents
 
 ## Overview
-This document lists all 37 McpDotnet tools with their descriptions as seen by AI agents, along with guidance on when to use each tool.
+This document lists all 37 Spelunk.NET tools with their descriptions as seen by AI agents, along with guidance on when to use each tool.
 
 ---
 
@@ -198,7 +198,7 @@ This document lists all 37 McpDotnet tools with their descriptions as seen by AI
 
 ## Key Differentiators for Agents
 
-### Why Choose McpDotnet Tools Over Text-Based Search:
+### Why Choose Spelunk.NET Tools Over Text-Based Search:
 
 1. **COMPLETENESS**: Find-references, find-implementations, etc. find ALL occurrences, not just text matches
 2. **ACCURACY**: No false positives from similar names, no false negatives from aliases
@@ -206,9 +206,9 @@ This document lists all 37 McpDotnet tools with their descriptions as seen by AI
 4. **STRUCTURE PRESERVATION**: Statement-level edits maintain proper formatting automatically
 5. **STABLE REFERENCES**: Statement IDs and markers survive edits
 
-### When to Use McpDotnet vs Other Tools (like Serena):
+### When to Use Spelunk.NET vs Other Tools (like Serena):
 
-**Use McpDotnet for**:
+**Use Spelunk.NET for**:
 - .NET-specific operations (C#, VB.NET, F#)
 - When you need COMPLETE results (all references, all implementations)
 - Structure-preserving edits (statement-level operations)
@@ -255,5 +255,5 @@ Need to analyze .NET code?
 
 ---
 
-*Generated from McpDotnet tool descriptions and documentation*
+*Generated from Spelunk.NET tool descriptions and documentation*
 *Last updated: 2024*

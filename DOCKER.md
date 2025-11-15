@@ -7,7 +7,7 @@ This guide explains how to build and run the Spelunk.NET in a Docker container.
 ### Build the Image
 
 ```bash
-docker build -t mcp-dotnet:latest .
+docker build -t spelunk:latest .
 ```
 
 ### Run the Container
@@ -17,8 +17,8 @@ The Spelunk.NET uses stdin/stdout for communication, so you need to run it inter
 ```bash
 docker run -i \
   -v /path/to/your/code:/workspace \
-  -e MCP_DOTNET_ALLOWED_PATHS=/workspace \
-  mcp-dotnet:latest
+  -e SPELUNK_ALLOWED_PATHS=/workspace \
+  spelunk:latest
 ```
 
 ## Usage Patterns
@@ -31,8 +31,8 @@ Test the server interactively by piping JSON-RPC requests:
 echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}' | \
 docker run -i \
   -v $(pwd):/workspace \
-  -e MCP_DOTNET_ALLOWED_PATHS=/workspace \
-  mcp-dotnet:latest
+  -e SPELUNK_ALLOWED_PATHS=/workspace \
+  spelunk:latest
 ```
 
 ### 2. With Claude Desktop
@@ -49,8 +49,8 @@ Add to your Claude Desktop MCP configuration (`~/Library/Application Support/Cla
         "-i",
         "--rm",
         "-v", "/path/to/your/projects:/workspace",
-        "-e", "MCP_DOTNET_ALLOWED_PATHS=/workspace",
-        "mcp-dotnet:latest"
+        "-e", "SPELUNK_ALLOWED_PATHS=/workspace",
+        "spelunk:latest"
       ]
     }
   }
@@ -65,8 +65,8 @@ Mount multiple directories and grant access to all:
 docker run -i \
   -v /path/to/project1:/workspace/project1:ro \
   -v /path/to/project2:/workspace/project2 \
-  -e MCP_DOTNET_ALLOWED_PATHS=/workspace/project1:/workspace/project2 \
-  mcp-dotnet:latest
+  -e SPELUNK_ALLOWED_PATHS=/workspace/project1:/workspace/project2 \
+  spelunk:latest
 ```
 
 ### 4. Development Mode with Hot Reload
@@ -77,16 +77,16 @@ For development, mount the source and rebuild on change:
 docker run -i \
   -v $(pwd)/src:/source/src:ro \
   -v /path/to/code:/workspace \
-  -e MCP_DOTNET_ALLOWED_PATHS=/workspace \
-  mcp-dotnet:latest
+  -e SPELUNK_ALLOWED_PATHS=/workspace \
+  spelunk:latest
 ```
 
 ## Environment Variables
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `MCP_DOTNET_ALLOWED_PATHS` | Colon-separated paths the server can access | `/workspace` |
-| `MCP_DOTNET__LOGGING__MINIMUMLEVEL` | Log level (Trace, Debug, Information, Warning, Error, Critical) | `Information` |
+| `SPELUNK_ALLOWED_PATHS` | Colon-separated paths the server can access | `/workspace` |
+| `SPELUNK__LOGGING__MINIMUMLEVEL` | Log level (Trace, Debug, Information, Warning, Error, Critical) | `Information` |
 
 **Note**: Environment variable names use double underscores (`__`) to represent nested configuration sections.
 
@@ -113,13 +113,13 @@ Build for different architectures:
 
 ```bash
 # For ARM64 (Apple Silicon, ARM servers)
-docker buildx build --platform linux/arm64 -t mcp-dotnet:arm64 .
+docker buildx build --platform linux/arm64 -t spelunk:arm64 .
 
 # For AMD64 (Intel/AMD)
-docker buildx build --platform linux/amd64 -t mcp-dotnet:amd64 .
+docker buildx build --platform linux/amd64 -t spelunk:amd64 .
 
 # Multi-platform
-docker buildx build --platform linux/amd64,linux/arm64 -t mcp-dotnet:latest .
+docker buildx build --platform linux/amd64,linux/arm64 -t spelunk:latest .
 ```
 
 ### Development Build
@@ -144,14 +144,14 @@ The current image uses `mcr.microsoft.com/dotnet/sdk:10.0` (~1.4GB) because the 
 
 ### Path Restrictions
 
-The server enforces path restrictions via `MCP_DOTNET_ALLOWED_PATHS`. Only paths in this list can be accessed:
+The server enforces path restrictions via `SPELUNK_ALLOWED_PATHS`. Only paths in this list can be accessed:
 
 ```bash
 # Restrict to specific project
--e MCP_DOTNET_ALLOWED_PATHS=/workspace/myproject
+-e SPELUNK_ALLOWED_PATHS=/workspace/myproject
 
 # Multiple paths (colon-separated)
--e MCP_DOTNET_ALLOWED_PATHS=/workspace/project1:/workspace/project2
+-e SPELUNK_ALLOWED_PATHS=/workspace/project1:/workspace/project2
 ```
 
 ### Read-Only Mounts
@@ -161,8 +161,8 @@ For analysis-only workloads, use read-only mounts:
 ```bash
 docker run -i \
   -v /path/to/code:/workspace:ro \
-  -e MCP_DOTNET_ALLOWED_PATHS=/workspace \
-  mcp-dotnet:latest
+  -e SPELUNK_ALLOWED_PATHS=/workspace \
+  spelunk:latest
 ```
 
 ### Network Isolation
@@ -172,8 +172,8 @@ The stdio server doesn't require network access. Run with `--network none` for m
 ```bash
 docker run -i --network none \
   -v /path/to/code:/workspace \
-  -e MCP_DOTNET_ALLOWED_PATHS=/workspace \
-  mcp-dotnet:latest
+  -e SPELUNK_ALLOWED_PATHS=/workspace \
+  spelunk:latest
 ```
 
 ## Troubleshooting
@@ -186,18 +186,18 @@ If you encounter permission errors accessing mounted code:
 # Run as current user
 docker run -i --user $(id -u):$(id -g) \
   -v /path/to/code:/workspace \
-  -e MCP_DOTNET_ALLOWED_PATHS=/workspace \
-  mcp-dotnet:latest
+  -e SPELUNK_ALLOWED_PATHS=/workspace \
+  spelunk:latest
 ```
 
 ### Can't Access Files
 
-Ensure paths in `MCP_DOTNET_ALLOWED_PATHS` match the container's mount points:
+Ensure paths in `SPELUNK_ALLOWED_PATHS` match the container's mount points:
 
 ```bash
 # Host path: /Users/you/code
 # Container path: /workspace
-# So use: MCP_DOTNET_ALLOWED_PATHS=/workspace
+# So use: SPELUNK_ALLOWED_PATHS=/workspace
 ```
 
 ### Logs Not Appearing
@@ -207,9 +207,9 @@ Logs go to stderr by default. To see them:
 ```bash
 docker run -i \
   -v /path/to/code:/workspace \
-  -e MCP_DOTNET_ALLOWED_PATHS=/workspace \
-  -e MCP_DOTNET__LOGGING__MINIMUMLEVEL=Debug \
-  mcp-dotnet:latest 2>logs.txt
+  -e SPELUNK_ALLOWED_PATHS=/workspace \
+  -e SPELUNK__LOGGING__MINIMUMLEVEL=Debug \
+  spelunk:latest 2>logs.txt
 ```
 
 ### MSBuild Not Found
@@ -230,22 +230,22 @@ For easier management, use Docker Compose:
 version: '3.8'
 
 services:
-  mcp-dotnet:
+  spelunk:
     build: .
-    image: mcp-dotnet:latest
+    image: spelunk:latest
     stdin_open: true
     volumes:
       - /path/to/your/code:/workspace:ro
     environment:
-      - MCP_DOTNET_ALLOWED_PATHS=/workspace
-      - MCP_DOTNET__LOGGING__MINIMUMLEVEL=Information
+      - SPELUNK_ALLOWED_PATHS=/workspace
+      - SPELUNK__LOGGING__MINIMUMLEVEL=Information
     network_mode: none
 ```
 
 Run with:
 
 ```bash
-docker-compose run --rm mcp-dotnet
+docker-compose run --rm spelunk
 ```
 
 ## Image Size
@@ -257,7 +257,7 @@ Expected image sizes:
 Check your image size:
 
 ```bash
-docker images mcp-dotnet
+docker images spelunk
 ```
 
 ## Advanced Configuration
@@ -270,8 +270,8 @@ Mount a custom `appsettings.json`:
 docker run -i \
   -v /path/to/code:/workspace \
   -v $(pwd)/appsettings.json:/app/appsettings.json:ro \
-  -e MCP_DOTNET_ALLOWED_PATHS=/workspace \
-  mcp-dotnet:latest
+  -e SPELUNK_ALLOWED_PATHS=/workspace \
+  spelunk:latest
 ```
 
 ### Workspace Pre-loading
@@ -279,7 +279,7 @@ docker run -i \
 To preload a specific workspace on startup, modify the Dockerfile:
 
 ```dockerfile
-ENV MCP_DOTNET__INITIALWORKSPACE=/workspace/MySolution.sln
+ENV SPELUNK__INITIALWORKSPACE=/workspace/MySolution.sln
 ```
 
 ## Performance Considerations
@@ -298,7 +298,7 @@ Docker caches layers. To optimize builds:
 - For better performance with repeated use, consider mounting a cache volume:
 
 ```bash
--v mcp-dotnet-cache:/root/.nuget
+-v spelunk-cache:/root/.nuget
 ```
 
 ## CI/CD Integration
@@ -307,12 +307,12 @@ Docker caches layers. To optimize builds:
 
 ```yaml
 - name: Build Spelunk.NET Docker Image
-  run: docker build -t mcp-dotnet:${{ github.sha }} .
+  run: docker build -t spelunk:${{ github.sha }} .
 
 - name: Test MCP Server
   run: |
     echo '{"jsonrpc":"2.0","id":1,"method":"ping"}' | \
-    docker run -i mcp-dotnet:${{ github.sha }}
+    docker run -i spelunk:${{ github.sha }}
 ```
 
 ### GitLab CI
@@ -329,15 +329,15 @@ build:
 ### Docker Hub
 
 ```bash
-docker tag mcp-dotnet:latest yourusername/mcp-dotnet:latest
-docker push yourusername/mcp-dotnet:latest
+docker tag spelunk:latest yourusername/spelunk:latest
+docker push yourusername/spelunk:latest
 ```
 
 ### GitHub Container Registry
 
 ```bash
-docker tag mcp-dotnet:latest ghcr.io/yourusername/mcp-dotnet:latest
-docker push ghcr.io/yourusername/mcp-dotnet:latest
+docker tag spelunk:latest ghcr.io/yourusername/spelunk:latest
+docker push ghcr.io/yourusername/spelunk:latest
 ```
 
 ## Updating
@@ -346,10 +346,10 @@ To update to the latest version:
 
 ```bash
 # Rebuild the image
-docker build -t mcp-dotnet:latest .
+docker build -t spelunk:latest .
 
 # Or pull if published
-docker pull yourusername/mcp-dotnet:latest
+docker pull yourusername/spelunk:latest
 ```
 
 ## License

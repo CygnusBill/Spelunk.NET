@@ -1,4 +1,4 @@
-# Data Flow Analysis in McpDotnet
+# Data Flow Analysis in Spelunk.NET
 
 ## Overview
 
@@ -193,20 +193,20 @@ Result:
 
 ```bash
 # Basic usage
-dotnet-get-data-flow \
+spelunk-get-data-flow \
   --file "/path/to/file.cs" \
   --startLine 10 --startColumn 5 \
   --endLine 20 --endColumn 10
 
 # Without control flow (faster)
-dotnet-get-data-flow \
+spelunk-get-data-flow \
   --file "/path/to/file.cs" \
   --startLine 10 --startColumn 5 \
   --endLine 20 --endColumn 10 \
   --includeControlFlow false
 
 # With workspace context
-dotnet-get-data-flow \
+spelunk-get-data-flow \
   --file "/path/to/file.cs" \
   --startLine 10 --startColumn 5 \
   --endLine 20 --endColumn 10 \

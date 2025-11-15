@@ -40,7 +40,7 @@ The Spelunk.NET provides unified code analysis and manipulation tools for .NET l
 │          MCP Protocol Layer             │
 ├─────────────────────────────────────────┤
 │         Unified Tool Interface          │
-│  (dotnet-find-method, dotnet-rename...) │
+│  (spelunk-find-method, spelunk-rename...) │
 ├─────────────┬───────────────────────────┤
 │   Roslyn    │      F# Infrastructure    │
 │   Engine    │                           │

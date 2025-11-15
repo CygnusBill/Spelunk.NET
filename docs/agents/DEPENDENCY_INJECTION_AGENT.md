@@ -63,42 +63,42 @@ def identify_service_candidates():
     candidates = []
     
     # 1. Direct Database Access in UI Layer
-    db_in_ui = dotnet-find-statements(
+    db_in_ui = spelunk-find-statements(
         pattern="SqlConnection|SqlCommand|DbContext|ExecuteReader|ExecuteNonQuery",
         patternType="text"
     )
     
     # 2. Business Logic in Controllers/Pages
-    business_logic = dotnet-find-statements(
+    business_logic = spelunk-find-statements(
         pattern="//method[(@name='Page_Load' or @name='Index' or @name='Create') and @lines>20]",
         patternType="roslynpath"
     )
     
     # 3. Static Utility Classes
-    static_utilities = dotnet-find-class(
+    static_utilities = spelunk-find-class(
         pattern="*Helper|*Utility|*Manager"
     ) |> filter(c => c.is_static)
     
     # 4. Configuration Access
-    config_access = dotnet-find-statements(
+    config_access = spelunk-find-statements(
         pattern="ConfigurationManager.AppSettings|ConfigurationManager.ConnectionStrings",
         patternType="text"
     )
     
     # 5. External Service Calls
-    external_calls = dotnet-find-statements(
+    external_calls = spelunk-find-statements(
         pattern="HttpClient|WebClient|WebRequest|RestClient",
         patternType="text"
     )
     
     # 6. File System Operations
-    file_operations = dotnet-find-statements(
+    file_operations = spelunk-find-statements(
         pattern="File.Read|File.Write|Directory.|StreamReader|StreamWriter",
         patternType="text"
     )
     
     # 7. Cross-Cutting Concerns
-    cross_cutting = dotnet-find-statements(
+    cross_cutting = spelunk-find-statements(
         pattern="Log.|Cache.|Session\\[|Application\\[",
         patternType="regex"
     )
@@ -433,7 +433,7 @@ def extract_code_to_service(location, service):
     """
     
     # Get the code to extract
-    code = dotnet-get-statement-context(
+    code = spelunk-get-statement-context(
         file=location.file,
         line=location.line
     )
@@ -443,7 +443,7 @@ def extract_code_to_service(location, service):
     
     # Create method in service
     method = generate_service_method(code, deps)
-    dotnet-edit-code(
+    spelunk-edit-code(
         operation="add-method",
         className=service.name,
         code=method
@@ -451,7 +451,7 @@ def extract_code_to_service(location, service):
     
     # Replace original code with service call
     service_call = generate_service_call(service, method)
-    dotnet-replace-statement(
+    spelunk-replace-statement(
         filePath=location.file,
         line=location.line,
         newStatement=service_call
@@ -659,22 +659,22 @@ def analyze_project_structure():
     project_types = []
     
     # Check for Web Forms
-    webforms_indicators = dotnet-find-class(pattern="*Page")
+    webforms_indicators = spelunk-find-class(pattern="*Page")
     if webforms_indicators:
         project_types.append("WebForms")
     
     # Check for MVC
-    mvc_indicators = dotnet-find-class(pattern="*Controller")
+    mvc_indicators = spelunk-find-class(pattern="*Controller")
     if mvc_indicators:
         project_types.append("MVC5")
     
     # Check for Web API
-    api_indicators = dotnet-find-class(pattern="ApiController")
+    api_indicators = spelunk-find-class(pattern="ApiController")
     if api_indicators:
         project_types.append("WebAPI2")
     
     # Check existing DI
-    existing_di = dotnet-find-statements(
+    existing_di = spelunk-find-statements(
         pattern="IServiceProvider|IContainer|IKernel|IUnityContainer",
         patternType="text"
     )
@@ -2247,19 +2247,19 @@ def find_service_classes():
     """Find all classes that should be converted to services"""
     
     # Find classes with data access
-    data_classes = dotnet-find-statements(
+    data_classes = spelunk-find-statements(
         pattern="new SqlConnection|new DbContext|new HttpClient",
         patternType="text"
     )
     
     # Find classes with external dependencies
-    dependency_classes = dotnet-find-statements(
+    dependency_classes = spelunk-find-statements(
         pattern="ConfigurationManager|HttpContext.Current|File.Read|File.Write",
         patternType="text"
     )
     
     # Find repository and service classes
-    service_classes = dotnet-find-class(
+    service_classes = spelunk-find-class(
         pattern="*Service|*Repository|*Provider|*Manager"
     )
     
@@ -2269,7 +2269,7 @@ def extract_interface(class_info):
     """Extract interface from existing class"""
     
     # Get public methods
-    methods = dotnet-find-method(
+    methods = spelunk-find-method(
         classPattern=class_info.name,
         methodPattern="*"
     )
@@ -2283,7 +2283,7 @@ def extract_interface(class_info):
     """
     
     # Add interface file
-    dotnet-edit-code(
+    spelunk-edit-code(
         operation="add-interface",
         code=interface_code
     )
@@ -2298,7 +2298,7 @@ def convert_service_to_di(service, interface):
     
     # Add constructor
     constructor_code = generate_constructor(dependencies)
-    dotnet-edit-code(
+    spelunk-edit-code(
         operation="add-constructor",
         className=service.name,
         code=constructor_code
@@ -2309,7 +2309,7 @@ def convert_service_to_di(service, interface):
         replace_instantiation_with_field(service, dep)
     
     # Implement interface
-    dotnet-edit-code(
+    spelunk-edit-code(
         operation="implement-interface",
         className=service.name,
         interface=interface
@@ -2318,7 +2318,7 @@ def convert_service_to_di(service, interface):
 def migrate_mvc_controllers():
     """Migrate MVC controllers to use DI"""
     
-    controllers = dotnet-find-class(pattern="*Controller")
+    controllers = spelunk-find-class(pattern="*Controller")
     
     for controller in controllers:
         # Find dependencies
@@ -2337,7 +2337,7 @@ def migrate_mvc_controllers():
 def migrate_webforms_pages():
     """Migrate Web Forms pages to use DI"""
     
-    pages = dotnet-find-class(pattern="*Page")
+    pages = spelunk-find-class(pattern="*Page")
     
     for page in pages:
         # Find dependencies

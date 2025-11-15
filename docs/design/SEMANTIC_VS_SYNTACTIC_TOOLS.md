@@ -199,7 +199,7 @@ F# requires its own parallel implementation:
 Despite three different implementations (C# via Roslyn, VB.NET via Roslyn, F# via FSharp.Compiler.Service), we maintain consistent tool interfaces:
 
 ```
-dotnet-find-method works across all three languages
+spelunk-find-method works across all three languages
 ├── Routes to Roslyn for .cs/.vb files  
 ├── Routes to F# engine for .fs files
 └── Returns normalized results

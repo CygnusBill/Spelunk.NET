@@ -64,20 +64,20 @@ Upgraded all Microsoft.Extensions.* packages from `10.0.0-preview.6.25358.103` t
 
 **Build Command**:
 ```bash
-docker build -t mcp-dotnet:latest .
+docker build -t spelunk:latest .
 ```
 
 **Run Command**:
 ```bash
 docker run -i \
   -v /path/to/your/code:/workspace \
-  -e MCP_DOTNET_ALLOWED_PATHS=/workspace \
-  mcp-dotnet:latest
+  -e SPELUNK_ALLOWED_PATHS=/workspace \
+  spelunk:latest
 ```
 
 **Environment Variables**:
-- `MCP_DOTNET_ALLOWED_PATHS`: Colon-separated paths the server can access (default: `/workspace`)
-- `MCP_DOTNET__LOGGING__MINIMUMLEVEL`: Log level (default: `Information`)
+- `SPELUNK_ALLOWED_PATHS`: Colon-separated paths the server can access (default: `/workspace`)
+- `SPELUNK__LOGGING__MINIMUMLEVEL`: Log level (default: `Information`)
 
 **Volume Mounts**:
 - Default workspace: `/workspace`
@@ -85,7 +85,7 @@ docker run -i \
 - Multiple workspace mounts supported
 
 **Security Features**:
-- Path restrictions via `MCP_DOTNET_ALLOWED_PATHS`
+- Path restrictions via `SPELUNK_ALLOWED_PATHS`
 - Read-only mount support for analysis-only operations
 - Network isolation supported (`--network none`)
 - User ID mapping supported for permission management
@@ -101,8 +101,8 @@ docker run -i \
       "args": [
         "run", "-i", "--rm",
         "-v", "/path/to/projects:/workspace",
-        "-e", "MCP_DOTNET_ALLOWED_PATHS=/workspace",
-        "mcp-dotnet:latest"
+        "-e", "SPELUNK_ALLOWED_PATHS=/workspace",
+        "spelunk:latest"
       ]
     }
   }
@@ -115,7 +115,7 @@ docker run -i \
 
 ### Testing
 - ✅ Docker build successful (warnings only, no errors)
-- ✅ Image created: `mcp-dotnet:latest`
+- ✅ Image created: `spelunk:latest`
 - ✅ Multi-stage build working (SDK for build, runtime for execution)
 - ✅ Environment variables configured
 - ✅ Workspace directory created

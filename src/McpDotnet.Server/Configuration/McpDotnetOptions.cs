@@ -11,7 +11,7 @@ public class SpelunkOptions
     /// <summary>
     /// Configuration section name in appsettings.json
     /// </summary>
-    public const string SectionName = "McpDotnet";
+    public const string SectionName = "Spelunk";
     
     /// <summary>
     /// List of allowed paths that the server can access

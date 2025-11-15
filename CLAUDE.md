@@ -136,7 +136,7 @@ The server provides two complementary tool categories:
 - ✅ Unified CLI with stdio and SSE modes
 
 ### Recently Completed (Latest Session - November 2025)
-- ✅ Complete rebrand from McpDotnet to Spelunk.NET
+- ✅ Complete rebrand from Spelunk.NET to Spelunk.NET
 - ✅ Renamed RoslynPath to SpelunkPath throughout codebase
 - ✅ Unified CLI architecture with System.CommandLine
   - `spelunk stdio` - Run in stdio mode for MCP clients
@@ -234,12 +234,12 @@ See examples in `docs/spelunk-path/examples/`:
 #### User-Level Configuration
 The server supports a user-level configuration file for setting allowed directories and other options.
 
-**Location**: `~/.config/mcp-dotnet/config.json`
+**Location**: `~/.config/spelunk/config.json`
 
 **Example**:
 ```json
 {
-  "McpDotnet": {
+  "Spelunk": {
     "AllowedPaths": [
       "/Users/bill/Repos",
       "/Users/bill/Desktop",
@@ -258,12 +258,12 @@ The server supports a user-level configuration file for setting allowed director
 
 **Configuration Priority** (highest to lowest):
 1. Command line arguments
-2. Environment variables (e.g., `MCP_DOTNET_ALLOWED_PATHS`)
-3. User config (`~/.config/mcp-dotnet/config.json`)
-4. Project config (`mcp-dotnet.config.json` in working directory)
+2. Environment variables (e.g., `SPELUNK_ALLOWED_PATHS`)
+3. User config (`~/.config/spelunk/config.json`)
+4. Project config (`spelunk.config.json` in working directory)
 5. Default settings
 
-See `~/.config/mcp-dotnet/README.md` for detailed configuration documentation.
+See `~/.config/spelunk/README.md` for detailed configuration documentation.
 
 ## Important Notes
 
@@ -380,7 +380,7 @@ When adding new features:
 4. Consider SpelunkPath integration for stability
 5. Document design decisions in `docs/design/`
 6. Test both stdio and SSE modes
-7. Update version in McpDotnet.Server.csproj before packaging
+7. Update version in Spelunk.NET.Server.csproj before packaging
 
 ## F# Architecture
 

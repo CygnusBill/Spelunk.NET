@@ -504,7 +504,7 @@ Found 4 properties/fields matching 'Is*':
 ### 3. Relationship Analysis Tools
 
 #### 🔍 Inheritance Hierarchy Navigation
-McpDotnet provides comprehensive tools for tracing inheritance chains and understanding type relationships:
+Spelunk.NET provides comprehensive tools for tracing inheritance chains and understanding type relationships:
 
 - **`spelunk-find-implementations`** - Find all classes implementing an interface or abstract class
 - **`spelunk-find-derived-types`** - Find all classes inheriting from a base class  
@@ -1612,7 +1612,7 @@ Preview:
 
 **Diagnostic → Marker → Fix Workflow:**
 ```
-1. dotnet-get-diagnostics → Provides TextSpan location (line:column)
+1. spelunk-get-diagnostics → Provides TextSpan location (line:column)
 2. mark-statement → Converts TextSpan to SyntaxAnnotation marker (edit-resilient)
 3. Apply fixes using marker references (not line numbers)
 4. Markers survive code edits during multi-step resolution
@@ -1622,7 +1622,7 @@ Preview:
 
 **Hierarchical Context Analysis Pattern:**
 ```
-1. dotnet-get-diagnostics → Get compilation errors with precise locations
+1. spelunk-get-diagnostics → Get compilation errors with precise locations
 2. mark-statement → Mark the error location for stable reference
 3. Context Walking (expand outward as needed):
    a. Error statement: //statement[@markerId='mark-1']
@@ -1694,7 +1694,7 @@ Preview:
 
 4. replace-statement(markerId: "mark-1", newStatement: "var total = subtotal + tax;")
 
-5. Verification: dotnet-get-diagnostics → Confirm CS0103 resolved
+5. Verification: spelunk-get-diagnostics → Confirm CS0103 resolved
 
 6. clear-markers → Clean up session
 ```

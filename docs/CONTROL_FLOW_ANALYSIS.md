@@ -1,4 +1,4 @@
-# Control Flow Analysis in McpDotnet
+# Control Flow Analysis in Spelunk.NET
 
 ## Overview
 
