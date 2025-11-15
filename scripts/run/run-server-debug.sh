@@ -10,4 +10,4 @@ echo "Current directory: $CURRENT_DIR"
 echo "Allowed paths: $CURRENT_DIR"
 
 # Run with debug logging enabled and current directory as allowed path
-MCP_ROSLYN_ALLOWED_PATHS="$CURRENT_DIR" ASPNETCORE_ENVIRONMENT=Development dotnet run --project "$PROJECT_ROOT/src/McpRoslyn.Server"
+MCP_DOTNET_ALLOWED_PATHS="$CURRENT_DIR" ASPNETCORE_ENVIRONMENT=Development dotnet run --project "$PROJECT_ROOT/src/McpDotnet.Server"

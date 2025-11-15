@@ -11,4 +11,4 @@ echo "Note: SSE server is experimental and may not be fully functional"
 echo "Allowed paths: $CURRENT_DIR"
 
 # Run the SSE server with current directory as allowed path
-MCP_ROSLYN_ALLOWED_PATHS="$CURRENT_DIR" dotnet run --project "$PROJECT_ROOT/src/McpRoslyn.Server.Sse"
+MCP_DOTNET_ALLOWED_PATHS="$CURRENT_DIR" dotnet run --project "$PROJECT_ROOT/src/McpDotnet.Server.Sse"

@@ -23,10 +23,10 @@ class RoslynPathIntegrationTester:
     def start_server(self):
         """Start the MCP server"""
         env = os.environ.copy()
-        env["MCP_ROSLYN_ALLOWED_PATHS"] = self.test_dir
+        env["MCP_DOTNET_ALLOWED_PATHS"] = self.test_dir
         
         self.server_proc = subprocess.Popen(
-            ["dotnet", "run", "--project", "src/McpRoslyn.Server", "--no-build"],
+            ["dotnet", "run", "--project", "src/McpDotnet.Server", "--no-build"],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,

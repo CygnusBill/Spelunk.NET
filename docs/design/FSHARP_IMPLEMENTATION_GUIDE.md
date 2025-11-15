@@ -8,7 +8,7 @@ This guide provides detailed implementation guidance for F# support in the MCP R
 
 ### 1. FSharpWorkspaceManager
 
-The `FSharpWorkspaceManager` is the central component for F# project management, parallel to `RoslynWorkspaceManager`.
+The `FSharpWorkspaceManager` is the central component for F# project management, parallel to `DotnetWorkspaceManager`.
 
 ```csharp
 public class FSharpWorkspaceManager

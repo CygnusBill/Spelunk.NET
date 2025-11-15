@@ -1,7 +1,7 @@
 # Backlog TODOs
 
 ## PathPredicateExpr Optimization
-**Location**: `src/McpRoslyn.Server/RoslynPath/RoslynPathParser.cs:812`
+**Location**: `src/McpDotnet.Server/RoslynPath/RoslynPathParser.cs:812`
 **Current**: `public string PathString { get; set; } = "";`
 **Suggested**: `public PathExpression Path { get; set; }`
 

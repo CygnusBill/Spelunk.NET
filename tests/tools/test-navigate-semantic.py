@@ -13,7 +13,7 @@ import shutil
 def test_navigate_semantic():
     """Test navigate tool with semantic information"""
     
-    server_path = os.path.join(os.path.dirname(__file__), "..", "..", "src", "McpRoslyn.Server")
+    server_path = os.path.join(os.path.dirname(__file__), "..", "..", "src", "McpDotnet.Server")
     client = TestClient(server_path=server_path)
     
     # Create a temporary workspace

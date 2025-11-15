@@ -60,7 +60,7 @@ import subprocess
 import json
 
 # Start server
-server = subprocess.Popen(["dotnet", "run", "--project", "src/McpRoslyn/McpRoslyn.Server"],
+server = subprocess.Popen(["dotnet", "run", "--project", "src/McpDotnet/McpDotnet.Server"],
                          stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 
 # Send initialize

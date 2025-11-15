@@ -63,7 +63,7 @@ Each existing tool needs F# routing:
 ### 2. Required Infrastructure Components
 
 ```
-src/McpRoslyn.Server/
+src/McpDotnet.Server/
 ├── FSharp/
 │   ├── FSharpWorkspaceManager.cs
 │   ├── FSharpProjectTracker.cs
@@ -86,7 +86,7 @@ src/McpRoslyn.Server/
    - Add F# routing in each tool handler
    - Implement language detection logic
 
-2. **RoslynWorkspaceManager.cs**
+2. **DotnetWorkspaceManager.cs**
    - Delegate F# files to FSharpWorkspaceManager
    - Maintain F# project registry
    - Handle cross-language scenarios
@@ -177,7 +177,7 @@ For users needing F# support now:
 
 ### Infrastructure Added (This Session)
 1. **Created F# Directory Structure**
-   - Added `src/McpRoslyn.Server/FSharp/` directory
+   - Added `src/McpDotnet.Server/FSharp/` directory
    - Created `FSharpFileDetector.cs` for F# file detection
    - Created `FSharpSupportStub.cs` for consistent "not implemented" responses
 

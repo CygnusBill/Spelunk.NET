@@ -38,7 +38,7 @@ def main():
     # Start the server
     server_cmd = [
         "dotnet", "run",
-        "--project", "./src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj"]
+        "--project", "./src/McpRoslyn/McpDotnet.Server/McpDotnet.Server.csproj"]
     
     # Set environment variable for allowed paths
 
@@ -46,7 +46,7 @@ def main():
     env = os.environ.copy()
 
     
-    env["MCP_ROSLYN_ALLOWED_PATHS"] = os.path.abspath(".")
+    env["MCP_DOTNET_ALLOWED_PATHS"] = os.path.abspath(".")
 
     
     

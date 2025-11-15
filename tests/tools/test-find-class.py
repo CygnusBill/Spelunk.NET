@@ -25,13 +25,13 @@ def test_find_patterns():
     # Start the MCP server
     cmd = [
         "dotnet", "run", 
-        "--project", "./src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj",
+        "--project", "./src/McpRoslyn/McpDotnet.Server/McpDotnet.Server.csproj",
         "--no-build"
     ]
     
     # Set environment variable for allowed paths
     env = os.environ.copy()
-    env['MCP_ROSLYN_ALLOWED_PATHS'] = os.path.abspath(".")
+    env['MCP_DOTNET_ALLOWED_PATHS'] = os.path.abspath(".")
     
     print("Starting MCP server...")
     proc = subprocess.Popen(

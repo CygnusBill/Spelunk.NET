@@ -4,11 +4,11 @@ This document contains the exact descriptions returned by the MCP server for eac
 
 ## Important Note
 
-The McpRoslyn project has two server implementations:
-1. **STDIO Server** (`McpRoslyn.Server`) - Primary implementation using JSON-RPC over stdio
-2. **SSE Server** (`McpRoslyn.Server.Sse`) - Experimental Server-Sent Events implementation
+The McpDotnet project has two server implementations:
+1. **STDIO Server** (`McpDotnet.Server`) - Primary implementation using JSON-RPC over stdio
+2. **SSE Server** (`McpDotnet.Server.Sse`) - Experimental Server-Sent Events implementation
 
-Both servers share the same underlying `RoslynWorkspaceManager` but have slightly different tool descriptions.
+Both servers share the same underlying `DotnetWorkspaceManager` but have slightly different tool descriptions.
 
 ## STDIO Server Tool Descriptions
 
@@ -100,7 +100,7 @@ These are defined in `McpJsonRpcServer.cs` in the tool definitions array:
 
 ## SSE Server Tool Descriptions
 
-The SSE server uses attribute-based tool definitions in `RoslynTools.cs`. Here are the descriptions from the SSE server:
+The SSE server uses attribute-based tool definitions in `DotnetTools.cs`. Here are the descriptions from the SSE server:
 
 ### dotnet-load-workspace
 **SSE Description**: "Load a .NET solution or project into the workspace"
@@ -118,14 +118,14 @@ The SSE server uses attribute-based tool definitions in `RoslynTools.cs`. Here a
    - SSE Server: Uses `.WithToolsFromAssembly()` to auto-discover tools via reflection
 
 3. **Descriptions**:
-   - Both servers now use the centralized `ToolDescriptions` class defined in `McpRoslyn.Server/ToolDescriptions.cs`
+   - Both servers now use the centralized `ToolDescriptions` class defined in `McpDotnet.Server/ToolDescriptions.cs`
    - This ensures consistency and prevents duplication bugs
    - STDIO server descriptions are what agents see when using the primary server
 
 ## Implementation Note
 
 As of the latest update, all tool descriptions have been centralized in the `ToolDescriptions` static class:
-- Located at: `src/McpRoslyn/McpRoslyn.Server/ToolDescriptions.cs`
+- Located at: `src/McpDotnet/McpDotnet.Server/ToolDescriptions.cs`
 - Both STDIO and SSE servers reference this shared source
 - Future tool additions should update the centralized class
 

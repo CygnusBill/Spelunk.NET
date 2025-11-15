@@ -25,7 +25,7 @@ Shows the complete path from solution root to the statement:
 
 Example:
 ```
-/McpRoslyn/McpRoslyn.Server/McpJsonRpcServer.cs/McpJsonRpcServer/RunAsync/block[1]/expression[1]
+/McpDotnet/McpDotnet.Server/McpJsonRpcServer.cs/McpJsonRpcServer/RunAsync/block[1]/expression[1]
 ```
 
 Components:
@@ -75,21 +75,21 @@ Positions (e.g., `[1]`, `[2]`) indicate:
 ### Text Search for "WriteLine"
 ```
 Statement ID: stmt-1
-Path: /McpRoslyn/TestProject/Program.cs/Test/Method/block[1]/expression[1]
+Path: /McpDotnet/TestProject/Program.cs/Test/Method/block[1]/expression[1]
 Type: ExpressionStatementSyntax
 Depth: 0
 Location: /path/to/Program.cs:6:9
 Code: Console.WriteLine("outer");
 
 Statement ID: stmt-2
-Path: /McpRoslyn/TestProject/Program.cs/Test/Method/block[1]/if[1]
+Path: /McpDotnet/TestProject/Program.cs/Test/Method/block[1]/if[1]
 Type: IfStatementSyntax  
 Depth: 0
 Location: /path/to/Program.cs:8:9
 Code: if (true) { Console.WriteLine("nested"); }
 
 Statement ID: stmt-3
-Path: /McpRoslyn/TestProject/Program.cs/Test/Method/block[1]/if[1]/block[1]/expression[1]
+Path: /McpDotnet/TestProject/Program.cs/Test/Method/block[1]/if[1]/block[1]/expression[1]
 Type: ExpressionStatementSyntax
 Depth: 1
 Location: /path/to/Program.cs:10:13

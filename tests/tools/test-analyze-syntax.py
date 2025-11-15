@@ -44,15 +44,15 @@ def test_analyze_syntax():
     workspace_dir = os.path.abspath(workspace_dir)
     
     # Start the server
-    server_path = os.path.join(workspace_dir, 'src', 'McpRoslyn.Server')
+    server_path = os.path.join(workspace_dir, 'src', 'McpDotnet.Server')
     cmd = ['dotnet', 'run', '--project', server_path, '--no-build']
     
     # Set environment variable for allowed paths
     env = os.environ.copy()
-    env['MCP_ROSLYN_ALLOWED_PATHS'] = workspace_dir
+    env['MCP_DOTNET_ALLOWED_PATHS'] = workspace_dir
     
     print(f"Starting server with command: {' '.join(cmd)}")
-    print(f"MCP_ROSLYN_ALLOWED_PATHS={workspace_dir}")
+    print(f"MCP_DOTNET_ALLOWED_PATHS={workspace_dir}")
     process = subprocess.Popen(
         cmd,
         stdin=subprocess.PIPE,

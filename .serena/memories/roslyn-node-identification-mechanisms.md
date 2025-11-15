@@ -34,7 +34,7 @@ This elegantly combines Roslyn's native location tracking with our edit-resilien
 
 ## Implementation Details
 
-From `RoslynWorkspaceManager.cs`:
+From `DotnetWorkspaceManager.cs`:
 ```csharp
 private const string MarkerAnnotationKey = "EphemeralMarker";
 

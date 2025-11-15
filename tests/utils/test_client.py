@@ -16,7 +16,7 @@ class TestClient:
     def __init__(self, server_path=None, allowed_paths=None):
         if server_path is None:
             # Default to the server in the project
-            server_path = os.path.join(os.path.dirname(__file__), "..", "..", "src", "McpRoslyn.Server")
+            server_path = os.path.join(os.path.dirname(__file__), "..", "..", "src", "McpDotnet.Server")
         
         self.server_path = server_path
         self.allowed_paths = allowed_paths or ["."]
@@ -56,8 +56,8 @@ class TestClient:
         env = os.environ.copy()
         if self.allowed_paths:
             # Use the legacy environment variable format which works more reliably
-            env["MCP_ROSLYN_ALLOWED_PATHS"] = os.pathsep.join(os.path.abspath(path) for path in self.allowed_paths)
-            print(f"Allowed paths: {env['MCP_ROSLYN_ALLOWED_PATHS']}")
+            env["MCP_DOTNET_ALLOWED_PATHS"] = os.pathsep.join(os.path.abspath(path) for path in self.allowed_paths)
+            print(f"Allowed paths: {env['MCP_DOTNET_ALLOWED_PATHS']}")
         
         try:
             self.process = subprocess.Popen(

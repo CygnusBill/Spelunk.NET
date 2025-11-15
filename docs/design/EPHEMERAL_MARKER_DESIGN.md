@@ -101,7 +101,7 @@ All statement manipulation tools will preserve markers:
 
 ### Implementation Strategy
 
-1. Add `MarkerManager` to `RoslynWorkspaceManager`
+1. Add `MarkerManager` to `DotnetWorkspaceManager`
 2. Update all modification methods to work with annotated trees
 3. Ensure `TryApplyChanges` preserves annotations
 4. Add marker info to statement search results

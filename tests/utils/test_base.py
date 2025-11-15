@@ -12,7 +12,7 @@ class ToolTestBase:
     
     def __init__(self, tool_name: str):
         self.tool_name = tool_name
-        self.server_path = os.path.join(os.path.dirname(__file__), "..", "..", "src", "McpRoslyn.Server")
+        self.server_path = os.path.join(os.path.dirname(__file__), "..", "..", "src", "McpDotnet.Server")
         self.client: Optional[TestClient] = None
         
     def setup(self, allowed_paths: Optional[list] = None):

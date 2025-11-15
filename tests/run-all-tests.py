@@ -21,7 +21,7 @@ def run_test(test_path):
     try:
         # Set environment for test
         env = os.environ.copy()
-        env['MCP_ROSLYN_ALLOWED_PATHS'] = str(Path(__file__).parent.parent)
+        env['MCP_DOTNET_ALLOWED_PATHS'] = str(Path(__file__).parent.parent)
         
         result = subprocess.run(
             [sys.executable, test_path],
@@ -42,7 +42,7 @@ def run_test(test_path):
 def main():
     # Build the server once before running tests
     print(f"{Colors.BLUE}Building server project...{Colors.RESET}")
-    server_path = Path(__file__).parent.parent / 'src' / 'McpRoslyn.Server'
+    server_path = Path(__file__).parent.parent / 'src' / 'McpDotnet.Server'
     build_result = subprocess.run(
         ['dotnet', 'build', str(server_path), '--configuration', 'Debug'],
         capture_output=True,

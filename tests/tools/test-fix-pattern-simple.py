@@ -17,11 +17,11 @@ def run_mcp_command(method, params):
     }
     
     # Run the server with the request
-    cmd = ["dotnet", "run", "--project", "../../src/McpRoslyn/McpRoslyn.Server", "--no-build"]
+    cmd = ["dotnet", "run", "--project", "../../src/McpRoslyn/McpDotnet.Server", "--no-build"]
     
     # Set environment variable for allowed paths
     env = os.environ.copy()
-    env["MCP_ROSLYN_ALLOWED_PATHS"] = os.path.abspath(".")
+    env["MCP_DOTNET_ALLOWED_PATHS"] = os.path.abspath(".")
     
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
     

@@ -52,8 +52,8 @@ Successfully rebuilt RoslynPath parser with proper AST architecture:
 - Path predicates parse nested paths recursively
 
 ## Files Created/Modified
-- `src/McpRoslyn.Server/RoslynPath/RoslynPathParser2.cs` - New parser
-- `src/McpRoslyn.Server/RoslynPath/RoslynPathEvaluator2.cs` - New evaluator
+- `src/McpDotnet.Server/RoslynPath/RoslynPathParser2.cs` - New parser
+- `src/McpDotnet.Server/RoslynPath/RoslynPathEvaluator2.cs` - New evaluator
 - `docs/roslyn-path/ROSLYN_PATH_GRAMMAR.md` - Formal grammar
 - `docs/roslyn-path/ROSLYN_PATH_REDESIGN.md` - Architecture design
 - Tests updated to use new implementation

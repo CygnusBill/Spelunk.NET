@@ -26,9 +26,9 @@ def read_stdout(process):
         print(f"Thread exiting after {count} lines")
 
 # Start a process that outputs multiple lines
-cmd = ["dotnet", "run", "--project", "src/McpRoslyn.Server", "--no-build", "--no-restore"]
+cmd = ["dotnet", "run", "--project", "src/McpDotnet.Server", "--no-build", "--no-restore"]
 env = os.environ.copy()
-env["MCP_ROSLYN_ALLOWED_PATHS"] = os.path.abspath("test-workspace")
+env["MCP_DOTNET_ALLOWED_PATHS"] = os.path.abspath("test-workspace")
 
 print("Starting process...")
 process = subprocess.Popen(

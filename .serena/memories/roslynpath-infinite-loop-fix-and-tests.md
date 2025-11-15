@@ -52,8 +52,8 @@ Some tests are currently failing due to parser limitations that need fixing:
 3. Some attribute value handling needs improvement
 
 ## Files Modified
-- src/McpRoslyn.Server/RoslynPath/RoslynPathParser.cs
-- src/McpRoslyn.Server/RoslynPath/RoslynPathEvaluator.cs
+- src/McpDotnet.Server/RoslynPath/RoslynPathParser.cs
+- src/McpDotnet.Server/RoslynPath/RoslynPathEvaluator.cs
 - tests/RoslynPath/RoslynPathTests.cs (created)
 - tests/RoslynPath/RoslynPathVBTests.cs (created)
 - tests/RoslynPath/RoslynPathTests.csproj (created)

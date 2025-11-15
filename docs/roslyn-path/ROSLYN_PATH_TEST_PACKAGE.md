@@ -49,7 +49,7 @@ This path finds the Console.WriteLine regardless of line number changes!
 ## Basic Usage
 
 ```csharp
-using McpRoslyn.Server.RoslynPath;
+using McpDotnet.Server.RoslynPath;
 
 // Find all async methods
 var results = RoslynPath.Find(sourceCode, "//method[@async]");

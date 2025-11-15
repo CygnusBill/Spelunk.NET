@@ -12,7 +12,7 @@ import time
 class SimpleClient:
     def __init__(self, server_path=None, allowed_paths=None):
         if server_path is None:
-            server_path = os.path.join(os.path.dirname(__file__), "..", "..", "src", "McpRoslyn.Server")
+            server_path = os.path.join(os.path.dirname(__file__), "..", "..", "src", "McpDotnet.Server")
         
         self.server_path = server_path
         self.allowed_paths = allowed_paths or ["."]
@@ -28,7 +28,7 @@ class SimpleClient:
         # Start server
         cmd = [dotnet_path, "run", "--project", self.server_path, "--no-build", "--no-restore"]
         env = os.environ.copy()
-        env["MCP_ROSLYN_ALLOWED_PATHS"] = os.pathsep.join(os.path.abspath(p) for p in self.allowed_paths)
+        env["MCP_DOTNET_ALLOWED_PATHS"] = os.pathsep.join(os.path.abspath(p) for p in self.allowed_paths)
         
         print("Starting server...")
         self.process = subprocess.Popen(

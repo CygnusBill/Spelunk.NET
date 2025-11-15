@@ -149,10 +149,10 @@ def main():
     
     # Set environment variable for allowed paths
     env = os.environ.copy()
-    env['MCP_ROSLYN_ALLOWED_PATHS'] = os.path.abspath(".")
+    env['MCP_DOTNET_ALLOWED_PATHS'] = os.path.abspath(".")
     
     process = subprocess.Popen(
-        ["dotnet", "run", "--project", "src/McpRoslyn.Server/McpRoslyn.Server.csproj", "--no-build"],
+        ["dotnet", "run", "--project", "src/McpDotnet.Server/McpDotnet.Server.csproj", "--no-build"],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,

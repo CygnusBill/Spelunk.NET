@@ -17,7 +17,7 @@ def main():
     
     # Start the server
     project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    server_path = os.path.join(project_root, "src/McpRoslyn/McpRoslyn.Server/bin/Debug/net10.0/McpRoslyn.Server")
+    server_path = os.path.join(project_root, "src/McpRoslyn/McpDotnet.Server/bin/Debug/net10.0/McpDotnet.Server")
     
     if not os.path.exists(server_path):
         print(f"Server not found at {server_path}. Please build the project first.")
@@ -29,7 +29,7 @@ def main():
     env = os.environ.copy()
 
     
-    env["MCP_ROSLYN_ALLOWED_PATHS"] = os.path.abspath(".")
+    env["MCP_DOTNET_ALLOWED_PATHS"] = os.path.abspath(".")
 
     
     

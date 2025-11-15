@@ -5,7 +5,7 @@ Enhanced control flow analysis to use Roslyn's API exclusively and return clear 
 
 ## Changes Made
 
-### 1. RoslynWorkspaceManager.cs - AnalyzeControlFlow Method
+### 1. DotnetWorkspaceManager.cs - AnalyzeControlFlow Method
 - Removed fallback AST analysis that gave inaccurate results
 - Now uses Roslyn's `SemanticModel.AnalyzeControlFlow()` exclusively
 - Returns null with clear error message when region is invalid

@@ -19,13 +19,13 @@ This is the MCP Roslyn Server project, which provides multi-language code analys
 ```
 McpDotnet/
 ├── src/
-│   └── McpRoslyn/
-│       ├── McpRoslyn.Server/      # Main server implementation
+│   └── McpDotnet/
+│       ├── McpDotnet.Server/      # Main server implementation
 │       │   ├── RoslynPath/        # RoslynPath query engine
 │       │   ├── LanguageHandlers/  # C# and VB.NET language handlers
 │       │   ├── FSharp/           # F# support infrastructure
 │       │   └── *.cs              # Core server files
-│       └── McpRoslyn.Server.Sse/  # SSE server (experimental)
+│       └── McpDotnet.Server.Sse/  # SSE server (experimental)
 │           ├── Program.cs         # SSE server entry point
 │           └── Tools/            # SSE-specific tools
 ├── docs/                         # Current documentation
@@ -160,7 +160,7 @@ The server provides two complementary tool categories:
 ./scripts/run/run-server-debug.sh      # Debug mode
 
 # Or directly with dotnet
-dotnet run --project src/McpRoslyn/McpRoslyn.Server
+dotnet run --project src/McpDotnet/McpDotnet.Server
 ```
 
 ### Running Tests
@@ -182,12 +182,12 @@ See examples in `docs/roslyn-path/examples/`:
 #### User-Level Configuration
 The server supports a user-level configuration file for setting allowed directories and other options.
 
-**Location**: `~/.config/mcp-roslyn/config.json`
+**Location**: `~/.config/mcp-dotnet/config.json`
 
 **Example**:
 ```json
 {
-  "McpRoslyn": {
+  "McpDotnet": {
     "AllowedPaths": [
       "/Users/bill/Repos",
       "/Users/bill/Desktop",
@@ -206,12 +206,12 @@ The server supports a user-level configuration file for setting allowed director
 
 **Configuration Priority** (highest to lowest):
 1. Command line arguments
-2. Environment variables (e.g., `MCP_ROSLYN_ALLOWED_PATHS`)
-3. User config (`~/.config/mcp-roslyn/config.json`)
-4. Project config (`mcp-roslyn.config.json` in working directory)
+2. Environment variables (e.g., `MCP_DOTNET_ALLOWED_PATHS`)
+3. User config (`~/.config/mcp-dotnet/config.json`)
+4. Project config (`mcp-dotnet.config.json` in working directory)
 5. Default settings
 
-See `~/.config/mcp-roslyn/README.md` for detailed configuration documentation.
+See `~/.config/mcp-dotnet/README.md` for detailed configuration documentation.
 
 ## Important Notes
 
@@ -280,7 +280,7 @@ ast = get_ast(
 ## Key Implementation Files
 
 ### Core Server Components
-- `RoslynWorkspaceManager.cs` - Main workspace and tool implementations
+- `DotnetWorkspaceManager.cs` - Main workspace and tool implementations
 - `McpJsonRpcServer.cs` - MCP protocol handling
 - `Program.cs` - Server entry point and configuration
 

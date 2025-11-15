@@ -42,7 +42,7 @@ def run_test(title, pattern, pattern_type="roslynpath", expected_count=None):
     
     # Find the server project
     server_project = os.path.join(os.path.dirname(__file__), 
-                                  "../../src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj")
+                                  "../../src/McpRoslyn/McpDotnet.Server/McpDotnet.Server.csproj")
     test_workspace = os.path.join(os.path.dirname(__file__), "../../test-workspace")
     
     # Start the server
@@ -56,7 +56,7 @@ def run_test(title, pattern, pattern_type="roslynpath", expected_count=None):
     env = os.environ.copy()
 
     
-    env["MCP_ROSLYN_ALLOWED_PATHS"] = os.path.abspath(".")
+    env["MCP_DOTNET_ALLOWED_PATHS"] = os.path.abspath(".")
 
     
     

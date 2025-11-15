@@ -22,6 +22,6 @@ fi
 
 # Run server with test requests (fix the project path)
 cd "$PROJECT_ROOT"
-dotnet run --project "src/McpRoslyn.Server" -- \
+dotnet run --project "src/McpDotnet.Server" -- \
     --allowed-path "$PROJECT_ROOT" \
     < "$PROJECT_ROOT/$REQUEST_FILE"

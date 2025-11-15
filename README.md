@@ -119,17 +119,17 @@ The server leverages Roslyn's unique ability to seamlessly move between syntacti
 
 ### Build
 ```bash
-cd src/McpRoslyn
+cd src/McpDotnet
 dotnet build
 ```
 
 ### Run
 ```bash
 # Standard stdio mode
-dotnet run --project McpRoslyn.Server/McpRoslyn.Server.csproj -- --allowed-path /path/to/code
+dotnet run --project McpDotnet.Server/McpDotnet.Server.csproj -- --allowed-path /path/to/code
 
 # SSE mode (for HTTP-based clients)
-dotnet run --project McpRoslyn.Server.Sse/McpRoslyn.Server.Sse.csproj
+dotnet run --project McpDotnet.Server.Sse/McpDotnet.Server.Sse.csproj
 ```
 
 ### Docker
@@ -137,13 +137,13 @@ The server can also run in a Docker container:
 
 ```bash
 # Build the image
-docker build -t mcp-roslyn:latest .
+docker build -t mcp-dotnet:latest .
 
 # Run with mounted code directory
 docker run -i \
   -v /path/to/your/code:/workspace \
-  -e MCP_ROSLYN_ALLOWED_PATHS=/workspace \
-  mcp-roslyn:latest
+  -e MCP_DOTNET_ALLOWED_PATHS=/workspace \
+  mcp-dotnet:latest
 ```
 
 For detailed Docker usage, see [DOCKER.md](DOCKER.md).

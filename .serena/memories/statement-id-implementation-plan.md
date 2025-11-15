@@ -6,7 +6,7 @@
 - replace-statement accepts statementId parameter but returns "not implemented"
 
 ## Implementation Plan
-1. Add session-scoped statement tracking to RoslynWorkspaceManager
+1. Add session-scoped statement tracking to DotnetWorkspaceManager
 2. Store statement ID → SyntaxNode mappings when find-statements runs
 3. Implement lookup mechanism for statement operations
 4. Update replace-statement to use statement IDs

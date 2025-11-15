@@ -35,7 +35,7 @@ def test_method_calls():
     # Start the MCP server
     cmd = [
         "dotnet", "run", 
-        "--project", "./src/McpRoslyn/McpRoslyn.Server/McpRoslyn.Server.csproj"]
+        "--project", "./src/McpRoslyn/McpDotnet.Server/McpDotnet.Server.csproj"]
     
     print("Starting MCP server...")
     proc = subprocess.Popen(
@@ -46,7 +46,7 @@ def test_method_calls():
         text=True,
         bufsize=0
     ,
-        env={"MCP_ROSLYN_ALLOWED_PATHS": os.path.abspath(.)})
+        env={"MCP_DOTNET_ALLOWED_PATHS": os.path.abspath(.)})
     
     # Give server time to start
     time.sleep(2)

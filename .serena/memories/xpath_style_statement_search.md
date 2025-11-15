@@ -8,7 +8,7 @@ Implemented XPath-style conventions for statement search results, following the 
 ### 1. Added Path Property
 Added `Path` property to `StatementInfo` class that shows the full structural path from solution to statement:
 ```
-/McpRoslyn/McpRoslyn.Server/McpJsonRpcServer.cs/McpJsonRpcServer/RunAsync/block[1]/expression[1]
+/McpDotnet/McpDotnet.Server/McpJsonRpcServer.cs/McpJsonRpcServer/RunAsync/block[1]/expression[1]
 ```
 
 ### 2. XPath Conventions
@@ -51,10 +51,10 @@ Components:
 ## Example Output
 ```
 Statement ID: stmt-6
-Path: /McpRoslyn/McpRoslyn.Server/McpJsonRpcServer.cs/McpJsonRpcServer/RunAsync/block[1]/expression[1]
+Path: /McpDotnet/McpDotnet.Server/McpJsonRpcServer.cs/McpJsonRpcServer/RunAsync/block[1]/expression[1]
 Type: ExpressionStatementSyntax
 Depth: 1
-Location: /Users/bill/Repos/McpDotnet/src/McpRoslyn.Server/McpJsonRpcServer.cs:75:9
+Location: /Users/bill/Repos/McpDotnet/src/McpDotnet.Server/McpJsonRpcServer.cs:75:9
 Code: _logger.LogInformation("MCP Roslyn Server started - listening on stdio");
 ```
 
@@ -66,7 +66,7 @@ Following XPath's philosophy:
 - The tool is a reliable, predictable primitive that can be composed
 
 ## Files Modified
-- `RoslynWorkspaceManager.cs`: Added path building logic, removed container filtering
+- `DotnetWorkspaceManager.cs`: Added path building logic, removed container filtering
 - `McpJsonRpcServer.cs`: Updated output format to show paths
 - `StatementInfo` class: Added Path property
 

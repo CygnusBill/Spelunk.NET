@@ -14,7 +14,7 @@ def test_query_syntax_semantic():
     """Test query-syntax with semantic information"""
     
     # Correct the server path
-    server_path = os.path.join(os.path.dirname(__file__), "..", "..", "src", "McpRoslyn.Server")
+    server_path = os.path.join(os.path.dirname(__file__), "..", "..", "src", "McpDotnet.Server")
     client = TestClient(server_path=server_path)
     
     # Create a temporary workspace

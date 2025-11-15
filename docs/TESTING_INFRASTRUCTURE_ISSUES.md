@@ -127,7 +127,7 @@ Process terminated with code: 137
 #### Investigation Results
 1. **Permissions**: Fixed executable permissions - no change
 2. **Command args**: Tested various argument combinations - no change  
-3. **Environment variables**: Tried MCP_ROSLYN_ALLOWED_PATHS - no change
+3. **Environment variables**: Tried MCP_DOTNET_ALLOWED_PATHS - no change
 4. **Project paths**: Fixed incorrect paths in scripts - no change
 5. **Resource limits**: No obvious memory/CPU constraints visible
 
@@ -230,5 +230,5 @@ TimeoutError: No response received within 60 seconds
 
 - **TestClient Location**: `tests/utils/test_client.py`
 - **Working Test Example**: `tests/tools/test-fsharp-detection-simple.py`
-- **Server Configuration**: `src/McpRoslyn.Server/Program.cs` (allowed paths handling)
+- **Server Configuration**: `src/McpDotnet.Server/Program.cs` (allowed paths handling)
 - **Existing Test Patterns**: `tests/tools/test-find-class.py` and similar

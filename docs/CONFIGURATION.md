@@ -14,14 +14,14 @@ The MCP Roslyn Server supports a flexible configuration system using .NET's IOpt
 The server loads configuration from JSON files in the following order:
 - `appsettings.json` - Base configuration
 - `appsettings.{Environment}.json` - Environment-specific overrides (e.g., `appsettings.Development.json`)
-- `mcp-roslyn.config.json` - User-specific configuration
+- `mcp-dotnet.config.json` - User-specific configuration
 
 All configuration files support hot reload - changes are detected automatically without restarting the server.
 
-Example `mcp-roslyn.config.json`:
+Example `mcp-dotnet.config.json`:
 ```json
 {
-  "McpRoslyn": {
+  "McpDotnet": {
     "AllowedPaths": [
       "/path/to/project1",
       "/path/to/project2"
@@ -42,22 +42,22 @@ Example `mcp-roslyn.config.json`:
 
 ### 2. Environment Variables
 
-Environment variables use the `MCP_ROSLYN__` prefix with double underscores for hierarchy:
+Environment variables use the `MCP_DOTNET__` prefix with double underscores for hierarchy:
 
 ```bash
 # Set allowed paths
-export MCP_ROSLYN__AllowedPaths__0=/path/to/project1
-export MCP_ROSLYN__AllowedPaths__1=/path/to/project2
+export MCP_DOTNET__AllowedPaths__0=/path/to/project1
+export MCP_DOTNET__AllowedPaths__1=/path/to/project2
 
 # Set initial workspace
-export MCP_ROSLYN__InitialWorkspace=/path/to/workspace.sln
+export MCP_DOTNET__InitialWorkspace=/path/to/workspace.sln
 
 # Set logging level
-export MCP_ROSLYN__Logging__MinimumLevel=Debug
+export MCP_DOTNET__Logging__MinimumLevel=Debug
 
 # Set server options
-export MCP_ROSLYN__Server__RequestTimeoutSeconds=300
-export MCP_ROSLYN__Server__MaxWorkspaces=20
+export MCP_DOTNET__Server__RequestTimeoutSeconds=300
+export MCP_DOTNET__Server__MaxWorkspaces=20
 ```
 
 ### 3. Command-Line Arguments
@@ -81,8 +81,8 @@ Supported command-line arguments:
 ### 4. Legacy Environment Variables
 
 For backward compatibility, the following legacy environment variables are still supported:
-- `MCP_ROSLYN_ALLOWED_PATHS` - Colon-separated list of allowed paths
-- `MCP_ROSLYN_WORKSPACE` - Initial workspace path
+- `MCP_DOTNET_ALLOWED_PATHS` - Colon-separated list of allowed paths
+- `MCP_DOTNET_WORKSPACE` - Initial workspace path
 
 ## Configuration Options
 
@@ -139,7 +139,7 @@ Given the following configuration sources:
 1. `appsettings.json`:
 ```json
 {
-  "McpRoslyn": {
+  "McpDotnet": {
     "AllowedPaths": ["/default/path"],
     "Logging": {
       "MinimumLevel": "Information"
@@ -150,7 +150,7 @@ Given the following configuration sources:
 
 2. Environment variable:
 ```bash
-export MCP_ROSLYN__Logging__MinimumLevel=Debug
+export MCP_DOTNET__Logging__MinimumLevel=Debug
 ```
 
 3. Command line:
@@ -164,7 +164,7 @@ The effective configuration would be:
 
 ## Hot Reload
 
-Configuration files (`appsettings.json`, `mcp-roslyn.config.json`) support hot reload. When changes are detected:
+Configuration files (`appsettings.json`, `mcp-dotnet.config.json`) support hot reload. When changes are detected:
 1. The new configuration is validated
 2. If valid, the server updates its settings without restart
 3. A log message confirms the configuration update
