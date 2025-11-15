@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -9,12 +9,12 @@
 
     <!-- Package as .NET global tool -->
     <PackAsTool>true</PackAsTool>
-    <ToolCommandName>mcp-dotnet</ToolCommandName>
-    <PackageId>McpDotnet</PackageId>
-    <Version>1.0.0</Version>
+    <ToolCommandName>spelunk</ToolCommandName>
+    <PackageId>Spelunk.NET</PackageId>
+    <Version>1.0.0-alpha-01</Version>
     <Authors>Bill</Authors>
-    <Description>MCP server for .NET code analysis using Roslyn compiler platform</Description>
-    <PackageTags>mcp;roslyn;dotnet;code-analysis;refactoring</PackageTags>
+    <Description>Spelunk.NET - MCP server for .NET code analysis with stdio and SSE modes. Query code using SpelunkPath.</Description>
+    <PackageTags>mcp;spelunk;dotnet;roslyn;code-analysis;refactoring;sse</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/CygnusBill/McpDotnet</PackageProjectUrl>
     <RepositoryUrl>https://github.com/CygnusBill/McpDotnet</RepositoryUrl>
@@ -40,7 +40,7 @@
     <PackageReference Include="Microsoft.CodeAnalysis.VisualBasic.Workspaces" Version="5.0.0-2.final" />
     <PackageReference Include="FSharp.Compiler.Service" Version="43.10.100" />
     <PackageReference Include="Microsoft.Build.Locator" Version="1.10.12" />
-    <PackageReference Include="System.CommandLine" Version="2.0.0" />
+    <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
   </ItemGroup>
 
 </Project>

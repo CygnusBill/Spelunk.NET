@@ -1,132 +1,110 @@
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using Spelunk.Server.Configuration;
-using Spelunk.Server.FSharp;
+using System.CommandLine;
+using Spelunk.Server.Modes;
+using Spelunk.Server.Process;
 
 namespace Spelunk.Server;
 
 class Program
 {
-    static async Task Main(string[] args)
+    static async Task<int> Main(string[] args)
     {
-        var host = Host.CreateDefaultBuilder(args)
-            .ConfigureAppConfiguration((context, config) =>
-            {
-                // Load configuration from multiple sources in priority order
-                config.SetBasePath(Directory.GetCurrentDirectory())
-                    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-                    .AddJsonFile($"appsettings.{context.HostingEnvironment.EnvironmentName}.json", optional: true, reloadOnChange: true)
-                    .AddJsonFile("spelunk.config.json", optional: true, reloadOnChange: true);
+        var rootCommand = new RootCommand("Spelunk.NET - MCP server for .NET code analysis");
 
-                // Add user-level configuration file from home directory
-                var userConfigPath = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                    ".spelunk", "config.json");
-                if (File.Exists(userConfigPath))
-                {
-                    config.AddJsonFile(userConfigPath, optional: true, reloadOnChange: true);
-                }
-                
-                // Support legacy environment variable for backward compatibility
-                var legacyAllowedPaths = Environment.GetEnvironmentVariable("SPELUNK_ALLOWED_PATHS");
-                if (!string.IsNullOrEmpty(legacyAllowedPaths))
-                {
-                    // Convert legacy format to new format
-                    var paths = legacyAllowedPaths.Split(Path.PathSeparator);
-                    var inMemoryConfig = new Dictionary<string, string?>();
-                    for (int i = 0; i < paths.Length; i++)
-                    {
-                        inMemoryConfig[$"Spelunk:AllowedPaths:{i}"] = paths[i];
-                    }
-                    config.AddInMemoryCollection(inMemoryConfig);
-                }
-                
-                // Support legacy workspace environment variable
-                var legacyWorkspace = Environment.GetEnvironmentVariable("SPELUNK_WORKSPACE");
-                if (!string.IsNullOrEmpty(legacyWorkspace))
-                {
-                    config.AddInMemoryCollection(new Dictionary<string, string?>
-                    {
-                        ["Spelunk:InitialWorkspace"] = legacyWorkspace
-                    });
-                }
-                
-                // Add new-style environment variables (SPELUNK__ prefix)
-                config.AddEnvironmentVariables("SPELUNK__");
-                
-                // Command line arguments have highest priority
-                config.AddCommandLine(args, GetCommandLineMappings());
-            })
-            .ConfigureServices((context, services) =>
-            {
-                // Configure options with validation
-                services.AddOptions<SpelunkOptions>()
-                    .Bind(context.Configuration.GetSection(SpelunkOptions.SectionName))
-                    .Configure(options =>
-                    {
-                        // Default to current directory if no allowed paths specified
-                        if (options.AllowedPaths.Count == 0)
-                        {
-                            options.AllowedPaths.Add(Directory.GetCurrentDirectory());
-                        }
-                    })
-                    .ValidateDataAnnotations()
-                    .ValidateOnStart();
-                
-                // Register services
-                services.AddSingleton<DotnetWorkspaceManager>();
-                services.AddSingleton<FSharpWorkspaceManager>();
-                services.AddSingleton<McpJsonRpcServer>();
-                services.AddHostedService<SpelunkHostedService>();
-            })
-            .ConfigureLogging((context, logging) =>
-            {
-                // Configure logging to stderr to keep stdout clean for JSON-RPC
-                logging.ClearProviders();
-                logging.AddConsole(options =>
-                {
-                    options.LogToStandardErrorThreshold = LogLevel.Trace;
-                });
-                
-                // Apply log level from configuration
-                var logLevel = context.Configuration
-                    .GetSection("Spelunk:Logging:MinimumLevel")
-                    .Get<LogLevel?>() ?? LogLevel.Information;
-                logging.SetMinimumLevel(logLevel);
-            })
-            .UseConsoleLifetime()
-            .Build();
-        
-        try
+        // stdio command
+        var stdioCommand = new Command("stdio", "Run in stdio mode (JSON-RPC over standard input/output)");
+        stdioCommand.SetHandler(async () =>
         {
-            await host.RunAsync();
-        }
-        catch (OptionsValidationException ex)
+            var mode = new StdioMode(args);
+            await mode.RunAsync();
+        });
+
+        // sse command group
+        var sseCommand = new Command("sse", "Run SSE server or manage background instance");
+
+        var portOption = new Option<int>(
+            aliases: new[] { "-p", "--port" },
+            getDefaultValue: () => 3333,
+            description: "Port for SSE server");
+
+        var backgroundOption = new Option<bool>(
+            name: "--background",
+            description: "Internal flag - run as background process");
+        backgroundOption.IsHidden = true; // Hidden from help
+
+        // sse (no subcommand) - start in background or run as background process
+        sseCommand.AddOption(portOption);
+        sseCommand.AddOption(backgroundOption);
+        sseCommand.SetHandler(async (int port, bool isBackground) =>
         {
-            Console.Error.WriteLine("Configuration validation failed:");
-            foreach (var failure in ex.Failures)
+            if (isBackground)
             {
-                Console.Error.WriteLine($"  - {failure}");
+                // We are the background process - run SSE server directly
+                var mode = new SseMode(port, isBackgroundProcess: true);
+                await mode.RunAsync();
             }
-            Environment.Exit(1);
-        }
-    }
-    
-    private static Dictionary<string, string> GetCommandLineMappings()
-    {
-        return new Dictionary<string, string>
+            else
+            {
+                // Start SSE server in background
+                var result = await ProcessManager.StartSseServerAsync(port);
+                Console.WriteLine(result.message);
+                Environment.Exit(result.success ? 0 : 1);
+            }
+        }, portOption, backgroundOption);
+
+        // sse stop
+        var stopCommand = new Command("stop", "Stop background SSE server");
+        stopCommand.SetHandler(() =>
         {
-            // Map legacy command line arguments
-            { "--workspace", "Spelunk:InitialWorkspace" },
-            { "-w", "Spelunk:InitialWorkspace" },
-            { "--allowed-path", "Spelunk:AllowedPaths:0" },  // Simple case for single path
-            
-            // New style arguments
-            { "--config", "ConfigFile" },  // Special handling needed
-            { "--log-level", "Spelunk:Logging:MinimumLevel" }
-        };
+            var result = ProcessManager.StopSseServer();
+            Console.WriteLine(result.message);
+            Environment.Exit(result.success ? 0 : 1);
+        });
+        sseCommand.AddCommand(stopCommand);
+
+        // sse status
+        var statusCommand = new Command("status", "Check SSE server status");
+        statusCommand.SetHandler(() =>
+        {
+            var result = ProcessManager.GetSseServerStatus();
+            Console.WriteLine(result.message);
+            Environment.Exit(result.running ? 0 : 1);
+        });
+        sseCommand.AddCommand(statusCommand);
+
+        // sse restart
+        var restartCommand = new Command("restart", "Restart background SSE server");
+        restartCommand.AddOption(portOption);
+        restartCommand.SetHandler(async (int port) =>
+        {
+            // If port is default (3333), use null to keep existing port
+            int? newPort = port == 3333 ? null : port;
+            var result = await ProcessManager.RestartSseServerAsync(newPort);
+            Console.WriteLine(result.message);
+            Environment.Exit(result.success ? 0 : 1);
+        }, portOption);
+        sseCommand.AddCommand(restartCommand);
+
+        // sse logs
+        var logsCommand = new Command("logs", "View SSE server logs");
+        var followOption = new Option<bool>(
+            aliases: new[] { "-f", "--follow" },
+            description: "Follow log output");
+        logsCommand.AddOption(followOption);
+        logsCommand.SetHandler(async (bool follow) =>
+        {
+            using var cts = new CancellationTokenSource();
+            Console.CancelKeyPress += (s, e) =>
+            {
+                e.Cancel = true;
+                cts.Cancel();
+            };
+            await ProcessManager.ShowLogsAsync(follow, cts.Token);
+        }, followOption);
+        sseCommand.AddCommand(logsCommand);
+
+        rootCommand.AddCommand(stdioCommand);
+        rootCommand.AddCommand(sseCommand);
+
+        return await rootCommand.InvokeAsync(args);
     }
 }
