@@ -1,8 +1,8 @@
-# RoslynPath Quick Guide for AI Agents
+# SpelunkPath Quick Guide for AI Agents
 
-## What is RoslynPath?
+## What is SpelunkPath?
 
-RoslynPath is a way to precisely identify locations in C# code that **stays stable even when the code is edited**. Think of it like a GPS coordinate for code - instead of saying "line 25" (which breaks when lines are added), you say "the return statement in the CalculateTotal method" which always finds the right spot.
+SpelunkPath is a way to precisely identify locations in C# code that **stays stable even when the code is edited**. Think of it like a GPS coordinate for code - instead of saying "line 25" (which breaks when lines are added), you say "the return statement in the CalculateTotal method" which always finds the right spot.
 
 ## The 5-Minute Crash Course
 
@@ -391,7 +391,7 @@ If a path returns no results:
 
 ## Remember
 
-- RoslynPath is about **stable** references that survive edits
+- SpelunkPath is about **stable** references that survive edits
 - Start simple, add criteria as needed
 - When in doubt, use `//` to search broadly
 - Names are better than positions

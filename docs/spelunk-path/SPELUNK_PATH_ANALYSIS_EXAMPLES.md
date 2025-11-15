@@ -1,4 +1,4 @@
-# Powerful RoslynPath Analysis Examples
+# Powerful SpelunkPath Analysis Examples
 
 ## 1. Security Analysis
 
@@ -319,4 +319,4 @@ The power comes from combining:
 3. **Context navigation** (understanding relationships)
 4. **Boolean logic** (complex conditions)
 
-This makes RoslynPath not just a navigation tool, but a powerful static analysis engine that can enforce coding standards, find bugs, and guide refactoring efforts.
+This makes SpelunkPath not just a navigation tool, but a powerful static analysis engine that can enforce coding standards, find bugs, and guide refactoring efforts.

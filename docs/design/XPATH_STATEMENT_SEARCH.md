@@ -39,7 +39,7 @@ Components:
 - Consistent calculation from method/class boundary
 - Depth 0 = Direct child of method body
 - Depth 1 = One level nested (e.g., inside if-statement)
-- Same calculation for all search types (text, regex, RoslynPath)
+- Same calculation for all search types (text, regex, SpelunkPath)
 
 ### Location (Physical Position)
 - File path, line, and column
@@ -106,7 +106,7 @@ Users can:
 - Use path to understand containment relationships
 - Process in document order (parents before children)
 
-### RoslynPath Search
+### SpelunkPath Search
 ```
 Pattern: //method[Main]//statement
 ```

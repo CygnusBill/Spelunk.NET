@@ -144,7 +144,7 @@ In contrast, the **data flow analysis** is robust and uses Roslyn's `AnalyzeData
 2. **Use data flow analysis instead** - it's accurate and reliable
 3. **Set `includeControlFlow: false`** to avoid confusion
 4. **Use other tools** for control flow needs:
-   - `spelunk-find-statements` with RoslynPath for finding control structures
+   - `spelunk-find-statements` with SpelunkPath for finding control structures
    - `spelunk-get-statement-context` for understanding code structure
 
 ### For Future Development

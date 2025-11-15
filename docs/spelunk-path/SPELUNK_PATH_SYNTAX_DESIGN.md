@@ -58,7 +58,7 @@ Unlike XML, C# syntax trees have:
 - **Semantic meaning** beyond structure
 - **Contextual significance** (same syntax, different meaning)
 
-## Proposed Syntax: RoslynPath
+## Proposed Syntax: SpelunkPath
 
 ### Basic Path Navigation
 
@@ -515,6 +515,6 @@ Paths break when:
 
 ## Conclusion
 
-RoslynPath provides a robust, expressive syntax for navigating C# syntax trees. By adapting XPath's proven concepts to Roslyn's specific needs, we can create a powerful tool for code analysis and transformation that remains stable across edits while providing the precision needed for automated refactoring.
+SpelunkPath provides a robust, expressive syntax for navigating C# syntax trees. By adapting XPath's proven concepts to Roslyn's specific needs, we can create a powerful tool for code analysis and transformation that remains stable across edits while providing the precision needed for automated refactoring.
 
 The syntax balances power with simplicity, making it accessible to both human developers and AI agents. With proper implementation, this could become the standard way to reference code elements in the .NET ecosystem.

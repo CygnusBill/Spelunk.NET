@@ -62,7 +62,7 @@
 - [ ] Active pattern detection
 - [ ] Computation expression analysis
 
-**Deliverable**: Rich querying capabilities for F# code equivalent to RoslynPath
+**Deliverable**: Rich querying capabilities for F# code equivalent to SpelunkPath
 
 ## Phase 3: Unified Experience (Q3 2024)
 
@@ -258,4 +258,4 @@ Maintain separate F# infrastructure with unified interface
 
 ## Conclusion
 
-F# support is achievable through careful architecture and phased implementation. The key is maintaining a unified interface while respecting the fundamental differences between F# and Roslyn-based languages. With proper investment, we can provide excellent F# support that feels native to the MCP Roslyn Server.
+F# support is achievable through careful architecture and phased implementation. The key is maintaining a unified interface while respecting the fundamental differences between F# and Roslyn-based languages. With proper investment, we can provide excellent F# support that feels native to the Spelunk.NET.

@@ -1,20 +1,20 @@
-# RoslynPath Instructions for Agents
+# SpelunkPath Instructions for Agents
 
 ## Quick Start
 
-RoslynPath lets you find specific code elements using path expressions, similar to how XPath works for XML.
+SpelunkPath lets you find specific code elements using path expressions, similar to how XPath works for XML.
 
 ### Basic Usage
 
 ```csharp
 // Find all methods
-var methods = RoslynPath.Find(sourceCode, "//method");
+var methods = SpelunkPath.Find(sourceCode, "//method");
 
 // Find a specific method
-var getUserMethod = RoslynPath.Find(sourceCode, "//method[GetUser]");
+var getUserMethod = SpelunkPath.Find(sourceCode, "//method[GetUser]");
 
 // Find all return statements in a method
-var returns = RoslynPath.Find(sourceCode, "//method[ProcessOrder]//statement[@type=ReturnStatement]");
+var returns = SpelunkPath.Find(sourceCode, "//method[ProcessOrder]//statement[@type=ReturnStatement]");
 ```
 
 ## Essential Patterns

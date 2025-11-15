@@ -1,7 +1,7 @@
 # F# Implementation Plan
 
 ## Overview
-This document outlines the plan for implementing F# introspection capabilities in the MCP Roslyn Server using FSharp.Compiler.Service.
+This document outlines the plan for implementing F# introspection capabilities in the Spelunk.NET using FSharp.Compiler.Service.
 
 ## Architecture
 
@@ -15,7 +15,7 @@ This document outlines the plan for implementing F# introspection capabilities i
 
 2. **FSharpPath Query Engine**
    - XPath-inspired query language for F# AST
-   - Similar to RoslynPath but designed for F# syntax tree
+   - Similar to SpelunkPath but designed for F# syntax tree
    - Supports F#-specific constructs (modules, let bindings, pattern matching)
 
 3. **F# Tool Implementations**

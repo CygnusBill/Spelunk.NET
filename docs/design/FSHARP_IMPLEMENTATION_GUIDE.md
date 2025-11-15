@@ -1,8 +1,8 @@
-# F# Implementation Guide for MCP Roslyn Server
+# F# Implementation Guide for Spelunk.NET
 
 ## Introduction
 
-This guide provides detailed implementation guidance for F# support in the MCP Roslyn Server. It covers the technical details developers need to understand, extend, or maintain F# functionality.
+This guide provides detailed implementation guidance for F# support in the Spelunk.NET. It covers the technical details developers need to understand, extend, or maintain F# functionality.
 
 ## Core Components
 
@@ -69,7 +69,7 @@ public class FSharpProjectTracker
 
 ### Parser Implementation
 
-FSharpPath uses a similar grammar to RoslynPath but with F#-specific node types:
+FSharpPath uses a similar grammar to SpelunkPath but with F#-specific node types:
 
 ```csharp
 public class FSharpPathParser

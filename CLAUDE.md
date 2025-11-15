@@ -40,11 +40,11 @@ McpDotnet/
 │   │   ├── STATEMENT_LEVEL_EDITING.md
 │   │   └── EPHEMERAL_MARKER_DESIGN.md
 │   ├── roslyn-path/              # SpelunkPath documentation
-│   │   ├── ROSLYN_PATH_INSTRUCTIONS.md   # Quick reference
-│   │   ├── ROSLYN_PATH_AGENT_GUIDE.md    # 5-minute guide
-│   │   ├── ROSLYN_PATH_SYNTAX_DESIGN.md  # Full syntax spec
-│   │   ├── ROSLYN_PATH_ANALYSIS_EXAMPLES.md
-│   │   ├── ROSLYN_PATH_TEST_PACKAGE.md
+│   │   ├── SPELUNK_PATH_INSTRUCTIONS.md   # Quick reference
+│   │   ├── SPELUNK_PATH_AGENT_GUIDE.md    # 5-minute guide
+│   │   ├── SPELUNK_PATH_SYNTAX_DESIGN.md  # Full syntax spec
+│   │   ├── SPELUNK_PATH_ANALYSIS_EXAMPLES.md
+│   │   ├── SPELUNK_PATH_TEST_PACKAGE.md
 │   │   └── examples/             # Demo code
 │   └── stale/                    # Archived docs (historical only)
 ├── tests/                        # Test suites
@@ -84,7 +84,7 @@ An XPath-inspired query language for .NET code that provides stable references s
 - Full XPath-style axes support (ancestor::, descendant::, following-sibling::, etc.)
 - Example: `//binary-expression[@operator='==' and @right-text='null']`
 - VB.NET mapping: `//method[@returns='void']` finds both C# void methods and VB.NET Subs
-- See `docs/roslyn-path/` for full documentation
+- See `docs/spelunk-path/` for full documentation
 
 ### 4. FSharpPath
 An XPath-inspired query language specifically for F# AST:
@@ -105,15 +105,15 @@ The server provides two complementary tool categories:
 
 ### For Quick Reference
 - **Tool usage**: `docs/TOOL_SYNOPSIS.md` - All tools with examples
-- **SpelunkPath syntax**: `docs/roslyn-path/ROSLYN_PATH_INSTRUCTIONS.md`
+- **SpelunkPath syntax**: `docs/spelunk-path/SPELUNK_PATH_INSTRUCTIONS.md`
 - **Agent tool selection**: `docs/AGENT_TOOL_SELECTION_GUIDE.md` - Decision tree for AI agents
 - **Agent examples**: `docs/AGENT_QUERY_EXAMPLES.md` - Concrete semantic vs syntactic examples
 
 ### For Understanding Design
 - **Philosophy**: `docs/design/STATEMENT_LEVEL_EDITING.md`
-- **SpelunkPath rationale**: `docs/roslyn-path/ROSLYN_PATH_SYNTAX_DESIGN.md`
+- **SpelunkPath rationale**: `docs/spelunk-path/SPELUNK_PATH_SYNTAX_DESIGN.md`
 - **F# architecture**: `docs/design/FSHARP_ARCHITECTURE.md`
-- **FSharpPath syntax**: `docs/roslyn-path/FSHARP_PATH_SYNTAX.md`
+- **FSharpPath syntax**: `docs/spelunk-path/FSHARP_PATH_SYNTAX.md`
 - **Semantic vs Syntactic**: `docs/design/SEMANTIC_VS_SYNTACTIC_TOOLS.md`
 
 ### For Testing
@@ -225,9 +225,9 @@ python3 tests/tools/test-find-statements.py
 ```
 
 ### Testing SpelunkPath
-See examples in `docs/roslyn-path/examples/`:
-- `demo-roslyn-path-complex.cs` - Complex query demonstrations
-- `test-roslyn-path-simple.cs` - Simple standalone test
+See examples in `docs/spelunk-path/examples/`:
+- `demo-spelunk-path-complex.cs` - Complex query demonstrations
+- `test-spelunk-path-simple.cs` - Simple standalone test
 
 ### Configuration
 

@@ -2,9 +2,9 @@
 
 ## Overview
 
-The MCP Roslyn Server provides two complementary approaches for code analysis and navigation:
+The Spelunk.NET provides two complementary approaches for code analysis and navigation:
 1. **Semantic Tools** (find-* family) - High-level, task-focused tools using Roslyn's semantic model
-2. **Syntactic Tools** (RoslynPath-based) - Flexible, query-based tools operating on syntax trees
+2. **Syntactic Tools** (SpelunkPath-based) - Flexible, query-based tools operating on syntax trees
 
 This document explains the philosophy behind maintaining both approaches and guides developers on extending the system.
 
@@ -49,7 +49,7 @@ This document explains the philosophy behind maintaining both approaches and gui
 }
 ```
 
-### Syntactic Tools (RoslynPath-based)
+### Syntactic Tools (SpelunkPath-based)
 
 **Characteristics:**
 - Query-based interface using XPath-like syntax
@@ -74,7 +74,7 @@ This document explains the philosophy behind maintaining both approaches and gui
 
 ### 1. Progressive Disclosure
 - New users start with simple find-* tools
-- Advanced users graduate to RoslynPath for complex queries
+- Advanced users graduate to SpelunkPath for complex queries
 - Documentation shows progression path
 
 ### 2. Complementary Strengths
@@ -82,8 +82,8 @@ This document explains the philosophy behind maintaining both approaches and gui
 - Syntactic tools for "how" questions (how is it structured? what patterns exist?)
 
 ### 3. No Artificial Limitations
-- Don't restrict semantic tools to force RoslynPath usage
-- Don't overload RoslynPath with semantic complexity
+- Don't restrict semantic tools to force SpelunkPath usage
+- Don't overload SpelunkPath with semantic complexity
 - Each tool should excel at its purpose
 
 ### 4. Performance Optimization
@@ -100,7 +100,7 @@ This document explains the philosophy behind maintaining both approaches and gui
 - You want rich metadata in results
 - Performance is not critical (compilation required)
 
-### Use Syntactic Tools (RoslynPath) When:
+### Use Syntactic Tools (SpelunkPath) When:
 - You need complex pattern matching
 - Queries involve structural patterns
 - You're analyzing code style or conventions
@@ -119,7 +119,7 @@ This document explains the philosophy behind maintaining both approaches and gui
 
 ### Extending Syntactic Tools
 1. Add new node type mappings in EnhancedNodeTypes
-2. Support new predicates in RoslynPathEvaluator
+2. Support new predicates in SpelunkPathEvaluator
 3. Keep queries language-agnostic where possible
 4. Focus on syntax tree navigation
 
@@ -172,8 +172,8 @@ Future enhancements will allow syntactic tools to optionally include semantic in
 
 ## Future Directions
 
-1. **Semantic Enrichment for RoslynPath**: Optional semantic information in query results
-2. **Query Shortcuts in Semantic Tools**: Support RoslynPath predicates in find-* tools
+1. **Semantic Enrichment for SpelunkPath**: Optional semantic information in query results
+2. **Query Shortcuts in Semantic Tools**: Support SpelunkPath predicates in find-* tools
 3. **Unified Result Format**: Common schema with optional semantic fields
 4. **Performance Profiling**: Guide tool selection based on query complexity
 
@@ -182,7 +182,7 @@ Future enhancements will allow syntactic tools to optionally include semantic in
 ### Parallel Architecture
 
 F# requires its own parallel implementation:
-- **FSharpPath** for syntactic queries (equivalent to RoslynPath)
+- **FSharpPath** for syntactic queries (equivalent to SpelunkPath)
 - **F# semantic tools** using FSharp.Compiler.Service
 - Similar semantic/syntactic split within F# tooling
 

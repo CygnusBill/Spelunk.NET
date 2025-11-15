@@ -1,6 +1,6 @@
-# Docker Guide for MCP Roslyn Server
+# Docker Guide for Spelunk.NET
 
-This guide explains how to build and run the MCP Roslyn Server in a Docker container.
+This guide explains how to build and run the Spelunk.NET in a Docker container.
 
 ## Quick Start
 
@@ -12,7 +12,7 @@ docker build -t mcp-dotnet:latest .
 
 ### Run the Container
 
-The MCP Roslyn Server uses stdin/stdout for communication, so you need to run it interactively:
+The Spelunk.NET uses stdin/stdout for communication, so you need to run it interactively:
 
 ```bash
 docker run -i \
@@ -136,7 +136,7 @@ RUN dotnet publish src/McpDotnet.Server/McpDotnet.Server.csproj \
 
 ### Image Size
 
-The current image uses `mcr.microsoft.com/dotnet/sdk:10.0` (~1.4GB) because the MCP Roslyn Server requires MSBuild.Locator, which needs the full .NET SDK at runtime.
+The current image uses `mcr.microsoft.com/dotnet/sdk:10.0` (~1.4GB) because the Spelunk.NET requires MSBuild.Locator, which needs the full .NET SDK at runtime.
 
 **Note**: The runtime-only image (`mcr.microsoft.com/dotnet/runtime:10.0`) cannot be used because MSBuild.Locator requires SDK components to load and analyze .NET projects.
 
@@ -306,7 +306,7 @@ Docker caches layers. To optimize builds:
 ### GitHub Actions
 
 ```yaml
-- name: Build MCP Roslyn Docker Image
+- name: Build Spelunk.NET Docker Image
   run: docker build -t mcp-dotnet:${{ github.sha }} .
 
 - name: Test MCP Server

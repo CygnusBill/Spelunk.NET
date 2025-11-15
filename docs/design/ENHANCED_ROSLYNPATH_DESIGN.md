@@ -1,12 +1,12 @@
-# Enhanced RoslynPath Design
+# Enhanced SpelunkPath Design
 
 ## Overview
 
-This document outlines enhancements to the existing RoslynPath system to provide more comprehensive syntax tree navigation without creating a new query language.
+This document outlines enhancements to the existing SpelunkPath system to provide more comprehensive syntax tree navigation without creating a new query language.
 
 ## Current State
 
-RoslynPath already supports:
+SpelunkPath already supports:
 
 ### Axes
 - `ancestor::` - All ancestors
@@ -121,7 +121,7 @@ attribute          - Attributes/annotations
 
 #### dotnet-query-syntax
 
-Query any node type with full RoslynPath:
+Query any node type with full SpelunkPath:
 
 ```json
 {
@@ -155,7 +155,7 @@ Response:
 
 #### dotnet-navigate
 
-Navigate from a position using RoslynPath:
+Navigate from a position using SpelunkPath:
 
 ```json
 {
@@ -250,14 +250,14 @@ Response:
 4. Add tests for each tool
 
 ### Phase 4: Documentation
-1. Update RoslynPath documentation
+1. Update SpelunkPath documentation
 2. Add examples for new node types
 3. Create tutorial for AST navigation
 4. Update TOOL_SYNOPSIS.md
 
 ## Benefits
 
-1. **No New Syntax** - Extends existing RoslynPath
+1. **No New Syntax** - Extends existing SpelunkPath
 2. **Powerful Navigation** - Can reach any node in the AST
 3. **Semantic Awareness** - Can query based on types and symbols
 4. **Learning Tool** - get-ast helps understand code structure
@@ -285,4 +285,4 @@ Response:
 //invocation[@method-async=true and not(ancestor::await-expression)]
 ```
 
-This enhancement makes RoslynPath a complete AST query language while maintaining backward compatibility and consistency with XPath standards.
+This enhancement makes SpelunkPath a complete AST query language while maintaining backward compatibility and consistency with XPath standards.

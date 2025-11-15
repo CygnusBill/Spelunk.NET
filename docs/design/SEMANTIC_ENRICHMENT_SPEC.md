@@ -2,13 +2,13 @@
 
 ## Overview
 
-This specification defines how semantic information (type info, symbol details, project context) is added to syntax-based tools in the MCP Roslyn Server. The enrichment provides deeper code understanding by combining syntax analysis with Roslyn's semantic model.
+This specification defines how semantic information (type info, symbol details, project context) is added to syntax-based tools in the Spelunk.NET. The enrichment provides deeper code understanding by combining syntax analysis with Roslyn's semantic model.
 
 ## Affected Tools
 
 The following tools will support semantic enrichment via an `includeSemanticInfo` parameter:
 
-1. **dotnet-query-syntax** - Enhanced RoslynPath query results
+1. **dotnet-query-syntax** - Enhanced SpelunkPath query results
 2. **dotnet-navigate** - Navigation with semantic context
 3. **dotnet-get-ast** - AST visualization with type information
 
@@ -273,7 +273,7 @@ Provide hover information, go-to-definition context, and type checking.
 
 ## Future Extensions
 
-1. **Semantic-aware RoslynPath predicates**
+1. **Semantic-aware SpelunkPath predicates**
    - `@implements='IDisposable'`
    - `@derives-from='BaseClass'`
    - `@calls='MethodName'`

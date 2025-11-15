@@ -43,8 +43,8 @@
 - Graph-based evaluation instead of linear
 
 ## Files Created
-- docs/roslyn-path/ROSLYN_PATH_GRAMMAR.md - Formal BNF grammar
-- docs/roslyn-path/ROSLYN_PATH_REDESIGN.md - Detailed redesign proposal
+- docs/spelunk-path/SPELUNK_PATH_GRAMMAR.md - Formal BNF grammar
+- docs/spelunk-path/SPELUNK_PATH_REDESIGN.md - Detailed redesign proposal
 
 ## Next Steps
 1. Implement context-aware lexer

@@ -1,6 +1,6 @@
-# MCP Roslyn Server Configuration
+# Spelunk.NET Configuration
 
-The MCP Roslyn Server supports a flexible configuration system using .NET's IOptions pattern. Configuration can be provided through multiple sources with the following precedence (highest to lowest):
+The Spelunk.NET supports a flexible configuration system using .NET's IOptions pattern. Configuration can be provided through multiple sources with the following precedence (highest to lowest):
 
 1. Command-line arguments
 2. Environment variables

@@ -251,7 +251,7 @@ Then filter results where semantic info shows Task return type
 ```
 Works for both: `public decimal Price { get; set; }` (C#) and `Public Property Price As Decimal` (VB)
 
-**RoslynPath - Language Aware:**
+**SpelunkPath - Language Aware:**
 ```json
 {
   "tool": "spelunk-query-syntax",

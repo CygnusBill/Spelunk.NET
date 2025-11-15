@@ -285,7 +285,7 @@ IMPLEMENT_INTERFACE_AGENT:
 ### Pattern: Discover → Analyze → Transform → Verify
 
 1. **Discovery Phase** - Use search tools to find targets:
-   - `spelunk-find-statements` with RoslynPath
+   - `spelunk-find-statements` with SpelunkPath
    - `spelunk-find-method`, `spelunk-find-class`
    - `search_for_pattern` for flexible searches
 

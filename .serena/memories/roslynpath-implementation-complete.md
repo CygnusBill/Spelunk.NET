@@ -54,8 +54,8 @@ Successfully rebuilt RoslynPath parser with proper AST architecture:
 ## Files Created/Modified
 - `src/McpDotnet.Server/RoslynPath/RoslynPathParser2.cs` - New parser
 - `src/McpDotnet.Server/RoslynPath/RoslynPathEvaluator2.cs` - New evaluator
-- `docs/roslyn-path/ROSLYN_PATH_GRAMMAR.md` - Formal grammar
-- `docs/roslyn-path/ROSLYN_PATH_REDESIGN.md` - Architecture design
+- `docs/spelunk-path/SPELUNK_PATH_GRAMMAR.md` - Formal grammar
+- `docs/spelunk-path/SPELUNK_PATH_REDESIGN.md` - Architecture design
 - Tests updated to use new implementation
 
 ## Next Steps

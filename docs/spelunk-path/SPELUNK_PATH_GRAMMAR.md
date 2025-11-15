@@ -1,7 +1,7 @@
-# RoslynPath Grammar Specification
+# SpelunkPath Grammar Specification
 
 ## Overview
-RoslynPath is an XPath-inspired query language for navigating and querying .NET syntax trees.
+SpelunkPath is an XPath-inspired query language for navigating and querying .NET syntax trees.
 This document provides the formal BNF grammar and architectural considerations.
 
 ## BNF Grammar
@@ -108,7 +108,7 @@ public class ContextAwareLexer
 }
 
 // Phase 2: Build proper AST
-public class RoslynPathAst
+public class SpelunkPathAst
 {
     public abstract class PredicateExpression { }
     public class BinaryPredicate : PredicateExpression 

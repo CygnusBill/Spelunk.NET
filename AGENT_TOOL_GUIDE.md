@@ -7,16 +7,16 @@ This document lists all 37 McpDotnet tools with their descriptions as seen by AI
 
 ## 1. Workspace Management Tools
 
-### dotnet-load-workspace
+### spelunk-load-workspace
 **Agent Description**: "Load a .NET solution or project into the workspace"
 **When to Use**: Always start here. Load the solution/project before any other operations.
 **Note**: Requires absolute paths only.
 
-### dotnet-workspace-status  
+### spelunk-workspace-status  
 **Agent Description**: "Get loading progress and workspace info"
 **When to Use**: Check if workspace is loaded, get workspace ID, monitor loading progress.
 
-### dotnet-get-diagnostics
+### spelunk-get-diagnostics
 **Agent Description**: "Get compilation diagnostics (errors, warnings, info) from the workspace"
 **When to Use**: Check for build errors, find compilation issues, understand project health.
 
@@ -24,17 +24,17 @@ This document lists all 37 McpDotnet tools with their descriptions as seen by AI
 
 ## 2. Symbol Discovery Tools (Semantic)
 
-### dotnet-find-class
+### spelunk-find-class
 **Agent Description**: "Find classes, interfaces, structs, or enums by name pattern (supports * and ? wildcards)"
 **When to Use**: Discovering types in codebase, finding specific classes/interfaces.
 **Strength**: Complete results using Roslyn's semantic model.
 
-### dotnet-find-method
+### spelunk-find-method
 **Agent Description**: "Find methods by name pattern with optional class pattern filter (supports * and ? wildcards)"
 **When to Use**: Locating specific methods, finding all methods matching a pattern.
 **Returns**: Full method signatures with return types and parameters.
 
-### dotnet-find-property
+### spelunk-find-property
 **Agent Description**: "Find properties and fields by name pattern with optional class pattern filter (supports * and ? wildcards)"
 **When to Use**: Finding properties/fields, tracing data flow through object graph.
 
@@ -42,30 +42,30 @@ This document lists all 37 McpDotnet tools with their descriptions as seen by AI
 
 ## 3. Relationship Analysis Tools (Semantic)
 
-### dotnet-find-references
+### spelunk-find-references
 **Agent Description**: "Find all references to a type, method, property, or field"
 **When to Use**: Impact analysis before changes, finding all usages of a symbol.
 **Strength**: COMPLETE results - same as Visual Studio's "Find All References".
 **Note**: Now accepts "class", "interface", "struct" etc. as symbolType.
 
-### dotnet-find-implementations
+### spelunk-find-implementations
 **Agent Description**: "Find all implementations of an interface or abstract class (trace inheritance hierarchy downward)"
 **When to Use**: Understanding inheritance chains, finding concrete implementations.
 **Strength**: Finds ALL implementations across entire solution.
 
-### dotnet-find-derived-types
+### spelunk-find-derived-types
 **Agent Description**: "Find all types that derive from a base class (trace class hierarchy, find all subclasses)"
 **When to Use**: Understanding type hierarchies, impact analysis for base class changes.
 
-### dotnet-find-overrides
+### spelunk-find-overrides
 **Agent Description**: "Find all overrides of a virtual or abstract method across the inheritance chain"
 **When to Use**: Tracking method customizations, ensuring consistent behavior across overrides.
 
-### dotnet-find-method-calls
+### spelunk-find-method-calls
 **Agent Description**: "Find all methods called by a specific method (call tree analysis)"
 **When to Use**: Understanding method dependencies, analyzing what a method does.
 
-### dotnet-find-method-callers
+### spelunk-find-method-callers
 **Agent Description**: "Find all methods that call a specific method (caller tree analysis)"
 **When to Use**: Impact analysis, understanding who uses a method.
 **Strength**: COMPLETE results including through interfaces and delegates.
@@ -74,22 +74,22 @@ This document lists all 37 McpDotnet tools with their descriptions as seen by AI
 
 ## 4. Statement-Level Operations
 
-### dotnet-find-statements
+### spelunk-find-statements
 **Agent Description**: "Find statements in code matching a pattern. Returns statement IDs for use with other operations. Uses Roslyn's syntax tree to enumerate all statements."
 **When to Use**: Finding specific code patterns, preparing for multi-step refactoring.
 **Returns**: Statement text + stable ID + location.
 **Pattern Types**: text, regex, or roslynpath.
 
-### dotnet-replace-statement
+### spelunk-replace-statement
 **Agent Description**: "Replace a statement with new code. The statement is identified by its location from find-statements. Preserves indentation and formatting context."
 **When to Use**: Surgical code modifications, preserving code structure.
 **Strength**: Maintains proper indentation and formatting automatically.
 
-### dotnet-insert-statement
+### spelunk-insert-statement
 **Agent Description**: "Insert a new statement before or after an existing statement. The reference statement is identified by its location from find-statements. Preserves indentation and formatting context."
 **When to Use**: Adding validation, logging, or new logic at specific points.
 
-### dotnet-remove-statement
+### spelunk-remove-statement
 **Agent Description**: "Remove a statement from the code. The statement is identified by its location from find-statements. Can preserve comments attached to the statement."
 **When to Use**: Cleaning up code, removing deprecated functionality.
 
@@ -97,20 +97,20 @@ This document lists all 37 McpDotnet tools with their descriptions as seen by AI
 
 ## 5. Marker System (For Multi-Step Operations)
 
-### dotnet-mark-statement
+### spelunk-mark-statement
 **Agent Description**: "Mark a statement with an ephemeral marker for later reference. Markers are session-scoped and not persisted."
 **When to Use**: Multi-step refactoring where you need to track multiple locations.
 **Strength**: Markers survive edits - they move with the code.
 
-### dotnet-find-marked-statements
+### spelunk-find-marked-statements
 **Agent Description**: "Find all or specific marked statements. Returns current locations even if code has been edited."
 **When to Use**: Returning to marked locations after other edits.
 
-### dotnet-unmark-statement
+### spelunk-unmark-statement
 **Agent Description**: "Remove a specific marker by its ID."
 **When to Use**: Cleaning up specific markers during refactoring.
 
-### dotnet-clear-markers
+### spelunk-clear-markers
 **Agent Description**: "Clear all markers in the current session."
 **When to Use**: Cleanup after completing multi-step refactoring.
 
@@ -118,17 +118,17 @@ This document lists all 37 McpDotnet tools with their descriptions as seen by AI
 
 ## 6. Code Modification Tools
 
-### dotnet-rename-symbol
+### spelunk-rename-symbol
 **Agent Description**: "Rename a symbol (type, method, property, field) and update all references"
 **When to Use**: Safe renaming with automatic reference updates.
 **Strength**: Updates ALL references across entire solution.
 
-### dotnet-edit-code
+### spelunk-edit-code
 **Agent Description**: "Perform surgical code edits using Roslyn. Operations: add-method, add-property, make-async, add-parameter, wrap-try-catch"
 **When to Use**: Specific structural modifications.
 **Note**: Agents often prefer statement-level operations or direct file editing.
 
-### dotnet-fix-pattern
+### spelunk-fix-pattern
 **Agent Description**: "Transform code using semantic-aware patterns with RoslynPath queries and statement-level operations. Supports transformations: add-null-check, convert-to-async, extract-variable, simplify-conditional, parameterize-query, convert-to-interpolation, add-await, custom"
 **When to Use**: Bulk pattern-based transformations.
 **Note**: May be too specific - agents often prefer general tools.
@@ -137,12 +137,12 @@ This document lists all 37 McpDotnet tools with their descriptions as seen by AI
 
 ## 7. Advanced Analysis Tools
 
-### dotnet-get-statement-context
+### spelunk-get-statement-context
 **Agent Description**: "Get comprehensive semantic context for a statement including symbols, types, diagnostics, and basic data flow"
 **When to Use**: Deep analysis of specific code, understanding complex statements.
 **Returns**: Full semantic information including types, symbols, data flow.
 
-### dotnet-get-data-flow
+### spelunk-get-data-flow
 **Agent Description**: "Get comprehensive data flow analysis for a code region showing variable usage, dependencies, and control flow"
 **When to Use**: Understanding variable lifecycle, tracking data dependencies.
 
@@ -150,26 +150,26 @@ This document lists all 37 McpDotnet tools with their descriptions as seen by AI
 
 ## 8. AST Navigation Tools (Syntactic)
 
-### dotnet-query-syntax
+### spelunk-query-syntax
 **Agent Description**: "Query any syntax node using enhanced RoslynPath with full AST navigation"
 **When to Use**: Complex structural queries, pattern matching on AST.
 **Strength**: XPath-like queries for precise AST navigation.
 **Example**: `//if-statement//binary-expression[@operator='==']`
 
-### dotnet-navigate
+### spelunk-navigate
 **Agent Description**: "Navigate from a position using RoslynPath axes (ancestor::, following-sibling::, etc.)"
 **When to Use**: Moving through AST from a known position.
 
-### dotnet-get-ast
+### spelunk-get-ast
 **Agent Description**: "Get AST structure for understanding code hierarchy"
 **When to Use**: Understanding code structure, exploring unfamiliar code.
 
-### dotnet-analyze-syntax
+### spelunk-analyze-syntax
 **Agent Description**: "Analyzes the syntax tree of a C# or VB.NET file"
 **When to Use**: Low-level syntax analysis.
 **Note**: Other tools usually more useful.
 
-### dotnet-get-symbols
+### spelunk-get-symbols
 **Agent Description**: "Get symbols at a specific position in a file"
 **When to Use**: Understanding what's at a specific location.
 **Note**: get-statement-context often more comprehensive.

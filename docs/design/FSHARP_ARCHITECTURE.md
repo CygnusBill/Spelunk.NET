@@ -1,8 +1,8 @@
-# F# Architecture in MCP Roslyn Server
+# F# Architecture in Spelunk.NET
 
 ## Overview
 
-The MCP Roslyn Server provides unified code analysis and manipulation tools for .NET languages. While C# and VB.NET share the Roslyn compiler platform, F# requires a fundamentally different architectural approach. This document explains how we integrate F# support alongside Roslyn-based languages to provide a consistent developer experience.
+The Spelunk.NET provides unified code analysis and manipulation tools for .NET languages. While C# and VB.NET share the Roslyn compiler platform, F# requires a fundamentally different architectural approach. This document explains how we integrate F# support alongside Roslyn-based languages to provide a consistent developer experience.
 
 ## Why F# is Different
 
@@ -209,7 +209,7 @@ When finding references across languages:
 
 ### Challenge 2: Different AST Structures
 
-**Problem**: RoslynPath doesn't work with F# AST
+**Problem**: SpelunkPath doesn't work with F# AST
 **Solution**: 
 - Created separate FSharpPath query language
 - Similar syntax for developer familiarity
@@ -261,6 +261,6 @@ Eventually provide truly unified experience where language differences are trans
 
 ## Summary
 
-F# support in the MCP Roslyn Server requires a parallel infrastructure to Roslyn, but careful design allows us to present a unified interface. By understanding the fundamental differences between F# and C#/VB.NET, we can build appropriate abstractions that serve developers working in mixed-language .NET solutions.
+F# support in the Spelunk.NET requires a parallel infrastructure to Roslyn, but careful design allows us to present a unified interface. By understanding the fundamental differences between F# and C#/VB.NET, we can build appropriate abstractions that serve developers working in mixed-language .NET solutions.
 
 The key insight is that while the implementations differ significantly, the developer intent (find symbols, rename, refactor) remains consistent across languages. Our architecture bridges these differences at the tool interface level while respecting each language's unique characteristics.

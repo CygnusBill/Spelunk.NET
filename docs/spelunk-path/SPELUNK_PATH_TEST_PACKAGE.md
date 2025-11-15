@@ -1,8 +1,8 @@
-# RoslynPath Test Package for AI Agents
+# SpelunkPath Test Package for AI Agents
 
 ## Overview
 
-RoslynPath is a query language for finding code elements in C# syntax trees. It provides stable references that survive code edits, unlike fragile line/column positions.
+SpelunkPath is a query language for finding code elements in C# syntax trees. It provides stable references that survive code edits, unlike fragile line/column positions.
 
 ## Quick Example
 
@@ -28,7 +28,7 @@ public class UserService  // Line 1
 }
 ```
 
-**The Solution:** RoslynPath stays stable
+**The Solution:** SpelunkPath stays stable
 ```
 Path: //class[UserService]/method[Process]//statement[@contains='Console.WriteLine']
 ```
@@ -36,10 +36,10 @@ This path finds the Console.WriteLine regardless of line number changes!
 
 ## Installation
 
-1. Add the RoslynPath files to your project:
-   - `RoslynPathParser.cs`
-   - `RoslynPathEvaluator.cs`
-   - `RoslynPath.cs`
+1. Add the SpelunkPath files to your project:
+   - `SpelunkPathParser.cs`
+   - `SpelunkPathEvaluator.cs`
+   - `SpelunkPath.cs`
 
 2. Add NuGet packages:
    ```xml
@@ -49,10 +49,10 @@ This path finds the Console.WriteLine regardless of line number changes!
 ## Basic Usage
 
 ```csharp
-using McpDotnet.Server.RoslynPath;
+using McpDotnet.Server.SpelunkPath;
 
 // Find all async methods
-var results = RoslynPath.Find(sourceCode, "//method[@async]");
+var results = SpelunkPath.Find(sourceCode, "//method[@async]");
 
 foreach (var result in results)
 {
@@ -93,7 +93,7 @@ public class OrderProcessor
 
 **Step 1: Find all Console.WriteLine statements**
 ```csharp
-var results = RoslynPath.Find(code, "//statement[@contains='Console.WriteLine']");
+var results = SpelunkPath.Find(code, "//statement[@contains='Console.WriteLine']");
 ```
 
 **Results:**
@@ -125,10 +125,10 @@ Found 4 matches:
 
 ```csharp
 // Find public methods
-var publicMethods = RoslynPath.Find(code, "//method[@public]");
+var publicMethods = SpelunkPath.Find(code, "//method[@public]");
 
 // For each method, find its first statement
-var firstStatement = RoslynPath.Find(code, $"{methodPath}/block/statement[1]");
+var firstStatement = SpelunkPath.Find(code, $"{methodPath}/block/statement[1]");
 
 // Insert null check before first statement
 ```
@@ -138,7 +138,7 @@ var firstStatement = RoslynPath.Find(code, $"{methodPath}/block/statement[1]");
 **Task**: Find async methods without await
 
 ```csharp
-var suspiciousMethods = RoslynPath.Find(code, 
+var suspiciousMethods = SpelunkPath.Find(code, 
     "//method[@async and not(.//expression[@contains='await'])]");
 ```
 
@@ -148,13 +148,13 @@ var suspiciousMethods = RoslynPath.Find(code,
 
 ```csharp
 // Find methods with ArgumentException
-var methods = RoslynPath.Find(code, 
+var methods = SpelunkPath.Find(code, 
     "//method[.//statement[@type=ThrowStatement and @contains='ArgumentException']]");
 ```
 
 ## Common Patterns Reference
 
-| Task | RoslynPath |
+| Task | SpelunkPath |
 |------|------------|
 | All methods | `//method` |
 | Specific method | `//method[ProcessOrder]` |
@@ -294,4 +294,4 @@ Use:
 3. How does it compare to line/column navigation?
 4. What additional features would help?
 
-This package provides everything needed to test RoslynPath with different AI agents and gather feedback on its usability.
+This package provides everything needed to test SpelunkPath with different AI agents and gather feedback on its usability.

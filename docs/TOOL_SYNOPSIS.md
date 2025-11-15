@@ -1,8 +1,8 @@
-# MCP Roslyn Tools Synopsis
+# Spelunk.NET Tools Synopsis
 
 ## Overview
 
-The MCP Roslyn Server provides a comprehensive set of tools for multi-language code analysis, navigation, and manipulation at various granularities. These tools are designed to be composable, allowing agents to perform complex refactoring operations through coordinated use of multiple tools.
+The Spelunk.NET provides a comprehensive set of tools for multi-language code analysis, navigation, and manipulation at various granularities. These tools are designed to be composable, allowing agents to perform complex refactoring operations through coordinated use of multiple tools.
 
 ## Supported Languages
 
@@ -30,8 +30,8 @@ Many tools accept or return location objects:
 }
 ```
 
-### RoslynPath Format (New - More Stable)
-RoslynPath provides stable code references that survive edits:
+### SpelunkPath Format (New - More Stable)
+SpelunkPath provides stable code references that survive edits:
 ```json
 {
   "roslynPath": "//class[UserService]/method[GetUser]/block/statement[1]",
@@ -39,12 +39,12 @@ RoslynPath provides stable code references that survive edits:
 }
 ```
 
-**Common RoslynPath Patterns:**
+**Common SpelunkPath Patterns:**
 - `//method[ProcessOrder]` - Find method named ProcessOrder
 - `//method[@async]` - Find all async methods
 - `//statement[@contains='Console.WriteLine']` - Find console output
 - `//statement[@type=IfStatement and @contains='null']` - Find null checks
-- See [ROSLYN_PATH_INSTRUCTIONS.md](./ROSLYN_PATH_INSTRUCTIONS.md) for full syntax
+- See [SPELUNK_PATH_INSTRUCTIONS.md](./SPELUNK_PATH_INSTRUCTIONS.md) for full syntax
 
 ### Pattern Syntax
 - **Wildcards**: `*` (multiple chars), `?` (single char)
@@ -80,7 +80,7 @@ Use these when you need:
 
 **Best for**: "Find all implementations of IDisposable", "Find methods that override BaseMethod", "Find all references to this property"
 
-### Syntactic Tools (RoslynPath-based)
+### Syntactic Tools (SpelunkPath-based)
 Use these when you need:
 - Complex structural patterns
 - Expression-level queries
@@ -92,11 +92,11 @@ Use these when you need:
 
 ### Quick Decision Guide
 - **Finding a specific method by name?** → Use `find-method`
-- **Finding methods with specific patterns?** → Use `query-syntax` with RoslynPath
+- **Finding methods with specific patterns?** → Use `query-syntax` with SpelunkPath
 - **Need type information?** → Use semantic tools
 - **Need AST navigation?** → Use syntactic tools
 - **Simple query?** → Start with find-* tools
-- **Complex query?** → Use RoslynPath
+- **Complex query?** → Use SpelunkPath
 
 ## Tool Categories
 
@@ -726,7 +726,7 @@ Found 5 type(s) deriving from 'ControllerBase':
 **Input Format:**
 ```json
 {
-  "pattern": "Console.WriteLine",      // Required: text, regex, or RoslynPath pattern
+  "pattern": "Console.WriteLine",      // Required: text, regex, or SpelunkPath pattern
   "patternType": "text",              // Optional: "text" (default), "regex", or "roslynpath"
   "scope": {                          // Optional: limit search scope
     "file": "/path/to/file.cs",
@@ -744,7 +744,7 @@ Found 5 type(s) deriving from 'ControllerBase':
 - **regex**: Regular expression pattern matching
 - **roslynpath**: XPath-style queries for sophisticated matching
 
-**RoslynPath Examples:**
+**SpelunkPath Examples:**
 - `//statement[@contains='TODO']` - Find TODO comments
 - `//method[Get*]//statement[@type=ThrowStatement]` - Throws in Get methods
 - `//method[@async]//statement[@type=ReturnStatement and not(@contains='await')]` - Non-awaited returns in async methods
@@ -1347,16 +1347,16 @@ Preview:
 **Use Case**: Add methods/properties, convert to async, add parameters, add error handling
 
 #### `spelunk-fix-pattern` (DEPRECATED)
-**MCP Description**: "Transform code using semantic-aware patterns with RoslynPath queries and statement-level operations"
+**MCP Description**: "Transform code using semantic-aware patterns with SpelunkPath queries and statement-level operations"
 
 > **⚠️ DEPRECATED**: This tool represents a monolithic refactoring approach. Refactorings should be implemented as agent workflows using primitive tools. See [REFACTORING_AS_AGENTS.md](REFACTORING_AS_AGENTS.md) for the new approach. This tool is retained for backward compatibility only.
 
-**Purpose**: Apply powerful semantic-aware transformations using RoslynPath queries and statement-level operations.
+**Purpose**: Apply powerful semantic-aware transformations using SpelunkPath queries and statement-level operations.
 
 **Input Format**:
 ```json
 {
-  "findPattern": "//statement[@contains='Console.WriteLine']",  // RoslynPath or text pattern
+  "findPattern": "//statement[@contains='Console.WriteLine']",  // SpelunkPath or text pattern
   "replacePattern": "logger.LogInfo",                          // For custom transformations
   "patternType": "convert-to-interpolation",                   // Transformation type
   "workspacePath": "/path/to/apply",                          // Optional
@@ -1417,9 +1417,9 @@ Preview:
 ### 7. Enhanced AST Navigation Tools
 
 #### `spelunk-query-syntax`
-**MCP Description**: "Query any syntax node using enhanced RoslynPath with full AST navigation"
+**MCP Description**: "Query any syntax node using enhanced SpelunkPath with full AST navigation"
 
-**Purpose**: Query the abstract syntax tree using enhanced RoslynPath expressions that support low-level node types and advanced navigation.
+**Purpose**: Query the abstract syntax tree using enhanced SpelunkPath expressions that support low-level node types and advanced navigation.
 
 **Input Format**:
 ```json
@@ -1463,7 +1463,7 @@ Preview:
 **Use Case**: Find specific patterns in code using detailed AST queries (null comparisons, complex expressions, specific node types)
 
 #### `spelunk-navigate`  
-**MCP Description**: "Navigate from a position using RoslynPath axes (ancestor::, following-sibling::, etc.)"
+**MCP Description**: "Navigate from a position using SpelunkPath axes (ancestor::, following-sibling::, etc.)"
 
 **Purpose**: Navigate the syntax tree from a specific position using XPath-style axes to find related code elements.
 
@@ -1476,7 +1476,7 @@ Preview:
     "column": 15
   },
   "path": "ancestor::method[1]/following-sibling::method[1]",
-  "returnPath": true,  // Optional: return the RoslynPath of the target
+  "returnPath": true,  // Optional: return the SpelunkPath of the target
   "includeSemanticInfo": true  // Optional: include semantic information
 }
 ```
@@ -1511,7 +1511,7 @@ Preview:
 ```json
 {
   "file": "/path/to/file.cs",
-  "root": "//method[Process]",    // Optional: RoslynPath to root node
+  "root": "//method[Process]",    // Optional: SpelunkPath to root node
   "depth": 3,                     // Optional: tree depth (default: 3)
   "includeTokens": false,         // Optional: include syntax tokens
   "format": "tree",               // Optional: output format (default: "tree")
@@ -1563,7 +1563,7 @@ Preview:
 }
 ```
 
-**Use Case**: Understand code structure, learn AST node types, debug RoslynPath queries, analyze code patterns
+**Use Case**: Understand code structure, learn AST node types, debug SpelunkPath queries, analyze code patterns
 
 ## Usage Patterns
 
@@ -1709,7 +1709,7 @@ Preview:
 6. **Clean Up Markers**: Use `clear-markers` after complex operations to avoid session bloat
 7. **Preview Changes**: Most modification tools show previews - review them carefully
 8. **Combine Tools**: Use discovery tools to find targets, then modification tools to change them
-9. **RoslynPath for Stability**: Prefer RoslynPath queries over text patterns for precise syntax tree navigation
+9. **SpelunkPath for Stability**: Prefer SpelunkPath queries over text patterns for precise syntax tree navigation
 
 ## Tool Composition Examples
 

@@ -343,9 +343,9 @@ The architecture supports advanced scenarios like:
 - **[F# Architecture](docs/design/FSHARP_ARCHITECTURE.md)** - Understanding F# support implementation
 
 ### SpelunkPath Documentation
-- **[SpelunkPath Instructions](docs/roslyn-path/ROSLYN_PATH_INSTRUCTIONS.md)** - Quick reference for query syntax
-- **[SpelunkPath Agent Guide](docs/roslyn-path/ROSLYN_PATH_AGENT_GUIDE.md)** - 5-minute introduction for AI agents
-- **[SpelunkPath Syntax Design](docs/roslyn-path/ROSLYN_PATH_SYNTAX_DESIGN.md)** - Complete syntax specification
+- **[SpelunkPath Instructions](docs/spelunk-path/SPELUNK_PATH_INSTRUCTIONS.md)** - Quick reference for query syntax
+- **[SpelunkPath Agent Guide](docs/spelunk-path/SPELUNK_PATH_AGENT_GUIDE.md)** - 5-minute introduction for AI agents
+- **[SpelunkPath Syntax Design](docs/spelunk-path/SPELUNK_PATH_SYNTAX_DESIGN.md)** - Complete syntax specification
 
 ## Contributing
 

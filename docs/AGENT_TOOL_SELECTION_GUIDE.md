@@ -18,7 +18,7 @@ Need type information or cross-file analysis?
 **Pattern matching**: Simple wildcards only
 **Returns**: Rich metadata with types and relationships
 
-### Syntactic Tools (RoslynPath-based)
+### Syntactic Tools (SpelunkPath-based)
 **Best for**: Code patterns, structural queries, expression-level analysis, code style checks
 **Speed**: Fast (no compilation needed)
 **Pattern matching**: Complex XPath-style queries
@@ -97,12 +97,12 @@ Need type information or cross-file analysis?
 ### C# and VB.NET
 Both languages work with all tools through Roslyn:
 - Semantic tools abstract language differences
-- RoslynPath queries use language-agnostic node types where possible
+- SpelunkPath queries use language-agnostic node types where possible
 
 ### F# 
 Currently requires special handling:
 - Semantic tools route to F#-specific implementations
-- Use FSharpPath syntax instead of RoslynPath
+- Use FSharpPath syntax instead of SpelunkPath
 - Some cross-language features limited
 
 ## Advanced Patterns
@@ -182,7 +182,7 @@ Returns syntax nodes with added semantic data:
 1. **Start with intent**: What information does the user actually need?
 2. **Consider compilation state**: Is the code likely to compile?
 3. **Optimize for speed**: Use syntactic when semantic isn't required
-4. **Cache patterns**: Reuse RoslynPath queries for similar requests
+4. **Cache patterns**: Reuse SpelunkPath queries for similar requests
 5. **Fail gracefully**: Have fallback from semantic to syntactic
 
 ## Quick Reference
