@@ -26,19 +26,19 @@ if (File.Exists(userConfigPath))
 }
 
 // Support legacy environment variable
-var legacyAllowedPaths = Environment.GetEnvironmentVariable("MCP_ROSLYN_ALLOWED_PATHS");
+var legacyAllowedPaths = Environment.GetEnvironmentVariable("MCP_DOTNET_ALLOWED_PATHS");
 if (!string.IsNullOrEmpty(legacyAllowedPaths))
 {
     var paths = legacyAllowedPaths.Split(Path.PathSeparator);
     var inMemoryConfig = new Dictionary<string, string?>();
     for (int i = 0; i < paths.Length; i++)
     {
-        inMemoryConfig[$"McpRoslyn:AllowedPaths:{i}"] = paths[i];
+        inMemoryConfig[$"McpDotnet:AllowedPaths:{i}"] = paths[i];
     }
     builder.Configuration.AddInMemoryCollection(inMemoryConfig);
 }
 
-builder.Configuration.AddEnvironmentVariables("MCP_ROSLYN__");
+builder.Configuration.AddEnvironmentVariables("MCP_DOTNET__");
 
 // Configure and validate options
 builder.Services.AddOptions<McpDotnetOptions>()

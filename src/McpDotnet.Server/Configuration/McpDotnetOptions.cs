@@ -11,7 +11,7 @@ public class McpDotnetOptions
     /// <summary>
     /// Configuration section name in appsettings.json
     /// </summary>
-    public const string SectionName = "McpRoslyn";
+    public const string SectionName = "McpDotnet";
     
     /// <summary>
     /// List of allowed paths that the server can access
