@@ -15,6 +15,10 @@
     <Authors>Bill</Authors>
     <Description>MCP server for .NET code analysis using Roslyn compiler platform</Description>
     <PackageTags>mcp;roslyn;dotnet;code-analysis;refactoring</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/CygnusBill/McpDotnet</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/CygnusBill/McpDotnet</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
   </PropertyGroup>
 
   <ItemGroup>
