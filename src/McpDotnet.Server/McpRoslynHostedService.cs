@@ -6,7 +6,7 @@ using McpDotnet.Server.Configuration;
 namespace McpDotnet.Server;
 
 /// <summary>
-/// Hosted service for running the MCP Roslyn Server
+/// Hosted service for running the MCP Dotnet Server
 /// </summary>
 public class McpRoslynHostedService : BackgroundService
 {
@@ -31,7 +31,7 @@ public class McpRoslynHostedService : BackgroundService
         {
             // Log initial configuration
             var options = _optionsMonitor.CurrentValue;
-            _logger.LogInformation("Starting MCP Roslyn Server with configuration:");
+            _logger.LogInformation("Starting MCP Dotnet Server with configuration:");
             _logger.LogInformation("Allowed paths: {Paths}", string.Join(", ", options.AllowedPaths));
             if (!string.IsNullOrEmpty(options.InitialWorkspace))
             {
@@ -46,7 +46,7 @@ public class McpRoslynHostedService : BackgroundService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to start MCP Roslyn Server");
+            _logger.LogError(ex, "Failed to start MCP Dotnet Server");
             throw;
         }
     }

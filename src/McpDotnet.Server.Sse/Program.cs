@@ -76,7 +76,7 @@ DotnetTools.Initialize(optionsMonitor, logger);
 // Map MCP endpoints
 app.MapMcp();
 
-app.Logger.LogInformation("MCP Roslyn SSE Server starting on port {Port}", port);
+app.Logger.LogInformation("MCP Dotnet SSE Server starting on port {Port}", port);
 app.Logger.LogInformation("Allowed paths: {Paths}", string.Join(", ", optionsMonitor.CurrentValue.AllowedPaths));
 
 try

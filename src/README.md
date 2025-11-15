@@ -1,4 +1,4 @@
-# MCP Roslyn Server
+# MCP Dotnet Server
 
 A Model Context Protocol (MCP) server that provides Roslyn-based code analysis tools for .NET projects.
 

@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 namespace McpDotnet.Server.Configuration;
 
 /// <summary>
-/// Configuration options for the MCP Roslyn Server
+/// Configuration options for the MCP Dotnet Server
 /// </summary>
 public class McpDotnetOptions
 {

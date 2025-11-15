@@ -72,7 +72,7 @@ public class McpJsonRpcServer
     
     public async Task RunAsync(CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("MCP Roslyn Server started - listening on stdio");
+        _logger.LogInformation("MCP Dotnet Server started - listening on stdio");
         
         var reader = Console.In;
         var writer = Console.Out;
@@ -134,7 +134,7 @@ public class McpJsonRpcServer
             }
         }
 
-        _logger.LogInformation("MCP Roslyn Server shutting down");
+        _logger.LogInformation("MCP Dotnet Server shutting down");
     }
     
     public async Task<JsonRpcResponse> ProcessRequestAsync(JsonRpcRequest request)

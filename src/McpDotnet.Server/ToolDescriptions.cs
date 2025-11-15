@@ -1,7 +1,7 @@
 namespace McpDotnet.Server;
 
 /// <summary>
-/// Centralized tool descriptions and metadata for MCP Roslyn tools.
+/// Centralized tool descriptions and metadata for MCP Dotnet tools.
 /// Shared between STDIO and SSE server implementations.
 /// </summary>
 public static class ToolDescriptions
