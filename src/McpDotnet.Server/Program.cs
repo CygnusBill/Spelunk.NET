@@ -19,12 +19,12 @@ class Program
                 config.SetBasePath(Directory.GetCurrentDirectory())
                     .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
                     .AddJsonFile($"appsettings.{context.HostingEnvironment.EnvironmentName}.json", optional: true, reloadOnChange: true)
-                    .AddJsonFile("mcp-dotnet.config.json", optional: true, reloadOnChange: true);
+                    .AddJsonFile("spelunk.config.json", optional: true, reloadOnChange: true);
 
                 // Add user-level configuration file from home directory
                 var userConfigPath = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                    ".config", "mcp-dotnet", "config.json");
+                    ".spelunk", "config.json");
                 if (File.Exists(userConfigPath))
                 {
                     config.AddJsonFile(userConfigPath, optional: true, reloadOnChange: true);

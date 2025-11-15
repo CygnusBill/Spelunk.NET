@@ -17,7 +17,7 @@ builder.WebHost.UseUrls($"http://localhost:{port}");
 // User config path
 var userConfigPath = Path.Combine(
     Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-    ".config", "mcp-dotnet", "config.json");
+    ".spelunk", "config.json");
 
 // Add user configuration source (after default sources but before command line)
 if (File.Exists(userConfigPath))
@@ -38,7 +38,7 @@ if (!string.IsNullOrEmpty(legacyAllowedPaths))
     builder.Configuration.AddInMemoryCollection(inMemoryConfig);
 }
 
-builder.Configuration.AddEnvironmentVariables("MCP_DOTNET__");
+builder.Configuration.AddEnvironmentVariables("SPELUNK__");
 
 // Configure and validate options
 builder.Services.AddOptions<SpelunkOptions>()
