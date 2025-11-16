@@ -6,11 +6,11 @@ Fixed 3 critical TODO items in the McpDotnet codebase that were blocking functio
 ## TODOs Fixed
 
 ### 1. BuildAstNode - Semantic Info TODO
-**File**: `src/McpDotnet.Server/McpJsonRpcServer.cs`
+**File**: `src/Spelunk.Server/McpJsonRpcServer.cs`
 **Fix**: Added clarifying comment that semantic info is only available in the async version (BuildAstNodeAsync) which properly passes the Document parameter needed for GetSemanticInfo.
 
 ### 2. StatementTransformer - Null Check Detection TODO  
-**File**: `src/McpDotnet.Server/StatementTransformer.cs`
+**File**: `src/Spelunk.Server/StatementTransformer.cs`
 **Fix**: Implemented `CheckIfAlreadyNullChecked` method that detects existing null checks to prevent duplicates:
 - Checks for ArgumentNullException.ThrowIfNull pattern
 - Checks for if-null-throw pattern
@@ -18,7 +18,7 @@ Fixed 3 critical TODO items in the McpDotnet codebase that were blocking functio
 - Stops at control flow boundaries (return, throw, break, continue)
 
 ### 3. RoslynPathParser - Function Argument Parsing TODO
-**File**: `src/McpDotnet.Server/RoslynPath/RoslynPathParser.cs`
+**File**: `src/Spelunk.Server/RoslynPath/RoslynPathParser.cs`
 **Fixes Applied**:
 - Added Comma token type (line 44)
 - Comma tokenization in lexer (line 121)

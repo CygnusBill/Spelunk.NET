@@ -152,7 +152,7 @@ def main():
     env['MCP_DOTNET_ALLOWED_PATHS'] = os.path.abspath(".")
     
     process = subprocess.Popen(
-        ["dotnet", "run", "--project", "src/McpDotnet.Server/McpDotnet.Server.csproj", "--no-build"],
+        ["dotnet", "run", "--project", "src/Spelunk.Server/Spelunk.Server.csproj", "--no-build"],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,

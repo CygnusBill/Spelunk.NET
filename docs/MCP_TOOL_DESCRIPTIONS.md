@@ -5,8 +5,8 @@ This document contains the exact descriptions returned by the MCP server for eac
 ## Important Note
 
 The Spelunk.NET project has two server implementations:
-1. **STDIO Server** (`McpDotnet.Server`) - Primary implementation using JSON-RPC over stdio
-2. **SSE Server** (`McpDotnet.Server.Sse`) - Experimental Server-Sent Events implementation
+1. **STDIO Server** (`Spelunk.Server`) - Primary implementation using JSON-RPC over stdio
+2. **SSE Server** (`Spelunk.Server.Sse`) - Experimental Server-Sent Events implementation
 
 Both servers share the same underlying `DotnetWorkspaceManager` but have slightly different tool descriptions.
 
@@ -118,14 +118,14 @@ The SSE server uses attribute-based tool definitions in `DotnetTools.cs`. Here a
    - SSE Server: Uses `.WithToolsFromAssembly()` to auto-discover tools via reflection
 
 3. **Descriptions**:
-   - Both servers now use the centralized `ToolDescriptions` class defined in `McpDotnet.Server/ToolDescriptions.cs`
+   - Both servers now use the centralized `ToolDescriptions` class defined in `Spelunk.Server/ToolDescriptions.cs`
    - This ensures consistency and prevents duplication bugs
    - STDIO server descriptions are what agents see when using the primary server
 
 ## Implementation Note
 
 As of the latest update, all tool descriptions have been centralized in the `ToolDescriptions` static class:
-- Located at: `src/McpDotnet/McpDotnet.Server/ToolDescriptions.cs`
+- Located at: `src/Spelunk/Spelunk.Server/ToolDescriptions.cs`
 - Both STDIO and SSE servers reference this shared source
 - Future tool additions should update the centralized class
 

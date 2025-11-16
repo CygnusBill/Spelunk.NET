@@ -13,7 +13,7 @@ import shutil
 def test_get_ast_semantic():
     """Test get-ast tool with semantic information"""
     
-    server_path = os.path.join(os.path.dirname(__file__), "..", "..", "src", "McpDotnet.Server")
+    server_path = os.path.join(os.path.dirname(__file__), "..", "..", "src", "Spelunk.Server")
     client = TestClient(server_path=server_path)
     
     # Create a temporary workspace

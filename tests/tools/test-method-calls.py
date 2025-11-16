@@ -35,7 +35,7 @@ def test_method_calls():
     # Start the MCP server
     cmd = [
         "dotnet", "run", 
-        "--project", "./src/McpRoslyn/McpDotnet.Server/McpDotnet.Server.csproj"]
+        "--project", "./src/McpRoslyn/Spelunk.Server/Spelunk.Server.csproj"]
     
     print("Starting MCP server...")
     env = os.environ.copy()

@@ -121,8 +121,8 @@ Install Spelunk.NET as a global tool (recommended):
 dotnet tool install --global Spelunk.NET
 
 # Or install from local build
-dotnet pack src/McpDotnet.Server/McpDotnet.Server.csproj
-dotnet tool install --global --add-source ./src/McpDotnet.Server/nupkg Spelunk.NET
+dotnet pack src/Spelunk.Server/Spelunk.Server.csproj
+dotnet tool install --global --add-source ./src/Spelunk.Server/nupkg Spelunk.NET
 ```
 
 ### Prerequisites
@@ -186,7 +186,7 @@ Build from source:
 
 ```bash
 dotnet build
-dotnet run --project src/McpDotnet.Server -- stdio
+dotnet run --project src/Spelunk.Server -- stdio
 ```
 
 ### Docker

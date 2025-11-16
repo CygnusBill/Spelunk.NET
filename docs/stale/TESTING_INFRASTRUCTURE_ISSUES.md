@@ -230,5 +230,5 @@ TimeoutError: No response received within 60 seconds
 
 - **TestClient Location**: `tests/utils/test_client.py`
 - **Working Test Example**: `tests/tools/test-fsharp-detection-simple.py`
-- **Server Configuration**: `src/McpDotnet.Server/Program.cs` (allowed paths handling)
+- **Server Configuration**: `src/Spelunk.Server/Program.cs` (allowed paths handling)
 - **Existing Test Patterns**: `tests/tools/test-find-class.py` and similar

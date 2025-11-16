@@ -49,7 +49,7 @@ This path finds the Console.WriteLine regardless of line number changes!
 ## Basic Usage
 
 ```csharp
-using McpDotnet.Server.SpelunkPath;
+using Spelunk.Server.SpelunkPath;
 
 // Find all async methods
 var results = SpelunkPath.Find(sourceCode, "//method[@async]");

@@ -1,7 +1,7 @@
 # Backlog TODOs
 
 ## PathPredicateExpr Optimization
-**Location**: `src/McpDotnet.Server/RoslynPath/RoslynPathParser.cs:812`
+**Location**: `src/Spelunk.Server/RoslynPath/RoslynPathParser.cs:812`
 **Current**: `public string PathString { get; set; } = "";`
 **Suggested**: `public PathExpression Path { get; set; }`
 

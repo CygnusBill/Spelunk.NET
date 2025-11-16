@@ -26,7 +26,7 @@ def test_rename_safety():
     # Start the MCP server
     cmd = [
         "dotnet", "run", 
-        "--project", "./src/McpRoslyn/McpDotnet.Server/McpDotnet.Server.csproj"]
+        "--project", "./src/McpRoslyn/Spelunk.Server/Spelunk.Server.csproj"]
     
     print("Starting MCP server...")
     proc = subprocess.Popen(

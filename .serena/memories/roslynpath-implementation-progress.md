@@ -70,8 +70,8 @@ Successfully rebuilt RoslynPath parser with proper AST architecture:
 - VB.NET language mapping features
 
 ## Files Modified
-- src/McpDotnet.Server/RoslynPath/RoslynPathParser2.cs
-- src/McpDotnet.Server/RoslynPath/RoslynPathEvaluator2.cs
+- src/Spelunk.Server/RoslynPath/RoslynPathParser2.cs
+- src/Spelunk.Server/RoslynPath/RoslynPathEvaluator2.cs
 - tests/RoslynPath/RoslynPathTests.cs (switched to new implementation)
 - tests/RoslynPath/RoslynPathVBTests.cs (switched to new implementation)
 - Multiple debug test files created for troubleshooting

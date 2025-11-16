@@ -16,8 +16,8 @@ Successfully rebuilt RoslynPath parser from scratch with proper architecture:
 4. **Clean separation**: Each component is testable and maintainable
 
 ## Files Created
-- src/McpDotnet.Server/RoslynPath/RoslynPathParser2.cs
-- src/McpDotnet.Server/RoslynPath/RoslynPathEvaluator2.cs
+- src/Spelunk.Server/RoslynPath/RoslynPathParser2.cs
+- src/Spelunk.Server/RoslynPath/RoslynPathEvaluator2.cs
 - tests/RoslynPath/RoslynPath2Tests.cs
 
 ## What's Working

@@ -75,6 +75,6 @@ Created test scripts to verify depth tracking:
 3. **Parent filtering**: Could add option to exclude parent statements that only match due to children
 
 ## Related Files Modified
-- `/src/McpDotnet.Server/DotnetWorkspaceManager.cs` - Core depth calculation
-- `/src/McpDotnet.Server/McpJsonRpcServer.cs` - API parameter handling and output formatting
-- `/src/McpDotnet.Server/LanguageHandlers/CSharpLanguageHandler.cs` - Statement identification logic
+- `/src/Spelunk.Server/DotnetWorkspaceManager.cs` - Core depth calculation
+- `/src/Spelunk.Server/McpJsonRpcServer.cs` - API parameter handling and output formatting
+- `/src/Spelunk.Server/LanguageHandlers/CSharpLanguageHandler.cs` - Statement identification logic

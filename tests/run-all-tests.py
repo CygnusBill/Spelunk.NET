@@ -42,7 +42,7 @@ def run_test(test_path):
 def main():
     # Build the server once before running tests
     print(f"{Colors.BLUE}Building server project...{Colors.RESET}")
-    server_path = Path(__file__).parent.parent / 'src' / 'McpDotnet.Server'
+    server_path = Path(__file__).parent.parent / 'src' / 'Spelunk.Server'
     build_result = subprocess.run(
         ['dotnet', 'build', str(server_path), '--configuration', 'Debug'],
         capture_output=True,

@@ -11,7 +11,7 @@ import json
 def test_fsharp_detection():
     """Test that F# files are properly detected"""
     
-    server_path = os.path.join(os.path.dirname(__file__), "..", "..", "src", "McpDotnet.Server")
+    server_path = os.path.join(os.path.dirname(__file__), "..", "..", "src", "Spelunk.Server")
     client = TestClient(server_path=server_path)
     
     # Use the F# test file we created

@@ -19,9 +19,9 @@ Spelunk.NET is distributed as a .NET global tool (`spelunk`) with unified stdio 
 ### Directory Layout
 
 ```
-McpDotnet/
+Spelunk/
 ├── src/
-│   └── McpDotnet.Server/         # Main server implementation (packaged as Spelunk.NET)
+│   └── Spelunk.Server/         # Main server implementation (packaged as Spelunk.NET)
 │       ├── SpelunkPath/          # SpelunkPath query engine
 │       ├── LanguageHandlers/     # C# and VB.NET language handlers
 │       ├── FSharp/               # F# support infrastructure
@@ -185,8 +185,8 @@ The server provides two complementary tool categories:
 #### Using the Global Tool (Recommended)
 ```bash
 # Install the global tool
-dotnet pack src/McpDotnet.Server/McpDotnet.Server.csproj
-dotnet tool install --global --add-source ./src/McpDotnet.Server/nupkg Spelunk.NET
+dotnet pack src/Spelunk.Server/Spelunk.Server.csproj
+dotnet tool install --global --add-source ./src/Spelunk.Server/nupkg Spelunk.NET
 
 # Run in stdio mode (for MCP clients)
 spelunk stdio
@@ -208,8 +208,8 @@ spelunk sse restart          # Restart server
 ./scripts/run/run-server-debug.sh      # Debug mode
 
 # Or directly with dotnet
-dotnet run --project src/McpDotnet.Server -- stdio
-dotnet run --project src/McpDotnet.Server -- sse
+dotnet run --project src/Spelunk.Server -- stdio
+dotnet run --project src/Spelunk.Server -- sse
 ```
 
 ### Running Tests
@@ -332,23 +332,23 @@ ast = get_ast(
 ## Key Implementation Files
 
 ### Core Server Components
-- `src/McpDotnet.Server/DotnetWorkspaceManager.cs` - Main workspace and tool implementations
-- `src/McpDotnet.Server/McpJsonRpcServer.cs` - MCP protocol handling
-- `src/McpDotnet.Server/Program.cs` - Server entry point with System.CommandLine
+- `src/Spelunk.Server/DotnetWorkspaceManager.cs` - Main workspace and tool implementations
+- `src/Spelunk.Server/McpJsonRpcServer.cs` - MCP protocol handling
+- `src/Spelunk.Server/Program.cs` - Server entry point with System.CommandLine
 
 ### Mode Infrastructure
-- `src/McpDotnet.Server/Modes/IMode.cs` - Mode abstraction interface
-- `src/McpDotnet.Server/Modes/StdioMode.cs` - Stdio mode implementation
-- `src/McpDotnet.Server/Modes/SseMode.cs` - SSE server mode
+- `src/Spelunk.Server/Modes/IMode.cs` - Mode abstraction interface
+- `src/Spelunk.Server/Modes/StdioMode.cs` - Stdio mode implementation
+- `src/Spelunk.Server/Modes/SseMode.cs` - SSE server mode
 
 ### Process Management
-- `src/McpDotnet.Server/Process/ProcessManager.cs` - Background SSE lifecycle
-- `src/McpDotnet.Server/Process/PidFileManager.cs` - PID file I/O
+- `src/Spelunk.Server/Process/ProcessManager.cs` - Background SSE lifecycle
+- `src/Spelunk.Server/Process/PidFileManager.cs` - PID file I/O
 
 ### SpelunkPath Components
-- `src/McpDotnet.Server/SpelunkPath/SpelunkPath.cs` - Main query engine
-- `src/McpDotnet.Server/SpelunkPath/SpelunkPathParser.cs` - Query parser
-- `src/McpDotnet.Server/SpelunkPath/SpelunkPathEvaluator.cs` - AST evaluator
+- `src/Spelunk.Server/SpelunkPath/SpelunkPath.cs` - Main query engine
+- `src/Spelunk.Server/SpelunkPath/SpelunkPathParser.cs` - Query parser
+- `src/Spelunk.Server/SpelunkPath/SpelunkPathEvaluator.cs` - AST evaluator
 
 ### Test Suites
 - `tests/RoslynPath/` - XUnit tests for SpelunkPath

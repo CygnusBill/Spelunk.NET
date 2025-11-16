@@ -42,7 +42,7 @@ def run_test(title, pattern, pattern_type="roslynpath", expected_count=None):
     
     # Find the server project
     server_project = os.path.join(os.path.dirname(__file__), 
-                                  "../../src/McpRoslyn/McpDotnet.Server/McpDotnet.Server.csproj")
+                                  "../../src/McpRoslyn/Spelunk.Server/Spelunk.Server.csproj")
     test_workspace = os.path.join(os.path.dirname(__file__), "../../test-workspace")
     
     # Start the server

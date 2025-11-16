@@ -128,7 +128,7 @@ Build with debug configuration:
 
 ```dockerfile
 # Modify Dockerfile to use Debug instead of Release
-RUN dotnet publish src/McpDotnet.Server/McpDotnet.Server.csproj \
+RUN dotnet publish src/Spelunk.Server/Spelunk.Server.csproj \
     --configuration Debug \
     --no-restore \
     --output /app

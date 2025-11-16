@@ -25,7 +25,7 @@ Shows the complete path from solution root to the statement:
 
 Example:
 ```
-/McpDotnet/McpDotnet.Server/McpJsonRpcServer.cs/McpJsonRpcServer/RunAsync/block[1]/expression[1]
+/McpDotnet/Spelunk.Server/McpJsonRpcServer.cs/McpJsonRpcServer/RunAsync/block[1]/expression[1]
 ```
 
 Components:

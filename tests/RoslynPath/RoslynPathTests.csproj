@@ -17,7 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../src/McpDotnet.Server/McpDotnet.Server.csproj" />
+    <ProjectReference Include="../../src/Spelunk.Server/Spelunk.Server.csproj" />
   </ItemGroup>
 
 </Project>

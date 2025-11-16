@@ -17,7 +17,7 @@ def run_mcp_command(method, params):
     }
     
     # Run the server with the request
-    cmd = ["dotnet", "run", "--project", "../../src/McpRoslyn/McpDotnet.Server", "--no-build"]
+    cmd = ["dotnet", "run", "--project", "../../src/McpRoslyn/Spelunk.Server", "--no-build"]
     
     # Set environment variable for allowed paths
     env = os.environ.copy()

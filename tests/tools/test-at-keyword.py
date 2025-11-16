@@ -31,7 +31,7 @@ def test_at_keywords():
     # Start the MCP server
     cmd = [
         "dotnet", "run", 
-        "--project", "./src/McpRoslyn/McpDotnet.Server/McpDotnet.Server.csproj",
+        "--project", "./src/McpRoslyn/Spelunk.Server/Spelunk.Server.csproj",
         "--no-build"]
     
     print("Starting MCP server...")

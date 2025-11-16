@@ -22,7 +22,7 @@ Upgraded all Microsoft.Extensions.* packages from `10.0.0-preview.6.25358.103` t
 - Microsoft.Extensions.Options.DataAnnotations
 
 ### Files Modified
-- `src/McpDotnet.Server/McpDotnet.Server.csproj`
+- `src/Spelunk.Server/Spelunk.Server.csproj`
 
 ### Impact
 - **Removed NU5104 warnings**: Eliminated all prerelease dependency warnings for Microsoft.Extensions packages during `dotnet pack`

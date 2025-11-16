@@ -63,7 +63,7 @@ Each existing tool needs F# routing:
 ### 2. Required Infrastructure Components
 
 ```
-src/McpDotnet.Server/
+src/Spelunk.Server/
 ├── FSharp/
 │   ├── FSharpWorkspaceManager.cs
 │   ├── FSharpProjectTracker.cs
@@ -177,7 +177,7 @@ For users needing F# support now:
 
 ### Infrastructure Added (This Session)
 1. **Created F# Directory Structure**
-   - Added `src/McpDotnet.Server/FSharp/` directory
+   - Added `src/Spelunk.Server/FSharp/` directory
    - Created `FSharpFileDetector.cs` for F# file detection
    - Created `FSharpSupportStub.cs` for consistent "not implemented" responses
 

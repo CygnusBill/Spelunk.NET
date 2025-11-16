@@ -21,7 +21,7 @@ mkfifo $PIPE_IN
 mkfifo $PIPE_OUT
 
 # Start the server in the background, redirecting stderr to a log file
-dotnet run --project "$PROJECT_ROOT/src/McpRoslyn/McpDotnet.Server/McpDotnet.Server.csproj" < $PIPE_IN > $PIPE_OUT 2> "$SCRIPT_DIR/mcp-server.log" &
+dotnet run --project "$PROJECT_ROOT/src/McpRoslyn/Spelunk.Server/Spelunk.Server.csproj" < $PIPE_IN > $PIPE_OUT 2> "$SCRIPT_DIR/mcp-server.log" &
 SERVER_PID=$!
 
 # Give the server time to start

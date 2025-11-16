@@ -11,11 +11,11 @@ import time
 
 # Build first
 print("Building...")
-build_cmd = ["dotnet", "build", "src/McpDotnet.Server", "--configuration", "Debug"]
+build_cmd = ["dotnet", "build", "src/Spelunk.Server", "--configuration", "Debug"]
 subprocess.run(build_cmd, check=True)
 
 # Start server
-cmd = ["dotnet", "run", "--project", "src/McpDotnet.Server", "--no-build", "--no-restore"]
+cmd = ["dotnet", "run", "--project", "src/Spelunk.Server", "--no-build", "--no-restore"]
 env = os.environ.copy()
 env["MCP_DOTNET_ALLOWED_PATHS"] = os.path.abspath("test-workspace")
 

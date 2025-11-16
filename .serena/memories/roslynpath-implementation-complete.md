@@ -52,8 +52,8 @@ Successfully rebuilt RoslynPath parser with proper AST architecture:
 - Path predicates parse nested paths recursively
 
 ## Files Created/Modified
-- `src/McpDotnet.Server/RoslynPath/RoslynPathParser2.cs` - New parser
-- `src/McpDotnet.Server/RoslynPath/RoslynPathEvaluator2.cs` - New evaluator
+- `src/Spelunk.Server/RoslynPath/RoslynPathParser2.cs` - New parser
+- `src/Spelunk.Server/RoslynPath/RoslynPathEvaluator2.cs` - New evaluator
 - `docs/spelunk-path/SPELUNK_PATH_GRAMMAR.md` - Formal grammar
 - `docs/spelunk-path/SPELUNK_PATH_REDESIGN.md` - Architecture design
 - Tests updated to use new implementation

@@ -44,7 +44,7 @@ def test_analyze_syntax():
     workspace_dir = os.path.abspath(workspace_dir)
     
     # Start the server
-    server_path = os.path.join(workspace_dir, 'src', 'McpDotnet.Server')
+    server_path = os.path.join(workspace_dir, 'src', 'Spelunk.Server')
     cmd = ['dotnet', 'run', '--project', server_path, '--no-build']
     
     # Set environment variable for allowed paths

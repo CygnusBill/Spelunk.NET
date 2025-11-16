@@ -38,7 +38,7 @@ def main():
     # Start the server
     server_cmd = [
         "dotnet", "run",
-        "--project", os.path.join(os.path.dirname(__file__), "..", "..", "src", "McpDotnet.Server", "McpDotnet.Server.csproj"),
+        "--project", os.path.join(os.path.dirname(__file__), "..", "..", "src", "Spelunk.Server", "Spelunk.Server.csproj"),
         "--no-build"]
     
     # Set environment variable for allowed paths

@@ -16,7 +16,7 @@ class TestClient:
     def __init__(self, server_path=None, allowed_paths=None):
         if server_path is None:
             # Default to the server in the project
-            server_path = os.path.join(os.path.dirname(__file__), "..", "..", "src", "McpDotnet.Server")
+            server_path = os.path.join(os.path.dirname(__file__), "..", "..", "src", "Spelunk.Server")
         
         self.server_path = server_path
         self.allowed_paths = allowed_paths or ["."]

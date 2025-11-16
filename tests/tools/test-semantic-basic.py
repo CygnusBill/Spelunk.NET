@@ -11,7 +11,7 @@ import json
 def test_semantic_basic():
     """Test basic semantic enrichment in query-syntax"""
     
-    server_path = os.path.join(os.path.dirname(__file__), "..", "..", "src", "McpDotnet.Server")
+    server_path = os.path.join(os.path.dirname(__file__), "..", "..", "src", "Spelunk.Server")
     client = TestClient(server_path=server_path)
     
     # First load the test workspace

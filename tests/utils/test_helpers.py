@@ -11,7 +11,7 @@ class TestRunner:
     """Helper class for running tests"""
     
     def __init__(self, allowed_paths: Optional[list] = None):
-        server_path = os.path.join(os.path.dirname(__file__), "..", "..", "src", "McpDotnet.Server")
+        server_path = os.path.join(os.path.dirname(__file__), "..", "..", "src", "Spelunk.Server")
         if allowed_paths is None:
             allowed_paths = ["."]
         self.client = TestClient(server_path=server_path, allowed_paths=allowed_paths)
