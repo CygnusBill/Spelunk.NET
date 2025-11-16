@@ -17,8 +17,8 @@
     <Description>Spelunk.NET - MCP server for .NET code analysis with stdio and SSE modes. Query code using SpelunkPath.</Description>
     <PackageTags>mcp;spelunk;dotnet;roslyn;code-analysis;refactoring;sse</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/CygnusBill/McpDotnet</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/CygnusBill/McpDotnet</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/CygnusBill/Spelunk.NET</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/CygnusBill/Spelunk.NET</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
   </PropertyGroup>
 
