@@ -506,6 +506,11 @@ namespace Spelunk.Server.SpelunkPath
             }
 
             // Function (last(), etc.)
+            // TODO: BUG - Function argument parsing doesn't work correctly
+            // The lookahead logic (_lexer.PeekToken(0)) may not be correctly detecting functions with arguments
+            // like contains('Test'). This causes such expressions to be parsed as simple names instead of
+            // function calls. Debug the PeekToken offset or lexer state to fix this issue.
+            // See failing tests in RoslynPathFunctionTests.cs (currently skipped)
             // PeekToken(0) gets the next token after _current (since _tokenIndex already advanced)
             if (_current.Type == TokenType.Identifier && _lexer.PeekToken(0).Type == TokenType.LeftParen)
             {

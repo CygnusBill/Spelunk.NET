@@ -671,6 +671,21 @@ namespace Spelunk.Server.SpelunkPath
 
         private bool EvaluateFunction(SyntaxNode node, string functionExpr)
         {
+            // TODO: Missing XPath function implementations
+            // The following functions need to be implemented to complete XPath compatibility:
+            // - string-length(@attr) - Returns length of string
+            // - normalize-space(@attr) - Normalizes whitespace
+            // - concat(str1, str2, ...) - Concatenates strings
+            // - translate(str, from, to) - Character translation
+            // - substring-before(str, delimiter) - Gets substring before delimiter
+            // - substring-after(str, delimiter) - Gets substring after delimiter
+            // - local-name() - Returns local name of node
+            // - namespace-uri() - Returns namespace URI
+            // - format-number(num, pattern) - Formats numbers
+            // - count(nodeset) - Counts nodes
+            // Additionally, substring() needs a proper implementation (currently returns false)
+            // See RoslynPathFunctionTests.cs for expected behavior
+
             // Parse function expression: functionName(arg1, arg2, ...)
             var parenIndex = functionExpr.IndexOf('(');
             if (parenIndex < 0)
@@ -799,8 +814,10 @@ namespace Spelunk.Server.SpelunkPath
 
         private bool EvaluateSubstringFunction(SyntaxNode node, List<string> args)
         {
+            // TODO: Implement substring function
             // substring(@attribute, start, length) - not a boolean function, but we can check if it equals something
-            // For now, return false as this needs more context
+            // This needs proper implementation to extract substrings for comparison
+            // Example: //method[@name=substring('ProcessUser', 0, 7)] should check if @name == "Process"
             return false;
         }
 
