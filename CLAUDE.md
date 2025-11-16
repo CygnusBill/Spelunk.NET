@@ -238,7 +238,7 @@ The server supports a user-level configuration file for setting allowed director
 - **Unix/Linux/macOS**: `~/.spelunk/config.json`
 - **Windows**: `%USERPROFILE%\.spelunk\config.json` (typically `C:\Users\[USERNAME]\.spelunk\config.json`)
 
-**Example**:
+**Example for Unix/Linux/macOS**:
 ```json
 {
   "Spelunk": {
@@ -246,6 +246,26 @@ The server supports a user-level configuration file for setting allowed director
       "/Users/bill/Repos",
       "/Users/bill/Desktop",
       "/Users/bill/Documents"
+    ],
+    "Logging": {
+      "MinimumLevel": "Information"
+    },
+    "Server": {
+      "RequestTimeoutSeconds": 120,
+      "MaxWorkspaces": 10
+    }
+  }
+}
+```
+
+**Example for Windows** (note: backslashes must be escaped as `\\`):
+```json
+{
+  "Spelunk": {
+    "AllowedPaths": [
+      "C:\\Users\\bill\\Repos",
+      "C:\\Users\\bill\\Desktop",
+      "C:\\Users\\bill\\Documents"
     ],
     "Logging": {
       "MinimumLevel": "Information"

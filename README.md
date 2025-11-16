@@ -164,12 +164,26 @@ Configure allowed directories in your user config file:
 - **Unix/Linux/macOS**: `~/.spelunk/config.json`
 - **Windows**: `%USERPROFILE%\.spelunk\config.json`
 
+**Example for Unix/Linux/macOS:**
 ```json
 {
   "Spelunk": {
     "AllowedPaths": [
       "/Users/yourname/Repos",
       "/path/to/your/projects"
+    ]
+  }
+}
+```
+
+**Example for Windows** (note: backslashes must be escaped as `\\`):
+```json
+{
+  "Spelunk": {
+    "AllowedPaths": [
+      "C:\\Users\\yourname\\Repos",
+      "C:\\Projects",
+      "D:\\Code"
     ]
   }
 }
