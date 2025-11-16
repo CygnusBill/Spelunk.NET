@@ -1,8 +1,14 @@
-# SpelunkPath Quick Guide for AI Agents
+# SpelunkPath Quick Guide for AI Agents - Version 0.1
+
+**Version:** 0.1
+**Date:** November 2025
+**Status:** Production Ready
 
 ## What is SpelunkPath?
 
 SpelunkPath is a way to precisely identify locations in C# code that **stays stable even when the code is edited**. Think of it like a GPS coordinate for code - instead of saying "line 25" (which breaks when lines are added), you say "the return statement in the CalculateTotal method" which always finds the right spot.
+
+**Version 0.1** delivers all core navigation features and predicates. Advanced functions with arguments (like `contains('text')` or `count()`) are coming in v0.2.
 
 ## The 5-Minute Crash Course
 
@@ -398,3 +404,22 @@ If a path returns no results:
 - Multiple criteria are better than single criteria
 
 This guide covers 90% of what you'll need. The full syntax has more features, but these patterns will handle most code navigation tasks.
+
+## Version 0.1 - What's Available
+
+**✅ Fully Working:**
+- All navigation operators (`/`, `//`, `..`)
+- All XPath axes (ancestor::, descendant::, sibling::, parent::, etc.)
+- Name matching with wildcards (`Get*`, `*Service`)
+- Position functions: `position()`, `last()`, `first()`, `[N]`
+- Attribute predicates: `@async`, `@public`, `@contains='text'`
+- Boolean operators: `and`, `or`, `not`
+- Enhanced node types: binary-expression, if-statement, literal, etc.
+- Multi-language: C# and VB.NET
+
+**⏳ Coming in v0.2:**
+- XPath functions with arguments: `contains('text')`, `substring(@name, 0, 4)`
+- `count()` function: `//method[count(statement) > 10]`
+- String functions: `string-length()`, `concat()`, `normalize-space()`
+
+**💡 v0.1 Tip:** Use `@contains='text'` instead of `contains('text')` function - it works the same way!

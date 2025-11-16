@@ -1,8 +1,13 @@
-# SpelunkPath Instructions for Agents
+# SpelunkPath Instructions for Agents - Version 0.1
+
+**Version:** 0.1
+**Status:** Production Ready (Core Features)
 
 ## Quick Start
 
 SpelunkPath lets you find specific code elements using path expressions, similar to how XPath works for XML.
+
+**Version 0.1 Note:** This version includes full path navigation, predicates, and position functions. Advanced functions with arguments (like `contains('text')`) are planned for v0.2.
 
 ### Basic Usage
 
@@ -183,14 +188,16 @@ public class ReportGenerator
 }
 ```
 
-**Find:** `//method[count(.//statement) > 20]`
+**Find:** `//method[count(.//statement) > 20]` ⏳ (Requires v0.2 - `count()` not implemented yet)
 ```
-Found 1 long method:
+Will find long methods in v0.2:
 - GenerateReport at line 3
   Statement count: 25
   Path: /class[ReportGenerator]/method[GenerateReport]
   Recommendation: Consider breaking into smaller methods
 ```
+
+**v0.1 Alternative:** Use semantic tools like `spelunk-get-symbols` to count statements programmatically.
 
 ### Find Empty Catch Blocks
 
@@ -214,13 +221,15 @@ public void RiskyOperation()
 }
 ```
 
-**Find:** `//catch[block[count(statement)=0]]`
+**Find:** `//catch[block[count(statement)=0]]` ⏳ (Requires v0.2 - `count()` not implemented yet)
 ```
-Found 1 empty catch block:
+Will find empty catch blocks in v0.2:
 - IOException handler at line 7
   Path: /method[RiskyOperation]/statement[1]/catch[1]
   Warning: Exception being swallowed without logging or rethrowing
 ```
+
+**v0.1 Alternative:** Use `//catch//block` and programmatically check which have no children.
 
 ## Tips
 
@@ -248,3 +257,26 @@ When using with statement-level operations:
 ```
 
 This is more stable than line/column positions!
+
+## Version 0.1 Feature Summary
+
+**✅ What Works in v0.1:**
+- All path navigation (`/`, `//`, `..`)
+- All XPath axes (ancestor, descendant, sibling, parent, etc.)
+- Name selectors with wildcards (`Get*`, `*Service`)
+- Position selectors (`[1]`, `[last()]`, `[last()-1]`)
+- Attribute predicates (`[@async]`, `[@public]`, `[@contains='text']`)
+- Complex predicates with boolean operators (`and`, `or`, `not`)
+- Enhanced node types (binary-expression, if-statement, literal, etc.)
+- Multi-language support (C#, VB.NET)
+
+**⏳ Coming in v0.2:**
+- XPath functions with arguments: `contains('text')`, `substring(@name, 0, 4)`
+- String functions: `string-length()`, `concat()`, `normalize-space()`
+- `count()` function for counting nodes
+- Function nesting and composition
+
+**💡 v0.1 Workarounds:**
+- Instead of `count()`, use semantic tools to count programmatically
+- Instead of `contains('text')` function, use `@contains='text'` attribute predicate
+- Most refactoring tasks can be accomplished with v0.1 features!

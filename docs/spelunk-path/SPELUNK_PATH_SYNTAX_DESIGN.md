@@ -1,8 +1,46 @@
-# Roslyn Path Syntax Design
+# SpelunkPath Syntax Design - Version 0.1
+
+**Version:** 0.1
+**Date:** November 2025
+**Status:** Initial Release
+
+## Version History
+
+### Version 0.1 (November 2025) - Initial Release
+
+**Implemented Features:**
+- ✅ Basic path navigation (`/`, `//`, `..`)
+- ✅ Node type specifiers (class, method, statement, etc.)
+- ✅ Name selectors with wildcards (`Get*`, `*Service`)
+- ✅ Position selectors (`[1]`, `[last()]`, `[last()-N]`)
+- ✅ Attribute predicates (`[@async]`, `[@public]`, `[@contains='text']`)
+- ✅ Complex predicates with `and`/`or`/`not`
+- ✅ All XPath axes (ancestor, descendant, sibling, parent)
+- ✅ Enhanced node types (binary-expression, if-statement, literal, etc.)
+- ✅ Multi-language support (C#, VB.NET with language-agnostic mapping)
+
+**Limitations/Future:**
+- ⏳ XPath-style functions with arguments (e.g., `contains('text')`, `substring(@name, 0, 4)`)
+  - Parser can parse function arguments but evaluator has incomplete implementation
+  - Functions without arguments work: `position()`, `last()`, `first()`
+- ⏳ `count()` function for node counting
+- ⏳ Additional string functions (`string-length()`, `concat()`, `normalize-space()`)
+
+### Planned for Future Versions
+
+**Version 0.2 (Planned):**
+- Complete XPath function implementations (contains, substring, string-length, etc.)
+- Function nesting support
+- Enhanced semantic predicates
+
+**Version 1.0 (Planned):**
+- F# support with FSharpPath
+- Performance optimizations and caching
+- Advanced type parameter handling
 
 ## Executive Summary
 
-This document proposes a path-based syntax for identifying and navigating nodes in Roslyn syntax trees. The design draws inspiration from XPath's success in XML navigation while adapting to the specific needs of C# code analysis. The syntax must be stable across code edits, expressive enough for complex queries, and intuitive for both human and AI users.
+This document specifies SpelunkPath, a path-based syntax for identifying and navigating nodes in Roslyn syntax trees. The design draws inspiration from XPath's success in XML navigation while adapting to the specific needs of C# code analysis. The syntax must be stable across code edits, expressive enough for complex queries, and intuitive for both human and AI users.
 
 ## Domain Analysis
 
@@ -167,24 +205,42 @@ expression      - Any expression
 /class[method[@name='Dispose']]                  - Classes with Dispose
 ```
 
-#### Counting
+#### Counting (⏳ Planned for v0.2)
 ```
-/method[count(block/statement) > 10]    - Methods with >10 statements
-/class[count(method) = 1]               - Classes with single method
+/method[count(block/statement) > 10]    - Methods with >10 statements (⏳ v0.2)
+/class[count(method) = 1]               - Classes with single method (⏳ v0.2)
 ```
+
+**Note:** The `count()` function is not yet implemented in v0.1.
 
 ### Special Functions
 
+**Version 0.1 - Implemented:**
 ```
-text()          - Text content of node
-name()          - Name of declaration
-type()          - Node type
-line()          - Line number
-column()        - Column number
-span()          - Text span
-parent()        - Parent node
-children()      - Child nodes
+position()      - Position in parent's child list (✅ v0.1)
+last()          - Last position (✅ v0.1)
+first()         - First position (✅ v0.1)
 ```
+
+**Future Versions - Planned:**
+```
+text()          - Text content of node (⏳ v0.2)
+name()          - Name of declaration (⏳ v0.2)
+type()          - Node type (⏳ v0.2)
+line()          - Line number (⏳ v0.2)
+column()        - Column number (⏳ v0.2)
+span()          - Text span (⏳ v0.2)
+parent()        - Parent node (⏳ v0.2)
+children()      - Child nodes (⏳ v0.2)
+contains(text)  - Text containment check (⏳ v0.2)
+starts-with(text) - Prefix check (⏳ v0.2)
+ends-with(text) - Suffix check (⏳ v0.2)
+substring(text, start, length) - Substring extraction (⏳ v0.2)
+string-length(text) - String length (⏳ v0.2)
+concat(str1, str2, ...) - String concatenation (⏳ v0.2)
+```
+
+**Note:** Function argument parsing is partially implemented. While the parser can handle function calls with arguments, the evaluator currently only fully supports position functions (`position()`, `last()`, `first()`).
 
 ### Practical Examples
 
@@ -445,25 +501,36 @@ Paths break when:
 - **Type-aware**: Understands C# syntax node types
 - **More stable**: Names and semantic properties, not just structure
 
-## Migration Path
+## Implementation Status & Roadmap
 
-### Phase 1: Basic Implementation
-- Path parser
-- Basic navigation (/, //, ..)
-- Name and position selectors
-- Simple predicates
+### Version 0.1 - Current Release (Completed)
+- ✅ Path parser with full tokenizer and AST builder
+- ✅ All navigation axes (/, //, .., ancestor::, descendant::, sibling::)
+- ✅ Name and position selectors with wildcards
+- ✅ Complex predicates with boolean operators (and/or/not)
+- ✅ Enhanced node types for low-level AST navigation
+- ✅ Multi-language support (C#, VB.NET)
+- ✅ Position functions (position(), last(), first())
 
-### Phase 2: Advanced Features
-- All axes
-- Complex predicates
-- Special functions
-- Performance optimization
+### Version 0.2 - Next Release (Planned)
+- ⏳ Complete XPath function implementations
+  - contains(), starts-with(), ends-with()
+  - substring(), string-length(), concat()
+  - normalize-space(), translate()
+- ⏳ count() function for node counting
+- ⏳ Function nesting and composition
+- ⏳ Expression-level navigation and querying
+  - Find object creation expressions: `//expression[@type=ObjectCreationExpression and @text='new Item()']`
+  - Return containing statement for expressions: `expression-statement()` function
+  - Enhanced expression predicates
+- ⏳ Performance optimization and query caching
 
-### Phase 3: Tooling
-- IDE integration
-- Path builder UI
-- Stability analyzer
-- Migration tools
+### Version 1.0 - Future (Planned)
+- ⏳ F# support with FSharpPath query language
+- ⏳ Advanced type parameter handling for generics
+- ⏳ IDE integration and IntelliSense
+- ⏳ Path builder UI
+- ⏳ Stability analyzer and migration tools
 
 ## Example Tool Integration
 
@@ -515,6 +582,8 @@ Paths break when:
 
 ## Conclusion
 
-SpelunkPath provides a robust, expressive syntax for navigating C# syntax trees. By adapting XPath's proven concepts to Roslyn's specific needs, we can create a powerful tool for code analysis and transformation that remains stable across edits while providing the precision needed for automated refactoring.
+SpelunkPath Version 0.1 provides a robust, expressive syntax for navigating C# and VB.NET syntax trees. By adapting XPath's proven concepts to Roslyn's specific needs, we have created a powerful tool for code analysis and transformation that remains stable across edits while providing the precision needed for automated refactoring.
 
-The syntax balances power with simplicity, making it accessible to both human developers and AI agents. With proper implementation, this could become the standard way to reference code elements in the .NET ecosystem.
+The syntax balances power with simplicity, making it accessible to both human developers and AI agents. Version 0.1 delivers core functionality including full XPath-style navigation, complex predicates, and multi-language support. Future versions will add advanced functions and F# support to become the comprehensive code navigation solution for the .NET ecosystem.
+
+**Current Status:** Version 0.1 is production-ready for basic to intermediate code navigation tasks. Advanced function-based queries await Version 0.2.
