@@ -35,7 +35,7 @@ def test_method_calls():
     # Start the MCP server
     cmd = [
         "dotnet", "run", 
-        "--project", "./src/McpRoslyn/Spelunk.Server/Spelunk.Server.csproj"]
+        "--project", "./src/Spelunk.Server/Spelunk.Server.csproj"]
     
     print("Starting MCP server...")
     env = os.environ.copy()
@@ -76,7 +76,7 @@ def test_method_calls():
             "method": "tools/call",
             "params": {
                 "name": "spelunk-load-workspace",
-                "arguments": {"path": "./src/McpRoslyn/McpRoslyn.sln"}
+                "arguments": {"path": "./src/Spelunk.Server/Spelunk.Server.sln"}
             },
             "id": 2
         }

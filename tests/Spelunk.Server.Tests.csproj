@@ -24,7 +24,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../src/McpRoslyn.Server/McpRoslyn.Server.csproj" />
+    <ProjectReference Include="../src/Spelunk.Server/Spelunk.Server.csproj" />
   </ItemGroup>
 
   <ItemGroup>

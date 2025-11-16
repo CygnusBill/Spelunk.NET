@@ -30,7 +30,7 @@ def test_edit_code():
     # Start the MCP server
     cmd = [
         "dotnet", "run", 
-        "--project", "./src/McpRoslyn/Spelunk.Server/Spelunk.Server.csproj"]
+        "--project", "./src/Spelunk.Server/Spelunk.Server.csproj"]
     
     print("Starting MCP server...")
     proc = subprocess.Popen(
@@ -68,7 +68,7 @@ def test_edit_code():
             "method": "tools/call",
             "params": {
                 "name": "spelunk-load-workspace",
-                "arguments": {"path": "./src/McpRoslyn/McpRoslyn.sln"}
+                "arguments": {"path": "./src/Spelunk.Server/Spelunk.Server.sln"}
             },
             "id": 2
         }
@@ -91,7 +91,7 @@ def test_edit_code():
             "params": {
                 "name": "spelunk-edit-code",
                 "arguments": {
-                    "file": "./src/McpRoslyn/Spelunk.Server/TestClasses.cs",
+                    "file": "./src/Spelunk.Server/TestClasses.cs",
                     "operation": "add-method",
                     "className": "UserController",
                     "code": """public async Task<bool> ValidateUserAsync(int userId)
@@ -117,7 +117,7 @@ def test_edit_code():
             "params": {
                 "name": "spelunk-edit-code",
                 "arguments": {
-                    "file": "./src/McpRoslyn/Spelunk.Server/TestClasses.cs",
+                    "file": "./src/Spelunk.Server/TestClasses.cs",
                     "operation": "add-property",
                     "className": "UserController",
                     "code": "public DateTime LastAccessTime { get; set; } = DateTime.Now;",
@@ -139,7 +139,7 @@ def test_edit_code():
             "params": {
                 "name": "spelunk-edit-code",
                 "arguments": {
-                    "file": "./src/McpRoslyn/Spelunk.Server/TestClasses.cs",
+                    "file": "./src/Spelunk.Server/TestClasses.cs",
                     "operation": "make-async",
                     "className": "UserController",
                     "methodName": "GetUser",
@@ -161,7 +161,7 @@ def test_edit_code():
             "params": {
                 "name": "spelunk-edit-code",
                 "arguments": {
-                    "file": "./src/McpRoslyn/Spelunk.Server/TestClasses.cs",
+                    "file": "./src/Spelunk.Server/TestClasses.cs",
                     "operation": "make-async",
                     "className": "UserController",
                     "methodName": "GetUserAsync",

@@ -57,8 +57,7 @@ appsettings.*.json
 # Windows
 Thumbs.db
 
-# SSE server (we only want stdio in this Dockerfile)
-src/McpRoslyn.Server.Sse/
+# Note: SSE server has been merged into main Spelunk.Server project
 
 # Logs
 *.log

@@ -38,7 +38,7 @@ def send_request(process, method, params=None):
 
 # Start server
 process = subprocess.Popen(
-    ["dotnet", "run", "--project", "src/McpRoslyn.Server/McpRoslyn.Server.csproj"],
+    ["dotnet", "run", "--project", "src/Spelunk.Server/Spelunk.Server.csproj"],
     stdin=subprocess.PIPE,
     stdout=subprocess.PIPE,
     stderr=subprocess.PIPE,

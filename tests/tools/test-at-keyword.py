@@ -31,7 +31,7 @@ def test_at_keywords():
     # Start the MCP server
     cmd = [
         "dotnet", "run", 
-        "--project", "./src/McpRoslyn/Spelunk.Server/Spelunk.Server.csproj",
+        "--project", "./src/Spelunk.Server/Spelunk.Server.csproj",
         "--no-build"]
     
     print("Starting MCP server...")
@@ -74,7 +74,7 @@ def test_at_keywords():
             "method": "tools/call",
             "params": {
                 "name": "spelunk-load-workspace",
-                "arguments": {"path": "./src/McpRoslyn/McpRoslyn.sln"}
+                "arguments": {"path": "./src/Spelunk.Server/Spelunk.Server.sln"}
             },
             "id": 2
         }

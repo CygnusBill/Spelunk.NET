@@ -156,7 +156,7 @@ def main():
     # Server command - adjust path as needed
     server_cmd = [
         "dotnet", "run",
-        "--project", "./src/McpRoslyn/Spelunk.Server/Spelunk.Server.csproj"]
+        "--project", "./src/Spelunk.Server/Spelunk.Server.csproj"]
     
     client = McpTestClient(server_cmd)
     

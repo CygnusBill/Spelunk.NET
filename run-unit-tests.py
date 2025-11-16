@@ -35,15 +35,15 @@ def main():
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     
     # Build the test project
-    if not run_command("dotnet build tests/McpRoslyn.Server.Tests.csproj", "Building test project"):
+    if not run_command("dotnet build tests/Spelunk.Server.Tests.csproj", "Building test project"):
         return 1
     
     # Run the tests
-    if not run_command("dotnet test tests/McpRoslyn.Server.Tests.csproj --verbosity normal", "Running unit tests"):
+    if not run_command("dotnet test tests/Spelunk.Server.Tests.csproj --verbosity normal", "Running unit tests"):
         return 1
     
     # Run tests with detailed output
-    if not run_command("dotnet test tests/McpRoslyn.Server.Tests.csproj --logger 'console;verbosity=detailed'", "Running tests with detailed output"):
+    if not run_command("dotnet test tests/Spelunk.Server.Tests.csproj --logger 'console;verbosity=detailed'", "Running tests with detailed output"):
         return 1
     
     print("\n🎉 All tests completed successfully!")

@@ -3,17 +3,17 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /source
 
 # Copy project files
-COPY src/McpRoslyn.Server/*.csproj src/McpRoslyn.Server/
-COPY McpRoslyn.sln .
+COPY src/Spelunk.Server/*.csproj src/Spelunk.Server/
+COPY Spelunk.NET.sln .
 
 # Restore dependencies
-RUN dotnet restore src/McpRoslyn.Server/McpRoslyn.Server.csproj
+RUN dotnet restore src/Spelunk.Server/Spelunk.Server.csproj
 
 # Copy source code
-COPY src/McpRoslyn.Server/ src/McpRoslyn.Server/
+COPY src/Spelunk.Server/ src/Spelunk.Server/
 
 # Build and publish
-RUN dotnet publish src/McpRoslyn.Server/McpRoslyn.Server.csproj \
+RUN dotnet publish src/Spelunk.Server/Spelunk.Server.csproj \
     --configuration Release \
     --no-restore \
     --output /app
@@ -26,12 +26,12 @@ WORKDIR /app
 COPY --from=build /app .
 
 # Set environment variables
-# MCP_ROSLYN_ALLOWED_PATHS - comma-separated list of paths the server can access
+# SPELUNK_ALLOWED_PATHS - comma-separated list of paths the server can access
 # Default to /workspace to allow mounting code there
-ENV MCP_ROSLYN_ALLOWED_PATHS=/workspace
+ENV SPELUNK_ALLOWED_PATHS=/workspace
 
-# MCP_ROSLYN_LOGGING__MINIMUMLEVEL - Set log level (Trace, Debug, Information, Warning, Error, Critical)
-ENV MCP_ROSLYN__LOGGING__MINIMUMLEVEL=Information
+# SPELUNK__LOGGING__MINIMUMLEVEL - Set log level (Trace, Debug, Information, Warning, Error, Critical)
+ENV SPELUNK__LOGGING__MINIMUMLEVEL=Information
 
 # Create workspace directory
 RUN mkdir -p /workspace
@@ -45,7 +45,7 @@ WORKDIR /workspace
 # Health check is not applicable for stdio server
 # HEALTHCHECK NONE
 
-ENTRYPOINT ["dotnet", "/app/McpRoslyn.Server.dll"]
+ENTRYPOINT ["dotnet", "/app/Spelunk.Server.dll"]
 
 # Optional: Allow passing additional arguments
 # CMD []

@@ -8,10 +8,10 @@ import os
 class MCPClient:
     def __init__(self):
         env = os.environ.copy()
-        env['MCP_ROSLYN_ALLOWED_PATHS'] = '/Users/bill/Repos/McpDotnet/test-workspace'
+        env['SPELUNK_ALLOWED_PATHS'] = '/Users/bill/Repos/Spelunk.NET/test-workspace'
         
         self.process = subprocess.Popen(
-            ['dotnet', 'run', '--project', 'src/McpRoslyn.Server', '--no-build'],
+            ['dotnet', 'run', '--project', 'src/Spelunk.Server', '--no-build'],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -114,7 +114,7 @@ public class DataFlowTest
 '''
 
 # Write test file
-with open('/Users/bill/Repos/McpDotnet/test-workspace/DataFlowTest.cs', 'w') as f:
+with open('/Users/bill/Repos/Spelunk.NET/test-workspace/DataFlowTest.cs', 'w') as f:
     f.write(test_code)
 
 # Create client
@@ -126,7 +126,7 @@ print("Loading test workspace...")
 response = client.send_request("tools/call", {
     "name": "spelunk-load-workspace",
     "arguments": {
-        "workspacePath": "/Users/bill/Repos/McpDotnet/test-workspace/TestProject.csproj"
+        "workspacePath": "/Users/bill/Repos/Spelunk.NET/test-workspace/TestProject.csproj"
     }
 })
 
@@ -142,7 +142,7 @@ def analyze_data_flow(client, start_line, end_line, description):
     response = client.send_request("tools/call", {
         "name": "spelunk-get-data-flow",
         "arguments": {
-            "file": "/Users/bill/Repos/McpDotnet/test-workspace/DataFlowTest.cs",
+            "file": "/Users/bill/Repos/Spelunk.NET/test-workspace/DataFlowTest.cs",
             "startLine": start_line,
             "startColumn": 9,
             "endLine": end_line,

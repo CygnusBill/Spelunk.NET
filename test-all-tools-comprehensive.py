@@ -11,10 +11,10 @@ class MCPToolTester:
     def __init__(self, workspace_path: str):
         self.workspace_path = workspace_path
         env = os.environ.copy()
-        env['MCP_ROSLYN_ALLOWED_PATHS'] = workspace_path
+        env['SPELUNK_ALLOWED_PATHS'] = workspace_path
         
         self.process = subprocess.Popen(
-            ['dotnet', 'run', '--project', 'src/McpRoslyn.Server', '--no-build'],
+            ['dotnet', 'run', '--project', 'src/Spelunk.Server', '--no-build'],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,

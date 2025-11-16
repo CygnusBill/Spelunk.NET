@@ -22,7 +22,7 @@ def test_mcp_protocol():
     # Start the MCP server
     cmd = [
         "dotnet", "run", 
-        "--project", "./src/McpRoslyn/Spelunk.Server/Spelunk.Server.csproj"]
+        "--project", "./src/Spelunk.Server/Spelunk.Server.csproj"]
     
     print("Starting MCP server...")
     proc = subprocess.Popen(
@@ -75,7 +75,7 @@ def test_mcp_protocol():
             "params": {
                 "name": "spelunk-load-workspace",
                 "arguments": {
-                    "path": "./src/McpRoslyn/McpRoslyn.sln"
+                    "path": "./src/Spelunk.Server/Spelunk.Server.sln"
                 }
             },
             "id": 3

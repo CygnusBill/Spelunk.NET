@@ -23,12 +23,12 @@ def test_critical_tools():
     
     # Start server
     proc = subprocess.Popen(
-        ['/usr/local/share/dotnet/dotnet', 'run', '--project', 'src/McpRoslyn.Server', '--no-build'],
+        ['/usr/local/share/dotnet/dotnet', 'run', '--project', 'src/Spelunk.Server', '--no-build'],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL,
         text=True,
-        env={'MCP_ROSLYN_ALLOWED_PATHS': '/Users/bill/Repos/McpDotnet/test-workspace'}
+        env={'SPELUNK_ALLOWED_PATHS': '/Users/bill/Repos/Spelunk.NET/test-workspace'}
     )
     
     # Initialize
@@ -61,7 +61,7 @@ def test_critical_tools():
         "params": {
             "name": "spelunk-load-workspace",
             "arguments": {
-                "path": "/Users/bill/Repos/McpDotnet/test-workspace/TestProject.csproj"
+                "path": "/Users/bill/Repos/Spelunk.NET/test-workspace/TestProject.csproj"
             }
         }
     }
@@ -128,7 +128,7 @@ public class DataFlowTest {
 }
 """
     
-    with open('/Users/bill/Repos/McpDotnet/test-workspace/DataFlowTest.cs', 'w') as f:
+    with open('/Users/bill/Repos/Spelunk.NET/test-workspace/DataFlowTest.cs', 'w') as f:
         f.write(test_code)
     
     request = {
@@ -138,7 +138,7 @@ public class DataFlowTest {
         "params": {
             "name": "spelunk-get-data-flow",
             "arguments": {
-                "file": "/Users/bill/Repos/McpDotnet/test-workspace/DataFlowTest.cs",
+                "file": "/Users/bill/Repos/Spelunk.NET/test-workspace/DataFlowTest.cs",
                 "startLine": 3,
                 "startColumn": 9,
                 "endLine": 6,
@@ -212,7 +212,7 @@ public class DataFlowTest {
         "params": {
             "name": "spelunk-mark-statement",
             "arguments": {
-                "filePath": "/Users/bill/Repos/McpDotnet/test-workspace/DataFlowTest.cs",
+                "filePath": "/Users/bill/Repos/Spelunk.NET/test-workspace/DataFlowTest.cs",
                 "line": 4,
                 "column": 9,
                 "label": "test-marker"

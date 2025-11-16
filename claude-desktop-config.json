@@ -1,14 +1,12 @@
 {
   "mcpServers": {
-    "mcp-roslyn": {
-      "command": "dotnet",
+    "spelunk": {
+      "command": "spelunk",
       "args": [
-        "run",
-        "--project",
-        "/Users/bill/Repos/McpDotnet/src/McpRoslyn.Server/McpRoslyn.Server.csproj"
+        "stdio"
       ],
       "env": {
-        "MCP_ROSLYN_ALLOWED_PATHS": "/Users/bill/Repos:/Users/bill/Projects"
+        "SPELUNK_ALLOWED_PATHS": "/Users/bill/Repos:/Users/bill/Projects"
       }
     }
   }

@@ -44,7 +44,7 @@ def test_get_symbols():
     workspace_dir = os.path.abspath(workspace_dir)
     
     # Start the server
-    server_path = os.path.join(workspace_dir, 'src', 'McpRoslyn', 'Spelunk.Server')
+    server_path = os.path.join(workspace_dir, 'src', 'Spelunk.Server')
     cmd = ['dotnet', 'run', '--project', server_path, '--no-build', '--', '--allowed-path', workspace_dir]
     
     print(f"Starting server with command: {' '.join(cmd)}")

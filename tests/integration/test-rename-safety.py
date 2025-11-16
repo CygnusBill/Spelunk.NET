@@ -26,7 +26,7 @@ def test_rename_safety():
     # Start the MCP server
     cmd = [
         "dotnet", "run", 
-        "--project", "./src/McpRoslyn/Spelunk.Server/Spelunk.Server.csproj"]
+        "--project", "./src/Spelunk.Server/Spelunk.Server.csproj"]
     
     print("Starting MCP server...")
     proc = subprocess.Popen(
@@ -64,7 +64,7 @@ def test_rename_safety():
             "method": "tools/call",
             "params": {
                 "name": "spelunk-load-workspace",
-                "arguments": {"path": "./src/McpRoslyn/McpRoslyn.sln"}
+                "arguments": {"path": "./src/Spelunk.Server/Spelunk.Server.sln"}
             },
             "id": 2
         }

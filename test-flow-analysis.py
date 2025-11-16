@@ -8,10 +8,10 @@ import os
 class MCPClient:
     def __init__(self):
         env = os.environ.copy()
-        env['MCP_ROSLYN_ALLOWED_PATHS'] = '/Users/bill/Repos/SampleAppForMcp'
+        env['SPELUNK_ALLOWED_PATHS'] = '/Users/bill/Repos/SampleAppForMcp'
         
         self.process = subprocess.Popen(
-            ['dotnet', 'run', '--project', 'src/McpRoslyn.Server', '--no-build'],
+            ['dotnet', 'run', '--project', 'src/Spelunk.Server', '--no-build'],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,

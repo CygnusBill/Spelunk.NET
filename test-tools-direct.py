@@ -15,7 +15,7 @@ def test_tool_outcomes():
     print("="*80)
     
     # Create client with test workspace
-    client = TestClient(allowed_paths=["/Users/bill/Repos/McpDotnet/test-workspace"])
+    client = TestClient(allowed_paths=["/Users/bill/Repos/Spelunk.NET/test-workspace"])
     
     # Category 1: Workspace Tools
     print("\n" + "="*60)
@@ -24,7 +24,7 @@ def test_tool_outcomes():
     
     print("\n1. Loading a C# project:")
     result = client.call_tool("spelunk-load-workspace", {
-        "path": "/Users/bill/Repos/McpDotnet/test-workspace/TestProject.csproj"
+        "path": "/Users/bill/Repos/Spelunk.NET/test-workspace/TestProject.csproj"
     })
     if result.get("Success"):
         print("✅ Workspace loaded successfully")
@@ -105,7 +105,7 @@ def test_tool_outcomes():
     print("="*60)
     
     print("\n7. Get symbols from file:")
-    test_file = "/Users/bill/Repos/McpDotnet/test-workspace/TestClass.cs"
+    test_file = "/Users/bill/Repos/Spelunk.NET/test-workspace/TestClass.cs"
     # First create a test file
     with open(test_file, 'w') as f:
         f.write("""
