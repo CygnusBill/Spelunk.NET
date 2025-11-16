@@ -234,7 +234,9 @@ See examples in `docs/spelunk-path/examples/`:
 #### User-Level Configuration
 The server supports a user-level configuration file for setting allowed directories and other options.
 
-**Location**: `~/.config/spelunk/config.json`
+**Location (cross-platform)**:
+- **Unix/Linux/macOS**: `~/.spelunk/config.json`
+- **Windows**: `%USERPROFILE%\.spelunk\config.json` (typically `C:\Users\[USERNAME]\.spelunk\config.json`)
 
 **Example**:
 ```json
@@ -259,11 +261,11 @@ The server supports a user-level configuration file for setting allowed director
 **Configuration Priority** (highest to lowest):
 1. Command line arguments
 2. Environment variables (e.g., `SPELUNK_ALLOWED_PATHS`)
-3. User config (`~/.config/spelunk/config.json`)
+3. User config (`~/.spelunk/config.json` or `%USERPROFILE%\.spelunk\config.json` on Windows)
 4. Project config (`spelunk.config.json` in working directory)
 5. Default settings
 
-See `~/.config/spelunk/README.md` for detailed configuration documentation.
+The config file location is automatically determined based on your operating system.
 
 ## Important Notes
 

@@ -160,7 +160,9 @@ spelunk sse restart
 
 ### Configuration
 
-Configure allowed directories in `~/.config/spelunk/config.json`:
+Configure allowed directories in your user config file:
+- **Unix/Linux/macOS**: `~/.spelunk/config.json`
+- **Windows**: `%USERPROFILE%\.spelunk\config.json`
 
 ```json
 {
