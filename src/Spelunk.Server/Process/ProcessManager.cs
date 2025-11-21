@@ -50,36 +50,55 @@ public class ProcessManager
             // Write PID file
             PidFileManager.WritePidFile(process.Id, port);
 
-            // Redirect output to log file
+            // Redirect output to log file in background
             var logPath = PidFileManager.GetLogFilePath();
-            _ = Task.Run(async () =>
+            var loggingTask = Task.Run(async () =>
             {
-                using var logFile = new StreamWriter(logPath, append: true);
-                await logFile.WriteLineAsync($"\n=== SSE Server started at {DateTime.Now} on port {port} (PID: {process.Id}) ===");
-
-                // Redirect stdout
-                _ = Task.Run(async () =>
+                try
                 {
-                    while (!process.StandardOutput.EndOfStream)
+                    using var logFile = new StreamWriter(logPath, append: true) { AutoFlush = true };
+                    await logFile.WriteLineAsync($"\n=== SSE Server started at {DateTime.Now} on port {port} (PID: {process.Id}) ===");
+
+                    // Create tasks for both stdout and stderr
+                    var stdoutTask = Task.Run(async () =>
                     {
-                        var line = await process.StandardOutput.ReadLineAsync();
-                        if (line != null)
+                        try
                         {
-                            await logFile.WriteLineAsync(line);
-                            await logFile.FlushAsync();
+                            string? line;
+                            while ((line = await process.StandardOutput.ReadLineAsync()) != null)
+                            {
+                                await logFile.WriteLineAsync(line);
+                            }
                         }
-                    }
-                });
+                        catch (Exception ex)
+                        {
+                            await logFile.WriteLineAsync($"Error reading stdout: {ex.Message}");
+                        }
+                    });
 
-                // Redirect stderr
-                while (!process.StandardError.EndOfStream)
-                {
-                    var line = await process.StandardError.ReadLineAsync();
-                    if (line != null)
+                    var stderrTask = Task.Run(async () =>
                     {
-                        await logFile.WriteLineAsync(line);
-                        await logFile.FlushAsync();
-                    }
+                        try
+                        {
+                            string? line;
+                            while ((line = await process.StandardError.ReadLineAsync()) != null)
+                            {
+                                await logFile.WriteLineAsync(line);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            await logFile.WriteLineAsync($"Error reading stderr: {ex.Message}");
+                        }
+                    });
+
+                    // Wait for both streams to complete
+                    await Task.WhenAll(stdoutTask, stderrTask);
+                }
+                catch (Exception ex)
+                {
+                    // Log to console since log file may not be accessible
+                    Console.Error.WriteLine($"Error in logging task: {ex.Message}");
                 }
             });
 
@@ -124,7 +143,12 @@ public class ProcessManager
             {
                 // Force kill if still running
                 process.Kill(entireProcessTree: true);
-                process.WaitForExit();
+                // Wait up to 2 seconds for forced kill to complete
+                if (!process.WaitForExit(2000))
+                {
+                    // Process is unkillable - very rare but possible
+                    return (false, $"Failed to kill process {existing.Pid} - process may be unkillable");
+                }
             }
 
             PidFileManager.DeletePidFile();

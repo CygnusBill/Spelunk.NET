@@ -729,11 +729,11 @@ public class DotnetWorkspaceManager : IDisposable
         }
     }
     
-    public async Task<MethodCallAnalysis> FindMethodCallsAsync(string methodName, string className, string? workspacePath = null)
+    public async Task<MethodCallAnalysis> FindMethodCallsAsync(string methodName, string? className = null, string? workspacePath = null)
     {
         var result = new MethodCallAnalysis
         {
-            TargetMethod = $"{className}.{methodName}",
+            TargetMethod = className != null ? $"{className}.{methodName}" : methodName,
             DirectCalls = new List<MethodCallInfo>(),
             CallTree = new Dictionary<string, List<MethodCallInfo>>()
         };
@@ -754,19 +754,23 @@ public class DotnetWorkspaceManager : IDisposable
                 
                 var compilation = await project.GetCompilationAsync();
                 if (compilation == null) continue;
-                
-                var classSymbol = compilation.GetTypeByMetadataName($"{project.DefaultNamespace}.{className}") 
-                                ?? compilation.Assembly.GetTypeByMetadataName(className);
-                
-                if (classSymbol == null)
+
+                INamedTypeSymbol? classSymbol = null;
+                if (className != null)
                 {
-                    // Try to find in all namespaces
-                    foreach (var type in compilation.Assembly.GetAllTypes())
+                    classSymbol = compilation.GetTypeByMetadataName($"{project.DefaultNamespace}.{className}")
+                                    ?? compilation.Assembly.GetTypeByMetadataName(className);
+
+                    if (classSymbol == null)
                     {
-                        if (type.Name == className)
+                        // Try to find in all namespaces
+                        foreach (var type in compilation.Assembly.GetAllTypes())
                         {
-                            classSymbol = type;
-                            break;
+                            if (type.Name == className)
+                            {
+                                classSymbol = type;
+                                break;
+                            }
                         }
                     }
                 }
@@ -774,7 +778,7 @@ public class DotnetWorkspaceManager : IDisposable
                 if (classSymbol != null)
                 {
                     targetMethod = classSymbol.GetMembers(methodName).OfType<IMethodSymbol>().FirstOrDefault();
-                    
+
                     if (targetMethod != null)
                     {
                         // Get the method body
@@ -788,11 +792,33 @@ public class DotnetWorkspaceManager : IDisposable
                         break;
                     }
                 }
+                else if (className == null)
+                {
+                    // Search all types for the method
+                    foreach (var type in compilation.Assembly.GetAllTypes())
+                    {
+                        targetMethod = type.GetMembers(methodName).OfType<IMethodSymbol>().FirstOrDefault();
+                        if (targetMethod != null)
+                        {
+                            var location = targetMethod.Locations.FirstOrDefault();
+                            if (location != null && location.IsInSource)
+                            {
+                                var tree = location.SourceTree;
+                                var root = await tree.GetRootAsync();
+                                targetMethodBody = root.FindNode(location.SourceSpan);
+                            }
+                            break;
+                        }
+                    }
+                    if (targetMethod != null) break;
+                }
             }
-            
+
             if (targetMethod == null || targetMethodBody == null)
             {
-                result.Error = $"Method {className}.{methodName} not found";
+                result.Error = className != null
+                    ? $"Method {className}.{methodName} not found"
+                    : $"Method {methodName} not found";
                 return result;
             }
             
@@ -901,11 +927,11 @@ public class DotnetWorkspaceManager : IDisposable
         }
     }
     
-    public async Task<MethodCallerAnalysis> FindMethodCallersAsync(string methodName, string className, string? workspacePath = null)
+    public async Task<MethodCallerAnalysis> FindMethodCallersAsync(string methodName, string? className = null, string? workspacePath = null)
     {
         var result = new MethodCallerAnalysis
         {
-            TargetMethod = $"{className}.{methodName}",
+            TargetMethod = className != null ? $"{className}.{methodName}" : methodName,
             DirectCallers = new List<MethodCallInfo>(),
             CallerTree = new Dictionary<string, List<MethodCallInfo>>()
         };
@@ -1105,7 +1131,7 @@ public class DotnetWorkspaceManager : IDisposable
         return $"{method.ContainingType.ToDisplayString()}.{method.Name}({parameters})";
     }
     
-    public async Task<List<ReferenceInfo>> FindReferencesAsync(string symbolName, string symbolType, string? containerName = null, string? workspacePath = null)
+    public async Task<List<ReferenceInfo>> FindReferencesAsync(string symbolName, string? symbolType = null, string? containerName = null, string? workspacePath = null)
     {
         var results = new List<ReferenceInfo>();
         var workspacesToSearch = GetWorkspacesToSearch(workspacePath);
@@ -1191,7 +1217,7 @@ public class DotnetWorkspaceManager : IDisposable
         return results;
     }
     
-    public async Task<CodeEditResult> EditCodeAsync(string filePath, string operation, string className, string? methodName, string? code, JsonElement? parameters, bool preview)
+    public async Task<CodeEditResult> EditCodeAsync(string filePath, string operation, string? className = null, string? methodName = null, string? code = null, JsonElement? parameters = null, bool preview = false)
     {
         var result = new CodeEditResult { Success = true };
         
@@ -1741,7 +1767,7 @@ public class DotnetWorkspaceManager : IDisposable
         return results;
     }
     
-    public async Task<RenameResult> RenameSymbolAsync(string oldName, string newName, string symbolType, string? containerName, string? workspacePath, bool preview)
+    public async Task<RenameResult> RenameSymbolAsync(string oldName, string newName, string? symbolType = null, string? containerName = null, string? workspacePath = null, bool preview = false)
     {
         var result = new RenameResult { Success = true };
         var workspacesToSearch = GetWorkspacesToSearch(workspacePath);
@@ -3707,10 +3733,10 @@ public class DotnetWorkspaceManager : IDisposable
         string? filePath = null)
     {
         var result = new FindMarkedStatementsResult { Success = true };
-        
+
         try
         {
-            result.MarkedStatements = _markerManager.FindMarkedStatements(markerId, filePath);
+            result.MarkedStatements = await _markerManager.FindMarkedStatementsAsync(markerId, filePath);
             result.TotalMarkers = _markerManager.MarkerCount;
         }
         catch (Exception ex)
@@ -3718,17 +3744,17 @@ public class DotnetWorkspaceManager : IDisposable
             result.Success = false;
             result.Error = $"Exception finding marked statements: {ex.Message}";
         }
-        
+
         return result;
     }
     
     public async Task<UnmarkStatementResult> UnmarkStatementAsync(string markerId)
     {
         var result = new UnmarkStatementResult { Success = true };
-        
+
         try
         {
-            if (_markerManager.RemoveMarker(markerId))
+            if (await _markerManager.RemoveMarkerAsync(markerId))
             {
                 result.Message = $"Marker '{markerId}' removed successfully";
                 result.RemainingMarkers = _markerManager.MarkerCount;
@@ -5528,16 +5554,16 @@ public class RemoveStatementResult
 
 public class MarkerManager
 {
-    private readonly Dictionary<string, SyntaxAnnotation> _markers = new();
-    private readonly Dictionary<string, Document> _markedDocuments = new();
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, SyntaxAnnotation> _markers = new();
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, Document> _markedDocuments = new();
     private int _markerCounter = 0;
     private const string MarkerKind = "MCP.Marker";
     private const int MaxMarkers = 100;
-    
+
     public string CreateMarkerId(string? label = null)
     {
-        _markerCounter++;
-        return $"mark-{_markerCounter}";
+        var id = System.Threading.Interlocked.Increment(ref _markerCounter);
+        return $"mark-{id}";
     }
     
     public SyntaxAnnotation CreateMarker(string markerId, string? label = null)
@@ -5563,17 +5589,17 @@ public class MarkerManager
         return _markedDocuments.TryGetValue(filePath, out var doc) ? doc : null;
     }
     
-    public List<MarkedStatement> FindMarkedStatements(string? markerId = null, string? filePath = null)
+    public async Task<List<MarkedStatement>> FindMarkedStatementsAsync(string? markerId = null, string? filePath = null)
     {
         var results = new List<MarkedStatement>();
-        
+
         var documentsToSearch = filePath != null && _markedDocuments.ContainsKey(filePath)
             ? new[] { _markedDocuments[filePath] }
             : _markedDocuments.Values.ToArray();
-            
+
         foreach (var document in documentsToSearch)
         {
-            var root = document.GetSyntaxRootAsync().Result;
+            var root = await document.GetSyntaxRootAsync().ConfigureAwait(false);
             if (root == null) continue;
             
             var markedNodes = root.GetAnnotatedNodes(MarkerKind);
@@ -5647,30 +5673,28 @@ public class MarkerManager
         return statement.Parent?.GetType().Name ?? "Unknown";
     }
     
-    public bool RemoveMarker(string markerId)
+    public async Task<bool> RemoveMarkerAsync(string markerId)
     {
-        if (!_markers.TryGetValue(markerId, out var annotation))
+        if (!_markers.TryRemove(markerId, out var annotation))
             return false;
-            
-        _markers.Remove(markerId);
-        
+
         // Update all documents to remove this marker
         foreach (var kvp in _markedDocuments.ToList())
         {
             var document = kvp.Value;
-            var root = document.GetSyntaxRootAsync().Result;
+            var root = await document.GetSyntaxRootAsync().ConfigureAwait(false);
             if (root == null) continue;
-            
+
             var markedNodes = root.GetAnnotatedNodes(annotation);
             if (!markedNodes.Any()) continue;
-            
+
             var newRoot = root.ReplaceNodes(
                 markedNodes,
                 (oldNode, newNode) => newNode.WithoutAnnotations(annotation));
-                
+
             _markedDocuments[kvp.Key] = document.WithSyntaxRoot(newRoot);
         }
-        
+
         return true;
     }
     

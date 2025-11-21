@@ -3699,7 +3699,9 @@ public class McpJsonRpcServer
             if (!args.Value.TryGetProperty("path", out var pathElement))
                 return CreateErrorResponse("Navigation path is required");
             var navPath = pathElement.GetString();
-            
+            if (navPath == null)
+                return CreateErrorResponse("Navigation path cannot be null");
+
             bool returnPath = false;
             if (args.Value.TryGetProperty("returnPath", out var returnPathElement))
                 returnPath = returnPathElement.GetBoolean();
