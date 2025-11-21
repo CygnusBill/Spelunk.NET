@@ -235,8 +235,10 @@ namespace Spelunk.Server.SpelunkPath
                 var results = EvaluatePath(context, path);
                 return results.Any();
             }
-            catch
+            catch (Exception ex)
             {
+                // Failed to evaluate path expression - return false
+                System.Diagnostics.Debug.WriteLine($"Failed to evaluate SpelunkPath expression '{pathExpr.PathString}': {ex.Message}");
                 return false;
             }
         }

@@ -66,9 +66,10 @@ public class PidFileManager
             var json = File.ReadAllText(PidFilePath);
             return JsonSerializer.Deserialize<ProcessInfo>(json);
         }
-        catch
+        catch (Exception ex)
         {
-            // Corrupted PID file
+            // Corrupted PID file - log error and return null
+            Console.Error.WriteLine($"Failed to read PID file at {PidFilePath}: {ex.Message}");
             return null;
         }
     }
@@ -94,8 +95,15 @@ public class PidFileManager
             var process = System.Diagnostics.Process.GetProcessById(pid);
             return !process.HasExited;
         }
-        catch
+        catch (ArgumentException)
         {
+            // Process doesn't exist - this is expected behavior
+            return false;
+        }
+        catch (Exception ex)
+        {
+            // Unexpected error checking process status
+            Console.Error.WriteLine($"Error checking if process {pid} is alive: {ex.Message}");
             return false;
         }
     }

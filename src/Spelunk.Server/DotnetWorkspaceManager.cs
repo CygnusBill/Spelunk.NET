@@ -116,11 +116,12 @@ public class DotnetWorkspaceManager : IDisposable
     private async Task<(bool success, string message, Workspace? workspace, string workspaceId)> LoadSolutionAsync(string solutionPath, string workspaceId)
     {
         var workspace = MSBuildWorkspace.Create();
-        
+
+#pragma warning disable CS0618 // Type or member is obsolete - WorkspaceFailed event is deprecated but replacement API not yet stable
         workspace.WorkspaceFailed += (sender, args) =>
         {
             _logger.LogWarning("Workspace diagnostic: {Kind} - {Message}", args.Diagnostic.Kind, args.Diagnostic.Message);
-            
+
             // Detect F# project loading failures
             if (args.Diagnostic.Message.Contains(".fsproj", StringComparison.OrdinalIgnoreCase) &&
                 (args.Diagnostic.Message.Contains("Could not load project", StringComparison.OrdinalIgnoreCase) ||
@@ -137,6 +138,7 @@ public class DotnetWorkspaceManager : IDisposable
                 }
             }
         };
+#pragma warning restore CS0618
         
         var solution = await workspace.OpenSolutionAsync(solutionPath);
         
@@ -158,7 +160,8 @@ public class DotnetWorkspaceManager : IDisposable
     private async Task<(bool success, string message, Workspace? workspace, string workspaceId)> LoadProjectAsync(string projectPath, string workspaceId)
     {
         var workspace = MSBuildWorkspace.Create();
-        
+
+#pragma warning disable CS0618 // Type or member is obsolete - WorkspaceFailed event is deprecated but replacement API not yet stable
         workspace.WorkspaceFailed += (sender, args) =>
         {
             _logger.LogWarning("Workspace diagnostic: {Kind} - {Message}", args.Diagnostic.Kind, args.Diagnostic.Message);
@@ -179,7 +182,8 @@ public class DotnetWorkspaceManager : IDisposable
                 }
             }
         };
-        
+#pragma warning restore CS0618
+
         var project = await workspace.OpenProjectAsync(projectPath);
         
         // Create workspace entry
@@ -615,12 +619,16 @@ public class DotnetWorkspaceManager : IDisposable
                                 {
                                     foreach (var name in declarator.Names)
                                     {
-                                        var fieldSymbol = semanticModel.GetDeclaredSymbol(name) as IFieldSymbol;
+                                        // For VB.NET fields, get symbol from the declarator, not the modified identifier
+                                        var fieldSymbol = semanticModel.GetDeclaredSymbol(declarator) as IFieldSymbol;
                                         if (fieldSymbol == null) continue;
-                                        
+
+                                        // For multi-variable declarators, check if this specific name matches
+                                        if (fieldSymbol.Name != name.Identifier.Text) continue;
+
                                         // Check if field name matches pattern
                                         if (!propertyRegex.IsMatch(fieldSymbol.Name)) continue;
-                                        
+
                                         // Check if class name matches pattern (if specified)
                                         if (classRegex != null && !classRegex.IsMatch(fieldSymbol.ContainingType.Name)) continue;
                                         
@@ -1908,8 +1916,9 @@ public class DotnetWorkspaceManager : IDisposable
                     }
                 }
                 
-                // Use Roslyn's Renamer API
-                var newSolution = await Renamer.RenameSymbolAsync(solution, targetSymbol, newName, solution.Options);
+                // Use Roslyn's Renamer API with new RenameOptions
+                var renameOptions = new SymbolRenameOptions();
+                var newSolution = await Renamer.RenameSymbolAsync(solution, targetSymbol, renameOptions, newName);
                 
                 // Get the changes
                 var changes = newSolution.GetChanges(solution);
@@ -4237,7 +4246,7 @@ public class DotnetWorkspaceManager : IDisposable
                 };
                 
                 // Analyze individual variables
-                foreach (var variable in dataFlow.VariablesDeclared.Union(dataFlow.DataFlowsIn))
+                foreach (var variable in dataFlow.VariablesDeclared.Union(dataFlow.DataFlowsIn, SymbolEqualityComparer.Default))
                 {
                     var varFlow = AnalyzeVariableFlow(variable, statements, semanticModel, sourceText);
                     result.VariableFlows.Add(varFlow);
