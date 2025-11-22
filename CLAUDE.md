@@ -252,7 +252,11 @@ The server supports a user-level configuration file for setting allowed director
     },
     "Server": {
       "RequestTimeoutSeconds": 120,
-      "MaxWorkspaces": 10
+      "MaxWorkspaces": 10,
+      "WorkspaceTimeoutMinutes": 15,
+      "HistoryTimeoutHours": 1,
+      "MaxMarkers": 100,
+      "CleanupIntervalMinutes": 10
     }
   }
 }
@@ -272,11 +276,21 @@ The server supports a user-level configuration file for setting allowed director
     },
     "Server": {
       "RequestTimeoutSeconds": 120,
-      "MaxWorkspaces": 10
+      "MaxWorkspaces": 10,
+      "WorkspaceTimeoutMinutes": 30,
+      "MaxMarkers": 200
     }
   }
 }
 ```
+
+**Server Configuration Options:**
+- `RequestTimeoutSeconds` - Request timeout (default: 120, range: 1-3600)
+- `MaxWorkspaces` - Maximum concurrent workspaces (default: 10, range: 1-100)
+- `WorkspaceTimeoutMinutes` - Idle timeout before unloading (default: 15, range: 1-1440)
+- `HistoryTimeoutHours` - History retention (default: 1, range: 1-168)
+- `MaxMarkers` - Maximum ephemeral markers per session (default: 100, range: 1-10000)
+- `CleanupIntervalMinutes` - Cleanup timer interval (default: 10, range: 1-60)
 
 **Configuration Priority** (highest to lowest):
 1. Command line arguments
@@ -376,7 +390,20 @@ ast = get_ast(
 - `tests/RoslynPath/` - XUnit tests for SpelunkPath
 - `tests/tools/` - Python integration tests for MCP tools
 
-### Recent Changes (Latest Architecture Refactor - November 2025)
+### Recent Changes (Latest Session - November 2025)
+
+#### Code Quality Improvements (Current Session)
+- Removed 13 redundant NuGet package references (19 → 6 packages)
+- Added configurable server options for production tuning:
+  - WorkspaceTimeoutMinutes, HistoryTimeoutHours, MaxMarkers, CleanupIntervalMinutes
+- Fixed all null reference warnings (CS8601, CS8602, CS8604, CS8600)
+- Fixed thread-safety issues in MarkerManager
+- Fixed fire-and-forget async tasks in ProcessManager
+- Migrated obsolete Roslyn APIs (WorkspaceFailed event, Renamer API)
+- Clean build: 0 errors, 0 warnings
+- All tests passing: 46 passed, 9 skipped (expected), 0 failed
+
+#### Previous Session (Architecture Refactor - November 2025)
 - Complete rebrand to Spelunk.NET with unified CLI
 - SpelunkPath replaces RoslynPath throughout codebase
 - SSE server merged into main project with mode pattern

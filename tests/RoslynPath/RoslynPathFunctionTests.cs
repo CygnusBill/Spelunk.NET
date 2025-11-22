@@ -28,8 +28,9 @@ namespace Spelunk.Tests.SpelunkPath
                 var result = parser.Parse(path);
                 return result != null;
             }
-            catch
+            catch (Exception ex)
             {
+                Console.WriteLine($"Failed to parse '{path}': {ex.Message}");
                 return false;
             }
         }
@@ -56,7 +57,7 @@ namespace Spelunk.Tests.SpelunkPath
             Assert.True(CanParsePath("//class[first()]"));
         }
 
-        [Fact(Skip = "Function argument parsing needs debugging - see TODO in SpelunkPathParser.cs line 510")]
+        [Fact]
         public void TestFunctionWithStringArgument()
         {
             // Functions with string arguments
@@ -66,7 +67,7 @@ namespace Spelunk.Tests.SpelunkPath
             Assert.True(CanParsePath("//method[@name=substring('ProcessUser', 0, 7)]"));
         }
 
-        [Fact(Skip = "Function argument parsing needs debugging - see TODO in SpelunkPathParser.cs line 510")]
+        [Fact]
         public void TestFunctionWithNumberArgument()
         {
             // Functions with number arguments
@@ -75,7 +76,7 @@ namespace Spelunk.Tests.SpelunkPath
             Assert.True(CanParsePath("//class[string-length(@name)>10]"));
         }
 
-        [Fact(Skip = "Function argument parsing needs debugging - see TODO in SpelunkPathParser.cs line 510")]
+        [Fact]
         public void TestFunctionWithMultipleArguments()
         {
             // Functions with multiple arguments
@@ -84,7 +85,7 @@ namespace Spelunk.Tests.SpelunkPath
             Assert.True(CanParsePath("//class[concat('Base', 'Class')=@name]"));
         }
 
-        [Fact(Skip = "Function argument parsing needs debugging - see TODO in SpelunkPathParser.cs line 510")]
+        [Fact]
         public void TestFunctionWithDotArgument()
         {
             // Functions with current node reference (.)
@@ -93,7 +94,7 @@ namespace Spelunk.Tests.SpelunkPath
             Assert.True(CanParsePath("//class[normalize-space(.)]"));
         }
 
-        [Fact(Skip = "Function argument parsing needs debugging - see TODO in SpelunkPathParser.cs line 510")]
+        [Fact]
         public void TestFunctionWithIdentifierArgument()
         {
             // Functions with identifier arguments
@@ -102,7 +103,7 @@ namespace Spelunk.Tests.SpelunkPath
             Assert.True(CanParsePath("//statement[namespace-uri()]"));
         }
 
-        [Fact(Skip = "Function argument parsing needs debugging - see TODO in SpelunkPathParser.cs line 510")]
+        [Fact]
         public void TestFunctionWithMixedArguments()
         {
             // Functions with mixed argument types
@@ -111,7 +112,7 @@ namespace Spelunk.Tests.SpelunkPath
             Assert.True(CanParsePath("//class[format-number(42, '000')]"));
         }
 
-        [Fact(Skip = "Function argument parsing needs debugging - see TODO in SpelunkPathParser.cs line 510")]
+        [Fact]
         public void TestNestedFunctions()
         {
             // Nested function calls
@@ -128,7 +129,7 @@ namespace Spelunk.Tests.SpelunkPath
             Assert.True(CanParsePath("//class[last()-0]"));
         }
 
-        [Fact(Skip = "Function argument parsing needs debugging - see TODO in SpelunkPathParser.cs line 510")]
+        [Fact]
         public void TestFunctionInComplexPredicate()
         {
             // Functions within complex predicates
@@ -141,7 +142,7 @@ namespace Spelunk.Tests.SpelunkPath
 
         #region Integration Tests
 
-        [Fact(Skip = "Function argument parsing needs debugging - see TODO in SpelunkPathParser.cs line 510")]
+        [Fact]
         public void TestFunctionArgumentsWithRealCode()
         {
             var code = @"

@@ -505,13 +505,7 @@ namespace Spelunk.Server.SpelunkPath
                 return new PositionExpr { Position = pos };
             }
 
-            // Function (last(), etc.)
-            // TODO: BUG - Function argument parsing doesn't work correctly
-            // The lookahead logic (_lexer.PeekToken(0)) may not be correctly detecting functions with arguments
-            // like contains('Test'). This causes such expressions to be parsed as simple names instead of
-            // function calls. Debug the PeekToken offset or lexer state to fix this issue.
-            // See failing tests in RoslynPathFunctionTests.cs (currently skipped)
-            // PeekToken(0) gets the next token after _current (since _tokenIndex already advanced)
+            // Function (last(), position(), contains(), etc.)
             if (_current.Type == TokenType.Identifier && _lexer.PeekToken(0).Type == TokenType.LeftParen)
             {
                 return ParseFunctionPredicate();
@@ -563,8 +557,16 @@ namespace Spelunk.Server.SpelunkPath
             };
             Advance();
 
+            // Check if the value is a function call
+            if (_current.Type == TokenType.Identifier && _lexer.PeekToken(0).Type == TokenType.LeftParen)
+            {
+                // Parse as a function call
+                var functionExpr = ParseFunctionCallExpression();
+                return new AttributeExpr { Name = name, Operator = op, Value = functionExpr };
+            }
+
             var value = _current.Value;
-            if (_current.Type == TokenType.String || _current.Type == TokenType.Number || 
+            if (_current.Type == TokenType.String || _current.Type == TokenType.Number ||
                 _current.Type == TokenType.Identifier || _current.Type == TokenType.Pattern)
             {
                 Advance();
@@ -578,15 +580,15 @@ namespace Spelunk.Server.SpelunkPath
             var func = _current.Value;
             Consume(TokenType.Identifier);
             Consume(TokenType.LeftParen);
-            
+
             // Parse function arguments if present
             var arguments = new List<string>();
             while (_current.Type != TokenType.RightParen && _current.Type != TokenType.Eof)
             {
-                // Parse argument - can be a string literal, number, or identifier
+                // Parse argument - can be a string literal, number, identifier, @attribute, or nested function
                 if (_current.Type == TokenType.String)
                 {
-                    arguments.Add(_current.Value);
+                    arguments.Add($"'{_current.Value}'");
                     Consume(TokenType.String);
                 }
                 else if (_current.Type == TokenType.Number)
@@ -594,9 +596,11 @@ namespace Spelunk.Server.SpelunkPath
                     arguments.Add(_current.Value);
                     Consume(TokenType.Number);
                 }
-                else if (_current.Type == TokenType.Identifier)
+                else if (_current.Type == TokenType.At)
                 {
-                    arguments.Add(_current.Value);
+                    // @attribute reference
+                    Consume(TokenType.At);
+                    arguments.Add("@" + _current.Value);
                     Consume(TokenType.Identifier);
                 }
                 else if (_current.Type == TokenType.Dot)
@@ -605,7 +609,20 @@ namespace Spelunk.Server.SpelunkPath
                     arguments.Add(".");
                     Consume(TokenType.Dot);
                 }
-                
+                else if (_current.Type == TokenType.Identifier)
+                {
+                    // Check if this is a nested function call
+                    if (_lexer.PeekToken(0).Type == TokenType.LeftParen)
+                    {
+                        arguments.Add(ParseFunctionCallExpression());
+                    }
+                    else
+                    {
+                        arguments.Add(_current.Value);
+                        Consume(TokenType.Identifier);
+                    }
+                }
+
                 // Check for comma separator
                 if (_current.Type == TokenType.Comma)
                 {
@@ -617,12 +634,12 @@ namespace Spelunk.Server.SpelunkPath
                     break;
                 }
             }
-            
+
             Consume(TokenType.RightParen);
 
             // Build function expression string
             var expr = func + "(" + string.Join(", ", arguments) + ")";
-            
+
             // Handle last()-N special case
             if (func == "last" && arguments.Count == 0 && _current.Type == TokenType.Minus)
             {
@@ -634,20 +651,131 @@ namespace Spelunk.Server.SpelunkPath
                 }
             }
 
+            // Check if there's a comparison operator after the function call
+            if (_current.Type == TokenType.Equals || _current.Type == TokenType.NotEquals ||
+                _current.Type == TokenType.LessThan || _current.Type == TokenType.GreaterThan ||
+                _current.Type == TokenType.LessOrEqual || _current.Type == TokenType.GreaterOrEqual)
+            {
+                var op = _current.Type switch
+                {
+                    TokenType.Equals => "=",
+                    TokenType.NotEquals => "!=",
+                    TokenType.LessThan => "<",
+                    TokenType.GreaterThan => ">",
+                    TokenType.LessOrEqual => "<=",
+                    TokenType.GreaterOrEqual => ">=",
+                    _ => "="
+                };
+                Advance();
+
+                // Parse the comparison value
+                string value;
+                if (_current.Type == TokenType.At)
+                {
+                    // @attribute reference
+                    Consume(TokenType.At);
+                    value = "@" + _current.Value;
+                    Consume(TokenType.Identifier);
+                }
+                else if (_current.Type == TokenType.String || _current.Type == TokenType.Number ||
+                         _current.Type == TokenType.Identifier)
+                {
+                    value = _current.Value;
+                    Advance();
+                }
+                else
+                {
+                    value = "";
+                }
+
+                return new AttributeExpr
+                {
+                    Name = "function",
+                    Operator = op,
+                    Value = expr + op + value
+                };
+            }
+
             // For position-based functions, return PositionExpr
             if (func == "last" || func == "first" || func == "position")
             {
                 return new PositionExpr { Position = expr };
             }
-            
+
             // For other functions (like contains, starts-with), treat as attribute expressions
             // This allows for future extension to support text-matching functions
-            return new AttributeExpr 
-            { 
+            return new AttributeExpr
+            {
                 Name = "function",
                 Operator = "=",
                 Value = expr
             };
+        }
+
+        private string ParseFunctionCallExpression()
+        {
+            var func = _current.Value;
+            Consume(TokenType.Identifier);
+            Consume(TokenType.LeftParen);
+
+            // Parse function arguments if present
+            var arguments = new List<string>();
+            while (_current.Type != TokenType.RightParen && _current.Type != TokenType.Eof)
+            {
+                // Parse argument - can be a string literal, number, identifier, or nested function
+                if (_current.Type == TokenType.String)
+                {
+                    arguments.Add($"'{_current.Value}'");
+                    Consume(TokenType.String);
+                }
+                else if (_current.Type == TokenType.Number)
+                {
+                    arguments.Add(_current.Value);
+                    Consume(TokenType.Number);
+                }
+                else if (_current.Type == TokenType.Identifier)
+                {
+                    // Check if this is a nested function call
+                    if (_lexer.PeekToken(0).Type == TokenType.LeftParen)
+                    {
+                        arguments.Add(ParseFunctionCallExpression());
+                    }
+                    else
+                    {
+                        arguments.Add(_current.Value);
+                        Consume(TokenType.Identifier);
+                    }
+                }
+                else if (_current.Type == TokenType.Dot)
+                {
+                    // Support '.' as current node reference
+                    arguments.Add(".");
+                    Consume(TokenType.Dot);
+                }
+                else if (_current.Type == TokenType.At)
+                {
+                    // Support @attribute references
+                    Consume(TokenType.At);
+                    arguments.Add("@" + _current.Value);
+                    Consume(TokenType.Identifier);
+                }
+
+                // Check for comma separator
+                if (_current.Type == TokenType.Comma)
+                {
+                    Consume(TokenType.Comma);
+                }
+                else if (_current.Type != TokenType.RightParen)
+                {
+                    // If not comma and not closing paren, break to avoid infinite loop
+                    break;
+                }
+            }
+
+            Consume(TokenType.RightParen);
+
+            // Build function expression string
+            return func + "(" + string.Join(", ", arguments) + ")";
         }
 
         private PredicateExpr ParsePathPredicate()

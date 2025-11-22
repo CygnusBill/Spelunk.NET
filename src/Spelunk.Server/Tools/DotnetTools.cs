@@ -7,6 +7,7 @@ using Spelunk.Server;
 using Spelunk.Server.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using LanguageExt;
 
 namespace Spelunk.Server.Tools;
 
@@ -27,7 +28,9 @@ public static class DotnetTools
         var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
         var workspaceLogger = loggerFactory.CreateLogger<DotnetWorkspaceManager>();
 
-        _workspaceManager = new DotnetWorkspaceManager(workspaceLogger);
+        // Create IOptions<SpelunkOptions> wrapper from current value
+        var optionsWrapper = Options.Create(optionsMonitor.CurrentValue);
+        _workspaceManager = new DotnetWorkspaceManager(workspaceLogger, optionsWrapper);
 
         // Subscribe to configuration changes using IOptionsMonitor
         _optionsChangeToken = optionsMonitor.OnChange(options =>
@@ -57,10 +60,10 @@ public static class DotnetTools
             }
             
             var (success, message, workspace, actualWorkspaceId) = await _workspaceManager.LoadWorkspaceAsync(path, workspaceId);
-            
+
             if (!success || workspace == null)
             {
-                throw new InvalidOperationException($"Failed to load workspace: {message}");
+                throw new WorkspaceNotFoundException($"Failed to load workspace: {message}", workspaceId, path);
             }
 
             // Count projects in the workspace  
@@ -69,10 +72,15 @@ public static class DotnetTools
             
             return $"{fileType} loaded successfully\nWorkspace ID: {actualWorkspaceId}\nProjects: {projectCount}\nPath: {path}";
         }
+        catch (SpelunkException)
+        {
+            // Re-throw our custom exceptions
+            throw;
+        }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Failed to load workspace");
-            throw new InvalidOperationException($"Failed to load workspace: {ex.Message}", ex);
+            _logger?.LogError(ex, "Failed to load workspace from path: {Path}", path);
+            throw new WorkspaceNotFoundException($"Failed to load workspace: {ex.Message}", workspaceId, path);
         }
     }
 
@@ -104,10 +112,14 @@ public static class DotnetTools
             var result = await _workspaceManager.AnalyzeSyntaxTreeAsync(filePath, includeTrivia: false, workspaceId);
             return JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
         }
+        catch (SpelunkException)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Failed to analyze syntax");
-            throw new InvalidOperationException($"Failed to analyze syntax: {ex.Message}", ex);
+            _logger?.LogError(ex, "Failed to analyze syntax for file: {FilePath}", filePath);
+            throw new CodeEditException($"Failed to analyze syntax: {ex.Message}", filePath);
         }
     }
 
@@ -136,10 +148,14 @@ public static class DotnetTools
             
             return JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
         }
+        catch (SpelunkException)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Failed to get symbols");
-            throw new InvalidOperationException($"Failed to get symbols: {ex.Message}", ex);
+            _logger?.LogError(ex, "Failed to get symbols from file: {FilePath}", filePath);
+            throw new CodeEditException($"Failed to get symbols: {ex.Message}", filePath);
         }
     }
 
@@ -158,10 +174,14 @@ public static class DotnetTools
             var result = await _workspaceManager.FindClassesAsync(pattern, workspaceId);
             return JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
         }
+        catch (SpelunkException)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Failed to find classes");
-            throw new InvalidOperationException($"Failed to find classes: {ex.Message}", ex);
+            _logger?.LogError(ex, "Failed to find classes with pattern: {Pattern}", pattern);
+            throw new InvalidPatternException($"Failed to find classes: {ex.Message}", pattern, "class");
         }
     }
 
@@ -181,10 +201,14 @@ public static class DotnetTools
             var result = await _workspaceManager.FindMethodsAsync(methodPattern, classPattern, workspaceId);
             return JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
         }
+        catch (SpelunkException)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Failed to find methods");
-            throw new InvalidOperationException($"Failed to find methods: {ex.Message}", ex);
+            _logger?.LogError(ex, "Failed to find methods with pattern: {MethodPattern}, class: {ClassPattern}", methodPattern, classPattern);
+            throw new InvalidPatternException($"Failed to find methods: {ex.Message}", methodPattern, "method");
         }
     }
 
@@ -204,10 +228,14 @@ public static class DotnetTools
             var result = await _workspaceManager.FindPropertiesAsync(propertyPattern, classPattern, workspaceId);
             return JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
         }
+        catch (SpelunkException)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Failed to find properties");
-            throw new InvalidOperationException($"Failed to find properties: {ex.Message}", ex);
+            _logger?.LogError(ex, "Failed to find properties with pattern: {PropertyPattern}, class: {ClassPattern}", propertyPattern, classPattern);
+            throw new InvalidPatternException($"Failed to find properties: {ex.Message}", propertyPattern, "property");
         }
     }
 
@@ -227,10 +255,14 @@ public static class DotnetTools
             var result = await _workspaceManager.FindMethodCallsAsync(methodName, className, workspaceId);
             return JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
         }
+        catch (SpelunkException)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Failed to find method calls");
-            throw new InvalidOperationException($"Failed to find method calls: {ex.Message}", ex);
+            _logger?.LogError(ex, "Failed to find calls for method: {MethodName} in class: {ClassName}", methodName, className);
+            throw new SymbolNotFoundException($"Failed to find method calls: {ex.Message}", methodName, "method", className);
         }
     }
 
@@ -250,10 +282,14 @@ public static class DotnetTools
             var result = await _workspaceManager.FindMethodCallersAsync(methodName, className, workspaceId);
             return JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
         }
+        catch (SpelunkException)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Failed to find method callers");
-            throw new InvalidOperationException($"Failed to find method callers: {ex.Message}", ex);
+            _logger?.LogError(ex, "Failed to find callers for method: {MethodName} in class: {ClassName}", methodName, className);
+            throw new SymbolNotFoundException($"Failed to find method callers: {ex.Message}", methodName, "method", className);
         }
     }
 
@@ -272,11 +308,15 @@ public static class DotnetTools
         try
         {
             var result = await _workspaceManager.FindReferencesAsync(symbolName, symbolType, containerName, workspaceId);
-            return JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
+            return result.Match(
+                Right: refs => JsonSerializer.Serialize(refs, new JsonSerializerOptions { WriteIndented = true }),
+                Left: error => throw new InvalidOperationException($"Failed to find references: {error.Message}")
+            );
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Failed to find references");
+            _logger?.LogError(ex, "Failed to find references for symbol: {SymbolName}, type: {SymbolType}, container: {ContainerName}",
+                symbolName, symbolType, containerName);
             throw new InvalidOperationException($"Failed to find references: {ex.Message}", ex);
         }
     }
@@ -405,31 +445,6 @@ public static class DotnetTools
         {
             _logger?.LogError(ex, "Failed to edit code");
             throw new InvalidOperationException($"Failed to edit code: {ex.Message}", ex);
-        }
-    }
-
-    [McpServerTool(Name = "spelunk-fix-pattern"), Description(ToolDescriptions.FixPattern)]
-    public static async Task<string> DotnetFixPattern(
-        [Description("Pattern to find (supports regex)")] string findPattern,
-        [Description("Replacement pattern")] string replacePattern,
-        [Description("Pattern type: text, regex")] string patternType = "text",
-        [Description("Workspace ID for context")] string? workspaceId = null,
-        [Description("Preview changes without applying them")] bool preview = false)
-    {
-        if (_workspaceManager == null)
-        {
-            throw new InvalidOperationException("DotnetTools not initialized");
-        }
-
-        try
-        {
-            var result = await _workspaceManager.FixPatternAsync(findPattern, replacePattern, patternType, workspaceId, preview);
-            return JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogError(ex, "Failed to fix pattern");
-            throw new InvalidOperationException($"Failed to fix pattern: {ex.Message}", ex);
         }
     }
 
@@ -659,12 +674,15 @@ public static class DotnetTools
                 var syntaxTree = node.SyntaxTree;
                 var lineSpan = syntaxTree.GetLineSpan(node.Span);
                 var result = await _workspaceManager.GetStatementContextAsync(
-                    filePath, 
-                    lineSpan.StartLinePosition.Line + 1, 
-                    lineSpan.StartLinePosition.Character + 1, 
+                    filePath,
+                    lineSpan.StartLinePosition.Line + 1,
+                    lineSpan.StartLinePosition.Character + 1,
                     workspaceId);
-                
-                return JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
+
+                return result.Match(
+                    Right: ctx => JsonSerializer.Serialize(ctx, new JsonSerializerOptions { WriteIndented = true }),
+                    Left: error => throw new InvalidOperationException($"Error getting statement context: {error.Message}")
+                );
             }
             else if (!string.IsNullOrEmpty(file) && line.HasValue && column.HasValue)
             {
@@ -672,7 +690,10 @@ public static class DotnetTools
                 if (IsPathAllowed(file))
                 {
                     var result = await _workspaceManager.GetStatementContextAsync(file, line.Value, column.Value, workspacePath);
-                    return JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
+                    return result.Match(
+                        Right: ctx => JsonSerializer.Serialize(ctx, new JsonSerializerOptions { WriteIndented = true }),
+                        Left: error => throw new InvalidOperationException($"Error getting statement context: {error.Message}")
+                    );
                 }
                 else
                 {
@@ -716,8 +737,11 @@ public static class DotnetTools
             
             var result = await _workspaceManager.GetDataFlowAnalysisAsync(
                 file, startLine, startColumn, endLine, endColumn, includeControlFlow, workspacePath);
-            
-            return JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
+
+            return result.Match(
+                Right: data => JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }),
+                Left: error => throw new InvalidOperationException($"Failed to get data flow analysis: {error.Message}")
+            );
         }
         catch (Exception ex)
         {

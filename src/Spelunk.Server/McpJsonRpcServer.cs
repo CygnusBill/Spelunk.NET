@@ -7,6 +7,8 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
 using CS = Microsoft.CodeAnalysis.CSharp.Syntax;
 using Spelunk.Server.FSharp;
+using LanguageExt;
+using SCG = System.Collections.Generic;
 
 namespace Spelunk.Server;
 
@@ -445,24 +447,6 @@ public class McpJsonRpcServer
                         preview = new { type = "boolean", description = "If true, show changes without applying" }
                     },
                     required = new[] { "file", "operation", "className" }
-                }
-            },
-            new
-            {
-                name = "spelunk-fix-pattern",
-                description = ToolDescriptions.FixPattern,
-                inputSchema = new
-                {
-                    type = "object",
-                    properties = new
-                    {
-                        findPattern = new { type = "string", description = "Pattern to search for (supports wildcards)" },
-                        replacePattern = new { type = "string", description = "Pattern to replace with" },
-                        patternType = new { type = "string", description = "Type of pattern: 'method-call', 'property-access', 'async-usage', 'null-check', 'string-format'" },
-                        workspacePath = new { type = "string", description = "Optional workspace path to apply fixes in" },
-                        preview = new { type = "boolean", description = "If true, only preview changes without applying them" }
-                    },
-                    required = new[] { "findPattern", "replacePattern", "patternType" }
                 }
             },
             new
@@ -920,11 +904,6 @@ public class McpJsonRpcServer
             case "spelunk-edit-code":
                 result = await EditCodeAsync(toolCallParams.Arguments);
                 break;
-                
-            case "spelunk-fix-pattern":
-                result = await FixPatternAsync(toolCallParams.Arguments);
-                break;
-                
             case "spelunk-find-statements":
                 result = await FindStatementsAsync(toolCallParams.Arguments);
                 break;
@@ -1673,7 +1652,7 @@ public class McpJsonRpcServer
             if (analysis.CallTree.Any())
             {
                 report += $"\n=== Call Tree (depth limit: 5) ===\n";
-                var printed = new HashSet<string>();
+                var printed = new SCG.HashSet<string>();
                 report += PrintCallTree(analysis.TargetMethod, analysis.CallTree, printed, 0);
             }
             
@@ -1706,7 +1685,7 @@ public class McpJsonRpcServer
         }
     }
     
-    private string PrintCallTree(string methodKey, Dictionary<string, List<MethodCallInfo>> tree, HashSet<string> printed, int depth)
+    private string PrintCallTree(string methodKey, Dictionary<string, List<MethodCallInfo>> tree, SCG.HashSet<string> printed, int depth)
     {
         if (printed.Contains(methodKey)) return "";
         printed.Add(methodKey);
@@ -1799,7 +1778,7 @@ public class McpJsonRpcServer
                 report += $"\n=== Caller Tree (who calls whom, depth limit: 5) ===\n";
                 
                 // Find root callers (methods that aren't called by others in the tree)
-                var allCalledMethods = new HashSet<string>();
+                var allCalledMethods = new SCG.HashSet<string>();
                 foreach (var callers in analysis.CallerTree.Values)
                 {
                     foreach (var caller in callers)
@@ -1812,7 +1791,7 @@ public class McpJsonRpcServer
                 report += $"{analysis.TargetMethod}\n";
                 if (analysis.CallerTree.TryGetValue(analysis.TargetMethod, out var targetCallers))
                 {
-                    report += PrintCallerTree(targetCallers, analysis.CallerTree, new HashSet<string>(), 1);
+                    report += PrintCallerTree(targetCallers, analysis.CallerTree, new SCG.HashSet<string>(), 1);
                 }
             }
             
@@ -1845,7 +1824,7 @@ public class McpJsonRpcServer
         }
     }
     
-    private string PrintCallerTree(List<MethodCallInfo> callers, Dictionary<string, List<MethodCallInfo>> tree, HashSet<string> printed, int depth)
+    private string PrintCallerTree(List<MethodCallInfo> callers, Dictionary<string, List<MethodCallInfo>> tree, SCG.HashSet<string> printed, int depth)
     {
         var result = "";
         var indent = new string(' ', depth * 2);
@@ -1896,65 +1875,75 @@ public class McpJsonRpcServer
         
         try
         {
-            var references = await _workspaceManager.FindReferencesAsync(symbolName, symbolType, containerName, workspacePath);
-            
-            if (!references.Any())
-            {
-                return new
+            var result = await _workspaceManager.FindReferencesAsync(symbolName, symbolType, containerName, workspacePath);
+
+            return result.Match(
+                Right: references =>
                 {
-                    content = new[]
+                    if (!references.Any())
                     {
-                        new
+                        return (object)new
                         {
-                            type = "text",
-                            text = $"No references found for {symbolType} '{symbolName}'"
-                        }
+                            content = new[]
+                            {
+                                new
+                                {
+                                    type = "text",
+                                    text = $"No references found for {symbolType} '{symbolName}'"
+                                }
+                            }
+                        };
                     }
-                };
-            }
-            
-            // Format results
-            var report = $"Found {references.Count} references to {symbolType} '{symbolName}':\n\n";
-            
-            // Group by file
-            var byFile = references.GroupBy(r => r.FilePath).OrderBy(g => g.Key);
-            
-            foreach (var fileGroup in byFile)
-            {
-                report += $"📄 {fileGroup.Key}\n";
-                foreach (var reference in fileGroup.OrderBy(r => r.Line))
-                {
-                    report += $"  Line {reference.Line}:{reference.Column} - {reference.Context}\n";
-                }
-                report += "\n";
-            }
-            
-            return new
-            {
-                content = new[]
-                {
-                    new
+
+                    // Format results
+                    var report = $"Found {references.Count} references to {symbolType} '{symbolName}':\n\n";
+
+                    // Group by file
+                    var byFile = references.GroupBy(r => r.FilePath).OrderBy(g => g.Key);
+
+                    foreach (var fileGroup in byFile)
                     {
-                        type = "text",
-                        text = report
+                        report += $"📄 {fileGroup.Key}\n";
+                        foreach (var reference in fileGroup.OrderBy(r => r.Line))
+                        {
+                            report += $"  Line {reference.Line}:{reference.Column} - {reference.Context}\n";
+                        }
+                        report += "\n";
                     }
+
+                    return (object)new
+                    {
+                        content = new[]
+                        {
+                            new
+                            {
+                                type = "text",
+                                text = report
+                            }
+                        }
+                    };
+                },
+                Left: error =>
+                {
+                    _logger.LogWarning("Find references error: {Code} - {Message}", error.Code, error.Message);
+                    return (object)new
+                    {
+                        content = new[]
+                        {
+                            new
+                            {
+                                type = "text",
+                                text = $"Error finding references: {error.Message}"
+                            }
+                        }
+                    };
                 }
-            };
+            );
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to find references for {SymbolType} {SymbolName}", symbolType, symbolName);
-            return new
-            {
-                content = new[]
-                {
-                    new
-                    {
-                        type = "text",
-                        text = $"Error finding references: {ex.Message}"
-                    }
-                }
-            };
+            return CreateErrorResponse($"Error finding references: {ex.Message}");
         }
     }
     
@@ -2431,110 +2420,6 @@ public class McpJsonRpcServer
                     {
                         type = "text",
                         text = $"Error editing code: {ex.Message}"
-                    }
-                }
-            };
-        }
-    }
-    
-    private async Task<object> FixPatternAsync(JsonElement? args)
-    {
-        // DEPRECATED: This tool represents a monolithic refactoring approach.
-        // Refactorings should be implemented as agent workflows using primitive tools.
-        // See docs/REFACTORING_AS_AGENTS.md and docs/agents/ for the new approach.
-        // This method is retained for backward compatibility only.
-        
-        var findPattern = args?.GetProperty("findPattern").GetString();
-        var replacePattern = args?.GetProperty("replacePattern").GetString();
-        var patternType = args?.GetProperty("patternType").GetString();
-        
-        if (string.IsNullOrEmpty(findPattern) || string.IsNullOrEmpty(replacePattern) || string.IsNullOrEmpty(patternType))
-        {
-            return new
-            {
-                content = new[]
-                {
-                    new
-                    {
-                        type = "text",
-                        text = "Error: Find pattern, replace pattern, and pattern type are required"
-                    }
-                }
-            };
-        }
-        
-        var workspacePath = args?.TryGetProperty("workspacePath", out var ws) == true ? ws.GetString() : null;
-        var preview = args?.TryGetProperty("preview", out var prev) == true && prev.GetBoolean();
-        
-        try
-        {
-            var result = await _workspaceManager.FixPatternAsync(findPattern, replacePattern, patternType, workspacePath, preview);
-            
-            if (!result.Success)
-            {
-                return new
-                {
-                    content = new[]
-                    {
-                        new
-                        {
-                            type = "text",
-                            text = $"Error: {result.Error}"
-                        }
-                    }
-                };
-            }
-            
-            // Format results
-            var report = $"Pattern Fix: {patternType}\n";
-            report += $"Find: {findPattern}\n";
-            report += $"Replace: {replacePattern}\n";
-            report += $"Status: {(preview ? "Preview" : "Applied")}\n\n";
-            
-            if (result.Fixes.Any())
-            {
-                report += $"Found {result.Fixes.Count} matches:\n\n";
-                
-                foreach (var fix in result.Fixes.OrderBy(f => f.FilePath).ThenBy(f => f.Line))
-                {
-                    report += $"📄 {fix.FilePath}:{fix.Line}\n";
-                    report += $"  Before: {fix.OriginalCode}\n";
-                    report += $"  After:  {fix.ReplacementCode}\n";
-                    if (!string.IsNullOrEmpty(fix.Description))
-                    {
-                        report += $"  Note:   {fix.Description}\n";
-                    }
-                    report += "\n";
-                }
-            }
-            else
-            {
-                report += "No patterns found to fix.";
-            }
-            
-            return new
-            {
-                content = new[]
-                {
-                    new
-                    {
-                        type = "text",
-                        text = report
-                    }
-                }
-            };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to fix pattern {Pattern}", findPattern);
-            return new
-            {
-                content = new[]
-                {
-                    new
-                    {
-                        type = "text",
-                        text = $"Error fixing pattern: {ex.Message}"
                     }
                 }
             };
@@ -3356,20 +3241,27 @@ public class McpJsonRpcServer
             
             if (string.IsNullOrEmpty(filePath))
                 return CreateErrorResponse("File path is required");
-                
+
             var result = await _workspaceManager.GetStatementContextAsync(filePath, line, column, workspaceId);
-            
-            return new
-            {
-                content = new[]
+
+            return result.Match(
+                Right: ctx => (object)new
                 {
-                    new
+                    content = new[]
                     {
-                        type = "text",
-                        text = JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true })
+                        new
+                        {
+                            type = "text",
+                            text = JsonSerializer.Serialize(ctx, new JsonSerializerOptions { WriteIndented = true })
+                        }
                     }
+                },
+                Left: error =>
+                {
+                    _logger.LogWarning("Statement context error: {Code} - {Message}", error.Code, error.Message);
+                    return CreateErrorResponse($"Error getting statement context: {error.Message}");
                 }
-            };
+            );
         }
         catch (Exception ex)
         {
@@ -3419,18 +3311,25 @@ public class McpJsonRpcServer
             // Call the workspace manager
             var result = await _workspaceManager.GetDataFlowAnalysisAsync(
                 filePath, startLine, startColumn, endLine, endColumn, includeControlFlow, workspaceId);
-            
-            return new
-            {
-                content = new[]
+
+            return result.Match(
+                Right: data => (object)new
                 {
-                    new
+                    content = new[]
                     {
-                        type = "text",
-                        text = JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true })
+                        new
+                        {
+                            type = "text",
+                            text = JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true })
+                        }
                     }
+                },
+                Left: error =>
+                {
+                    _logger.LogWarning("Data flow error: {Code} - {Message}", error.Code, error.Message);
+                    return CreateErrorResponse($"Error getting data flow analysis: {error.Message}");
                 }
-            };
+            );
         }
         catch (Exception ex)
         {
@@ -3448,7 +3347,7 @@ public class McpJsonRpcServer
         try
         {
             // Get the list of currently loaded workspace IDs from DotnetWorkspaceManager
-            var activeWorkspaceIds = new HashSet<string>();
+            var activeWorkspaceIds = new SCG.HashSet<string>();
             
             if (roslynStatus.Workspaces != null)
             {

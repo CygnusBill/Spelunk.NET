@@ -160,7 +160,7 @@ spelunk sse restart
 
 ### Configuration
 
-Configure allowed directories in your user config file:
+Configure allowed directories and server behavior in your user config file:
 - **Unix/Linux/macOS**: `~/.spelunk/config.json`
 - **Windows**: `%USERPROFILE%\.spelunk\config.json`
 
@@ -171,7 +171,18 @@ Configure allowed directories in your user config file:
     "AllowedPaths": [
       "/Users/yourname/Repos",
       "/path/to/your/projects"
-    ]
+    ],
+    "Logging": {
+      "MinimumLevel": "Information"
+    },
+    "Server": {
+      "RequestTimeoutSeconds": 120,
+      "MaxWorkspaces": 10,
+      "WorkspaceTimeoutMinutes": 15,
+      "HistoryTimeoutHours": 1,
+      "MaxMarkers": 100,
+      "CleanupIntervalMinutes": 10
+    }
   }
 }
 ```
@@ -184,10 +195,30 @@ Configure allowed directories in your user config file:
       "C:\\Users\\yourname\\Repos",
       "C:\\Projects",
       "D:\\Code"
-    ]
+    ],
+    "Server": {
+      "WorkspaceTimeoutMinutes": 30,
+      "MaxMarkers": 200
+    }
   }
 }
 ```
+
+#### Configuration Options
+
+**Required:**
+- `AllowedPaths` - List of directories the server can access
+
+**Server Options** (all optional with sensible defaults):
+- `RequestTimeoutSeconds` - Request timeout (default: 120, range: 1-3600)
+- `MaxWorkspaces` - Maximum concurrent workspaces (default: 10, range: 1-100)
+- `WorkspaceTimeoutMinutes` - Idle timeout before unloading (default: 15, range: 1-1440)
+- `HistoryTimeoutHours` - History retention (default: 1, range: 1-168)
+- `MaxMarkers` - Maximum ephemeral markers per session (default: 100, range: 1-10000)
+- `CleanupIntervalMinutes` - Cleanup timer interval (default: 10, range: 1-60)
+
+**Logging Options:**
+- `MinimumLevel` - Log level: Trace, Debug, Information, Warning, Error, Critical (default: Information)
 
 Or use environment variables:
 

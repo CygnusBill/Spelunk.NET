@@ -11,10 +11,15 @@ using VBSyntaxKind = Microsoft.CodeAnalysis.VisualBasic.SyntaxKind;
 using Microsoft.CodeAnalysis.Rename;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using LanguageExt;
+using static LanguageExt.Prelude;
+using SCG = System.Collections.Generic;
 using Spelunk.Server.SpelunkPath;
 using Spelunk.Server.LanguageHandlers;
+using Spelunk.Server.Configuration;
 // using Spelunk.Server.FSharp; // Temporarily commented for diagnostic PoC
 
 namespace Spelunk.Server;
@@ -22,21 +27,28 @@ namespace Spelunk.Server;
 public class DotnetWorkspaceManager : IDisposable
 {
     private readonly ILogger<DotnetWorkspaceManager> _logger;
+    private readonly SpelunkOptions _options;
     private readonly Dictionary<string, WorkspaceEntry> _workspaces = new();
     private readonly Dictionary<string, string> _workspaceHistory = new(); // ID -> Path mapping for recently cleaned workspaces
-    private readonly MarkerManager _markerManager = new();
+    private readonly MarkerManager _markerManager;
     private readonly Dictionary<string, StatementTrackingInfo> _statementTracker = new(); // Session-scoped statement ID tracking
     // private readonly FSharpProjectTracker _fsharpTracker = new(); // Disabled for diagnostic PoC
     private readonly Timer _cleanupTimer;
-    private readonly TimeSpan _workspaceTimeout = TimeSpan.FromMinutes(15);
-    private readonly TimeSpan _historyTimeout = TimeSpan.FromHours(1);
+    private readonly TimeSpan _workspaceTimeout;
+    private readonly TimeSpan _historyTimeout;
     private static bool _msBuildRegistered = false;
     private bool _disposed = false;
-    
-    public DotnetWorkspaceManager(ILogger<DotnetWorkspaceManager> logger)
+
+    public DotnetWorkspaceManager(ILogger<DotnetWorkspaceManager> logger, IOptions<SpelunkOptions> options)
     {
         _logger = logger;
-        
+        _options = options.Value;
+
+        // Initialize configuration values
+        _workspaceTimeout = TimeSpan.FromMinutes(_options.Server.WorkspaceTimeoutMinutes);
+        _historyTimeout = TimeSpan.FromHours(_options.Server.HistoryTimeoutHours);
+        _markerManager = new MarkerManager(_options.Server.MaxMarkers);
+
         // Register MSBuild once per process
         if (!MSBuildLocator.IsRegistered && !_msBuildRegistered)
         {
@@ -55,9 +67,10 @@ public class DotnetWorkspaceManager : IDisposable
         {
             _logger.LogInformation("MSBuild already registered, skipping registration");
         }
-        
-        // Start cleanup timer (runs every 15 minutes for debugging, should be 5 minutes for production)
-        _cleanupTimer = new Timer(CleanupStaleWorkspaces, null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(15));
+
+        // Start cleanup timer with configurable interval
+        var cleanupInterval = TimeSpan.FromMinutes(_options.Server.CleanupIntervalMinutes);
+        _cleanupTimer = new Timer(CleanupStaleWorkspaces, null, TimeSpan.FromMinutes(1), cleanupInterval);
     }
     
     public async Task<(bool success, string message, Workspace? workspace, string workspaceId)> LoadWorkspaceAsync(string path, string? workspaceId = null)
@@ -268,8 +281,11 @@ public class DotnetWorkspaceManager : IDisposable
         return _workspaces.Values.Select(e => e.Workspace);
     }
     
-    public Workspace? GetWorkspace(string workspaceId)
+    public Workspace? GetWorkspace(string? workspaceId)
     {
+        if (workspaceId == null)
+            return null;
+
         if (_workspaces.TryGetValue(workspaceId, out var entry))
         {
             entry.Touch(); // Update access time
@@ -615,16 +631,24 @@ public class DotnetWorkspaceManager : IDisposable
                             // For VB.NET, handle FieldDeclarationSyntax
                             else if (fieldDecl is VB.FieldDeclarationSyntax vbField)
                             {
+                                // Note: VB.NET field symbol resolution is complex due to Roslyn API limitations
+                                // GetDeclaredSymbol on VB syntax nodes often returns null - this is a known limitation
+                                // We use a workaround by navigating through the syntax tree to the containing type
+                                var typeBlock = vbField.Ancestors().OfType<VB.TypeBlockSyntax>().FirstOrDefault();
+                                if (typeBlock == null) continue;
+
+#pragma warning disable RS1039 // GetDeclaredSymbol on VB TypeStatementSyntax - no better alternative available
+                                var typeSymbol = semanticModel.GetDeclaredSymbol(typeBlock.BlockStatement) as INamedTypeSymbol;
+#pragma warning restore RS1039
+                                if (typeSymbol == null) continue;
+
                                 foreach (var declarator in vbField.Declarators)
                                 {
                                     foreach (var name in declarator.Names)
                                     {
-                                        // For VB.NET fields, get symbol from the declarator, not the modified identifier
-                                        var fieldSymbol = semanticModel.GetDeclaredSymbol(declarator) as IFieldSymbol;
+                                        // Find the field symbol by name in the containing type
+                                        var fieldSymbol = typeSymbol.GetMembers(name.Identifier.Text).OfType<IFieldSymbol>().FirstOrDefault();
                                         if (fieldSymbol == null) continue;
-
-                                        // For multi-variable declarators, check if this specific name matches
-                                        if (fieldSymbol.Name != name.Identifier.Text) continue;
 
                                         // Check if field name matches pattern
                                         if (!propertyRegex.IsMatch(fieldSymbol.Name)) continue;
@@ -844,7 +868,7 @@ public class DotnetWorkspaceManager : IDisposable
                     await FindDirectCallsAsync(targetMethodBody, semanticModel, result.DirectCalls, targetProject.Name);
                     
                     // Build call tree
-                    var visited = new HashSet<string>();
+                    var visited = new SCG.HashSet<string>();
                     await BuildCallTreeAsync(targetMethod, solution, result.CallTree, visited, 0, 5);
                 }
             }
@@ -880,7 +904,7 @@ public class DotnetWorkspaceManager : IDisposable
         }
     }
     
-    private async Task BuildCallTreeAsync(IMethodSymbol method, Solution solution, Dictionary<string, List<MethodCallInfo>> callTree, HashSet<string> visited, int depth, int maxDepth)
+    private async Task BuildCallTreeAsync(IMethodSymbol method, Solution solution, Dictionary<string, List<MethodCallInfo>> callTree, SCG.HashSet<string> visited, int depth, int maxDepth)
     {
         if (depth >= maxDepth) return;
         
@@ -1032,7 +1056,7 @@ public class DotnetWorkspaceManager : IDisposable
             }
             
             // Build caller tree
-            var visited = new HashSet<string>();
+            var visited = new SCG.HashSet<string>();
             await BuildCallerTreeAsync(targetMethod, solution, result.CallerTree, visited, 0, 5);
         }
         
@@ -1045,7 +1069,7 @@ public class DotnetWorkspaceManager : IDisposable
         return result;
     }
     
-    private async Task BuildCallerTreeAsync(IMethodSymbol method, Solution solution, Dictionary<string, List<MethodCallInfo>> callerTree, HashSet<string> visited, int depth, int maxDepth)
+    private async Task BuildCallerTreeAsync(IMethodSymbol method, Solution solution, Dictionary<string, List<MethodCallInfo>> callerTree, SCG.HashSet<string> visited, int depth, int maxDepth)
     {
         if (depth >= maxDepth) return;
         
@@ -1139,22 +1163,26 @@ public class DotnetWorkspaceManager : IDisposable
         return $"{method.ContainingType.ToDisplayString()}.{method.Name}({parameters})";
     }
     
-    public async Task<List<ReferenceInfo>> FindReferencesAsync(string symbolName, string? symbolType = null, string? containerName = null, string? workspacePath = null)
+    public async Task<Either<SpelunkError, List<ReferenceInfo>>> FindReferencesAsync(string symbolName, string? symbolType = null, string? containerName = null, string? workspacePath = null)
     {
         var results = new List<ReferenceInfo>();
         var workspacesToSearch = GetWorkspacesToSearch(workspacePath);
-        
+
         // Check for unsupported symbol types that require special handling
-        if (symbolType.ToLower() == "local" || symbolType.ToLower() == "parameter")
+        if (symbolType != null && (symbolType.ToLower() == "local" || symbolType.ToLower() == "parameter"))
         {
-            throw new NotSupportedException($"Finding references for '{symbolType}' symbols is not currently supported. Local variables and parameters are scoped to their containing method and require specifying the method context. Consider using 'dotnet-find-statements' with a pattern to find usages within a specific scope.");
+            return OperationNotSupported.Create(
+                "find-references",
+                $"'{symbolType}' symbols require method context. Local variables and parameters are scoped to their containing method. Consider using 'spelunk-find-statements' with a pattern to find usages within a specific scope.");
         }
-        
+
         // Validate symbol type
         var validTypes = new[] { "type", "class", "interface", "struct", "enum", "delegate", "method", "property", "field" };
-        if (!validTypes.Contains(symbolType.ToLower()))
+        if (symbolType != null && !validTypes.Contains(symbolType.ToLower()))
         {
-            throw new ArgumentException($"Invalid symbolType '{symbolType}'. Must be one of: {string.Join(", ", validTypes)}");
+            return OperationNotSupported.Create(
+                "find-references",
+                $"Invalid symbolType '{symbolType}'. Must be one of: {string.Join(", ", validTypes)}");
         }
         
         bool symbolFound = false;
@@ -1210,18 +1238,12 @@ public class DotnetWorkspaceManager : IDisposable
             }
         }
         
-        // If no symbol was found, throw a helpful error
+        // If no symbol was found, return an error
         if (!symbolFound && results.Count == 0)
         {
-            var message = symbolType.ToLower() == "type" 
-                ? $"Symbol '{symbolName}' of type '{symbolType}' not found in the workspace."
-                : string.IsNullOrEmpty(containerName)
-                    ? $"Symbol '{symbolName}' of type '{symbolType}' not found. For methods, properties, and fields, you may need to specify the containerName parameter."
-                    : $"Symbol '{symbolName}' of type '{symbolType}' not found in container '{containerName}'.";
-            
-            throw new InvalidOperationException(message);
+            return SymbolNotFound.Create(symbolName, symbolType, containerName);
         }
-        
+
         return results;
     }
     
@@ -1266,21 +1288,39 @@ public class DotnetWorkspaceManager : IDisposable
             
             // Perform the operation
             SyntaxNode? modifiedRoot = null;
-            
+
             switch (operation.ToLower())
             {
                 case "add-method":
+                    if (className == null)
+                    {
+                        result.Error = "className parameter is required for add-method operation";
+                        result.Success = false;
+                        return result;
+                    }
                     (modifiedRoot, result) = await AddMethodToClass(root, className, code ?? "", document);
                     break;
-                    
+
                 case "add-property":
+                    if (className == null)
+                    {
+                        result.Error = "className parameter is required for add-property operation";
+                        result.Success = false;
+                        return result;
+                    }
                     (modifiedRoot, result) = await AddPropertyToClass(root, className, code ?? "", document);
                     break;
-                    
+
                 case "make-async":
+                    if (className == null)
+                    {
+                        result.Error = "className parameter is required for make-async operation";
+                        result.Success = false;
+                        return result;
+                    }
                     (modifiedRoot, result) = await MakeMethodAsync(root, className, methodName ?? "", document);
                     break;
-                    
+
                 default:
                     result.Error = $"Unknown operation: {operation}";
                     result.Success = false;
@@ -1752,7 +1792,7 @@ public class DotnetWorkspaceManager : IDisposable
         }
         
         // Also find all derived types recursively to build the full hierarchy
-        var allDerived = new HashSet<string>(results.Select(r => r.DerivedType));
+        var allDerived = new SCG.HashSet<string>(results.Select(r => r.DerivedType));
         var toProcess = new Queue<DerivedTypeInfo>(results);
         
         while (toProcess.Count > 0)
@@ -1779,7 +1819,15 @@ public class DotnetWorkspaceManager : IDisposable
     {
         var result = new RenameResult { Success = true };
         var workspacesToSearch = GetWorkspacesToSearch(workspacePath);
-        
+
+        // Validate symbol type
+        if (string.IsNullOrWhiteSpace(symbolType))
+        {
+            result.Error = "symbolType parameter is required for rename operation";
+            result.Success = false;
+            return result;
+        }
+
         // Validate new name
         if (string.IsNullOrWhiteSpace(newName))
         {
@@ -1789,7 +1837,7 @@ public class DotnetWorkspaceManager : IDisposable
         }
         
         // Check if new name is a C# keyword without @ prefix
-        var keywords = new HashSet<string> 
+        var keywords = new SCG.HashSet<string> 
         { 
             "abstract", "as", "base", "bool", "break", "byte", "case", "catch", "char", "checked",
             "class", "const", "continue", "decimal", "default", "delegate", "do", "double", "else",
@@ -1866,7 +1914,7 @@ public class DotnetWorkspaceManager : IDisposable
                 
                 // Safety check: Is this a system/framework type?
                 var assemblyName = targetSymbol.ContainingAssembly?.Name ?? "";
-                var dangerousAssemblies = new HashSet<string> 
+                var dangerousAssemblies = new SCG.HashSet<string> 
                 { 
                     "mscorlib", "System", "System.Core", "System.Runtime", "System.Collections",
                     "System.Linq", "System.Threading", "System.IO", "System.Net", "Microsoft.CSharp",
@@ -1991,491 +2039,6 @@ public class DotnetWorkspaceManager : IDisposable
         }
         
         return result;
-    }
-    
-    public async Task<PatternFixResult> FixPatternAsync(string findPattern, string replacePattern, string patternType, string? workspacePath, bool preview)
-    {
-        var result = new PatternFixResult { Success = true };
-        
-        try
-        {
-            // Parse transformation type
-            TransformationType transformType;
-            Dictionary<string, object> parameters = new();
-            
-            // Handle legacy pattern types for backward compatibility
-            switch (patternType.ToLower())
-            {
-                case "method-call":
-                    transformType = TransformationType.Custom;
-                    parameters["legacyType"] = "method-call";
-                    break;
-                case "async-usage":
-                    transformType = TransformationType.ConvertToAsync;
-                    break;
-                case "null-check":
-                    transformType = TransformationType.AddNullCheck;
-                    break;
-                case "string-format":
-                    transformType = TransformationType.ConvertToInterpolation;
-                    break;
-                case "add-null-check":
-                    transformType = TransformationType.AddNullCheck;
-                    break;
-                case "convert-to-async":
-                    transformType = TransformationType.ConvertToAsync;
-                    break;
-                case "extract-variable":
-                    transformType = TransformationType.ExtractVariable;
-                    break;
-                case "simplify-conditional":
-                    transformType = TransformationType.SimplifyConditional;
-                    break;
-                case "parameterize-query":
-                    transformType = TransformationType.ParameterizeQuery;
-                    break;
-                case "convert-to-interpolation":
-                    transformType = TransformationType.ConvertToInterpolation;
-                    break;
-                case "add-await":
-                    transformType = TransformationType.AddAwait;
-                    break;
-                case "custom":
-                    transformType = TransformationType.Custom;
-                    parameters["replacement"] = replacePattern;
-                    break;
-                default:
-                    // Assume it's a SpelunkPath pattern
-                    transformType = TransformationType.Custom;
-                    parameters["replacement"] = replacePattern;
-                    break;
-            }
-            
-            // Create transformation rule
-            var rule = new TransformationRule
-            {
-                Name = patternType,
-                Type = transformType,
-                SpelunkPathPattern = findPattern,
-                Parameters = parameters
-            };
-            
-            // If it looks like a SpelunkPath pattern, use statement-level search
-            bool useSpelunkPath = findPattern.StartsWith("//") || findPattern.Contains("[@");
-            
-            if (useSpelunkPath)
-            {
-                // Use SpelunkPath to find statements
-                var statementsResult = await FindStatementsAsync(
-                    findPattern, 
-                    null, 
-                    "spelunkpath", 
-                    true, 
-                    false, 
-                    workspacePath);
-                
-                foreach (var statementInfo in statementsResult.Statements)
-                {
-                    // Get semantic context for the statement
-                    var context = await GetStatementContextAsync(
-                        statementInfo.Location.File,
-                        statementInfo.Location.Line,
-                        statementInfo.Location.Column,
-                        workspacePath);
-                    
-                    // Get the document and semantic model
-                    var workspace = GetWorkspace(workspacePath);
-                    var solution = workspace?.CurrentSolution;
-                    var document = solution?.Projects
-                        .SelectMany(p => p.Documents)
-                        .FirstOrDefault(d => d.FilePath == statementInfo.Location.File);
-                    
-                    if (document != null)
-                    {
-                        var semanticModel = await document.GetSemanticModelAsync();
-                        var sourceText = await document.GetTextAsync();
-                        var root = await document.GetSyntaxRootAsync();
-                        
-                        if (semanticModel != null && sourceText != null && root != null)
-                        {
-                            // Find the statement node
-                            var position = sourceText.Lines.GetPosition(new LinePosition(
-                                statementInfo.Location.Line - 1,
-                                statementInfo.Location.Column - 1));
-                            var node = root.FindNode(new TextSpan(position, 0));
-                            var statement = node.AncestorsAndSelf().OfType<CS.StatementSyntax>().FirstOrDefault();
-                            
-                            if (statement != null)
-                            {
-                                var transformer = new StatementTransformer(semanticModel, sourceText);
-                                var transformed = await transformer.TransformStatementAsync(statement, context, rule);
-                                
-                                if (!string.IsNullOrEmpty(transformed))
-                                {
-                                    result.Fixes.Add(new PatternFix
-                                    {
-                                        FilePath = statementInfo.Location.File,
-                                        Line = statementInfo.Location.Line,
-                                        Column = statementInfo.Location.Column,
-                                        OriginalCode = statementInfo.Text,
-                                        ReplacementCode = transformed,
-                                        Description = $"Apply {transformType} transformation"
-                                    });
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            else
-            {
-                // Fall back to text-based search for simple patterns
-                var statementsResult = await FindStatementsAsync(
-                    findPattern, 
-                    null, 
-                    "text", 
-                    true, 
-                    false, 
-                    workspacePath);
-                
-                foreach (var statementInfo in statementsResult.Statements)
-                {
-                    result.Fixes.Add(new PatternFix
-                    {
-                        FilePath = statementInfo.Location.File,
-                        Line = statementInfo.Location.Line,
-                        Column = statementInfo.Location.Column,
-                        OriginalCode = statementInfo.Text,
-                        ReplacementCode = statementInfo.Text.Replace(findPattern, replacePattern),
-                        Description = "Text replacement"
-                    });
-                }
-            }
-            
-            // Apply fixes if not preview
-            if (!preview && result.Fixes.Any())
-            {
-                // Use statement-level operations to apply fixes
-                foreach (var fix in result.Fixes.OrderByDescending(f => f.Line).ThenByDescending(f => f.Column))
-                {
-                    try
-                    {
-                        var replaceResult = await ReplaceStatementAsync(
-                            fix.FilePath,
-                            fix.Line,
-                            fix.Column,
-                            fix.ReplacementCode,
-                            true, // preserve comments
-                            workspacePath);
-                        
-                        if (!replaceResult.Success)
-                        {
-                            _logger.LogWarning($"Failed to apply fix at {fix.FilePath}:{fix.Line}:{fix.Column} - {replaceResult.Error}");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, $"Error applying fix at {fix.FilePath}:{fix.Line}:{fix.Column}");
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            result.Success = false;
-            result.Error = ex.Message;
-        }
-        
-        return result;
-    }
-    
-    
-    private async Task FindAsyncPatterns(SyntaxNode root, SemanticModel semanticModel, SourceText sourceText, string filePath, string findPattern, string replacePattern, List<PatternFix> fixes)
-    {
-        var language = root.Language;
-        
-        // Find async methods without await
-        if (findPattern == "async-without-await")
-        {
-            if (language == LanguageNames.CSharp)
-            {
-                var methods = root.DescendantNodes().OfType<CS.MethodDeclarationSyntax>()
-                    .Where(m => m.Modifiers.Any(mod => mod.IsKind(SyntaxKind.AsyncKeyword)));
-                
-                foreach (var method in methods)
-                {
-                    var hasAwait = method.DescendantNodes().OfType<CS.AwaitExpressionSyntax>().Any();
-                    if (!hasAwait)
-                    {
-                        var lineSpan = method.Identifier.GetLocation().GetLineSpan();
-                        
-                        fixes.Add(new PatternFix
-                        {
-                            FilePath = filePath,
-                            Line = lineSpan.StartLinePosition.Line + 1,
-                            Column = lineSpan.StartLinePosition.Character + 1,
-                            OriginalCode = "async",
-                            ReplacementCode = "",
-                            Description = $"Remove unnecessary async modifier from {method.Identifier.Text}"
-                        });
-                    }
-                }
-            }
-            else if (language == LanguageNames.VisualBasic)
-            {
-                var methods = root.DescendantNodes().OfType<VB.MethodBlockSyntax>()
-                    .Where(m => m.SubOrFunctionStatement.Modifiers.Any(mod => mod.IsKind(VBSyntaxKind.AsyncKeyword)));
-                
-                foreach (var method in methods)
-                {
-                    var hasAwait = method.DescendantNodes().OfType<VB.AwaitExpressionSyntax>().Any();
-                    if (!hasAwait)
-                    {
-                        var lineSpan = method.SubOrFunctionStatement.Identifier.GetLocation().GetLineSpan();
-                        
-                        fixes.Add(new PatternFix
-                        {
-                            FilePath = filePath,
-                            Line = lineSpan.StartLinePosition.Line + 1,
-                            Column = lineSpan.StartLinePosition.Character + 1,
-                            OriginalCode = "Async",
-                            ReplacementCode = "",
-                            Description = $"Remove unnecessary Async modifier from {method.SubOrFunctionStatement.Identifier.Text}"
-                        });
-                    }
-                }
-            }
-        }
-        // Find missing await on async calls
-        else if (findPattern == "missing-await")
-        {
-            if (language == LanguageNames.CSharp)
-            {
-                var invocations = root.DescendantNodes().OfType<CS.InvocationExpressionSyntax>();
-                
-                foreach (var invocation in invocations)
-                {
-                    var symbol = semanticModel.GetSymbolInfo(invocation).Symbol as IMethodSymbol;
-                    if (symbol != null && symbol.ReturnType.Name == "Task" && 
-                        !invocation.Parent.IsKind(SyntaxKind.AwaitExpression))
-                    {
-                        var lineSpan = invocation.GetLocation().GetLineSpan();
-                        
-                        fixes.Add(new PatternFix
-                        {
-                            FilePath = filePath,
-                            Line = lineSpan.StartLinePosition.Line + 1,
-                            Column = lineSpan.StartLinePosition.Character + 1,
-                            OriginalCode = invocation.ToString(),
-                            ReplacementCode = $"await {invocation}",
-                            Description = $"Add missing await to async call"
-                        });
-                    }
-                }
-            }
-            else if (language == LanguageNames.VisualBasic)
-            {
-                var invocations = root.DescendantNodes().OfType<VB.InvocationExpressionSyntax>();
-                
-                foreach (var invocation in invocations)
-                {
-                    var symbol = semanticModel.GetSymbolInfo(invocation).Symbol as IMethodSymbol;
-                    if (symbol != null && symbol.ReturnType.Name == "Task" && 
-                        !invocation.Parent.IsKind(VBSyntaxKind.AwaitExpression))
-                    {
-                        var lineSpan = invocation.GetLocation().GetLineSpan();
-                        
-                        fixes.Add(new PatternFix
-                        {
-                            FilePath = filePath,
-                            Line = lineSpan.StartLinePosition.Line + 1,
-                            Column = lineSpan.StartLinePosition.Character + 1,
-                            OriginalCode = invocation.ToString(),
-                            ReplacementCode = $"Await {invocation}",
-                            Description = $"Add missing Await to async call"
-                        });
-                    }
-                }
-            }
-        }
-    }
-    
-    private async Task FindNullCheckPatterns(SyntaxNode root, SemanticModel semanticModel, SourceText sourceText, string filePath, string findPattern, string replacePattern, List<PatternFix> fixes)
-    {
-        var language = root.Language;
-        
-        // Find old-style null checks and replace with null-conditional operator
-        if (findPattern == "if-null-check")
-        {
-            if (language == LanguageNames.CSharp)
-            {
-                var ifStatements = root.DescendantNodes().OfType<CS.IfStatementSyntax>();
-                
-                foreach (var ifStatement in ifStatements)
-                {
-                    // Look for pattern: if (x != null) x.Method()
-                    if (ifStatement.Condition is CS.BinaryExpressionSyntax binary &&
-                        binary.IsKind(SyntaxKind.NotEqualsExpression) &&
-                        binary.Right.IsKind(SyntaxKind.NullLiteralExpression))
-                    {
-                        var identifier = binary.Left.ToString();
-                        var lineSpan = ifStatement.GetLocation().GetLineSpan();
-                        
-                        // Check if the body uses the same identifier
-                        var bodyText = ifStatement.Statement.ToString();
-                        if (bodyText.Contains($"{identifier}."))
-                        {
-                            fixes.Add(new PatternFix
-                            {
-                                FilePath = filePath,
-                                Line = lineSpan.StartLinePosition.Line + 1,
-                                Column = lineSpan.StartLinePosition.Character + 1,
-                                OriginalCode = ifStatement.ToString(),
-                                ReplacementCode = bodyText.Replace($"{identifier}.", $"{identifier}?.").Trim('{', '}', ' ', '\n', '\r'),
-                                Description = "Replace null check with null-conditional operator"
-                            });
-                        }
-                    }
-                }
-            }
-            else if (language == LanguageNames.VisualBasic)
-            {
-                var ifStatements = root.DescendantNodes().OfType<VB.MultiLineIfBlockSyntax>();
-                
-                foreach (var ifStatement in ifStatements)
-                {
-                    // Look for pattern: If x IsNot Nothing Then x.Method()
-                    if (ifStatement.IfStatement.Condition is VB.BinaryExpressionSyntax binary &&
-                        binary.IsKind(VBSyntaxKind.IsNotExpression) &&
-                        binary.Right.IsKind(VBSyntaxKind.NothingLiteralExpression))
-                    {
-                        var identifier = binary.Left.ToString();
-                        var lineSpan = ifStatement.GetLocation().GetLineSpan();
-                        
-                        // Check if the body uses the same identifier
-                        var bodyText = string.Join(" ", ifStatement.Statements.Select(s => s.ToString()));
-                        if (bodyText.Contains($"{identifier}."))
-                        {
-                            fixes.Add(new PatternFix
-                            {
-                                FilePath = filePath,
-                                Line = lineSpan.StartLinePosition.Line + 1,
-                                Column = lineSpan.StartLinePosition.Character + 1,
-                                OriginalCode = ifStatement.ToString(),
-                                ReplacementCode = bodyText.Replace($"{identifier}.", $"{identifier}?.").Trim(),
-                                Description = "Replace null check with null-conditional operator"
-                            });
-                        }
-                    }
-                }
-                
-                // Also check single-line If statements
-                var singleLineIfs = root.DescendantNodes().OfType<VB.SingleLineIfStatementSyntax>();
-                
-                foreach (var ifStatement in singleLineIfs)
-                {
-                    // Look for pattern: If x IsNot Nothing Then x.Method()
-                    if (ifStatement.Condition is VB.BinaryExpressionSyntax binary &&
-                        binary.IsKind(VBSyntaxKind.IsNotExpression) &&
-                        binary.Right.IsKind(VBSyntaxKind.NothingLiteralExpression))
-                    {
-                        var identifier = binary.Left.ToString();
-                        var lineSpan = ifStatement.GetLocation().GetLineSpan();
-                        
-                        // Check if the statements use the same identifier
-                        var bodyText = string.Join(" ", ifStatement.Statements.Select(s => s.ToString()));
-                        if (bodyText.Contains($"{identifier}."))
-                        {
-                            fixes.Add(new PatternFix
-                            {
-                                FilePath = filePath,
-                                Line = lineSpan.StartLinePosition.Line + 1,
-                                Column = lineSpan.StartLinePosition.Character + 1,
-                                OriginalCode = ifStatement.ToString(),
-                                ReplacementCode = bodyText.Replace($"{identifier}.", $"{identifier}?."),
-                                Description = "Replace null check with null-conditional operator"
-                            });
-                        }
-                    }
-                }
-            }
-        }
-    }
-    
-    private async Task FindStringFormatPatterns(SyntaxNode root, SemanticModel semanticModel, SourceText sourceText, string filePath, string findPattern, string replacePattern, List<PatternFix> fixes)
-    {
-        var language = root.Language;
-        
-        // Find string.Format and replace with interpolation
-        if (findPattern == "string.Format" || findPattern == "String.Format")
-        {
-            if (language == LanguageNames.CSharp)
-            {
-                var invocations = root.DescendantNodes().OfType<CS.InvocationExpressionSyntax>()
-                    .Where(i => i.Expression.ToString() == "string.Format" || i.Expression.ToString() == "String.Format");
-                
-                foreach (var invocation in invocations)
-                {
-                    if (invocation.ArgumentList.Arguments.Count >= 2)
-                    {
-                        var formatString = invocation.ArgumentList.Arguments[0].ToString().Trim('"');
-                        var args = invocation.ArgumentList.Arguments.Skip(1).Select(a => a.ToString()).ToList();
-                        
-                        // Simple conversion to string interpolation
-                        var interpolated = formatString;
-                        for (int i = 0; i < args.Count; i++)
-                        {
-                            interpolated = interpolated.Replace($"{{{i}}}", $"{{{args[i]}}}");
-                        }
-                        
-                        var lineSpan = invocation.GetLocation().GetLineSpan();
-                        
-                        fixes.Add(new PatternFix
-                        {
-                            FilePath = filePath,
-                            Line = lineSpan.StartLinePosition.Line + 1,
-                            Column = lineSpan.StartLinePosition.Character + 1,
-                            OriginalCode = invocation.ToString(),
-                            ReplacementCode = $"$\"{interpolated}\"",
-                            Description = "Convert string.Format to string interpolation"
-                        });
-                    }
-                }
-            }
-            else if (language == LanguageNames.VisualBasic)
-            {
-                var invocations = root.DescendantNodes().OfType<VB.InvocationExpressionSyntax>()
-                    .Where(i => i.Expression.ToString() == "String.Format");
-                
-                foreach (var invocation in invocations)
-                {
-                    if (invocation.ArgumentList?.Arguments.Count >= 2)
-                    {
-                        var formatString = invocation.ArgumentList.Arguments[0].ToString().Trim('"');
-                        var args = invocation.ArgumentList.Arguments.Skip(1).Select(a => a.ToString()).ToList();
-                        
-                        // Simple conversion to string interpolation
-                        var interpolated = formatString;
-                        for (int i = 0; i < args.Count; i++)
-                        {
-                            interpolated = interpolated.Replace($"{{{i}}}", $"{{{args[i]}}}");
-                        }
-                        
-                        var lineSpan = invocation.GetLocation().GetLineSpan();
-                        
-                        fixes.Add(new PatternFix
-                        {
-                            FilePath = filePath,
-                            Line = lineSpan.StartLinePosition.Line + 1,
-                            Column = lineSpan.StartLinePosition.Character + 1,
-                            OriginalCode = invocation.ToString(),
-                            ReplacementCode = $"$\"{interpolated}\"",
-                            Description = "Convert String.Format to string interpolation"
-                        });
-                    }
-                }
-            }
-        }
     }
     
     private bool MatchesWildcardPattern(string text, string pattern)
@@ -3803,49 +3366,47 @@ public class DotnetWorkspaceManager : IDisposable
         return result;
     }
     
-    public async Task<StatementContextResult> GetStatementContextAsync(string filePath, int line, int column, string? workspaceId)
+    public async Task<Either<SpelunkError, StatementContextResult>> GetStatementContextAsync(string filePath, int line, int column, string? workspaceId)
     {
-        var result = new StatementContextResult();
-        
-        try
+        var workspacesToSearch = GetWorkspacesToSearch(workspaceId);
+        if (!workspacesToSearch.Any())
+            return WorkspaceNotFound.NoWorkspace(workspaceId);
+
+        var workspace = workspacesToSearch.First();
+        var solution = workspace.CurrentSolution;
+        var document = GetDocumentByPath(solution, filePath);
+
+        if (document == null)
+            return CodeEditFailed.FileNotFound(filePath);
+
+        var syntaxTree = await document.GetSyntaxTreeAsync();
+        if (syntaxTree == null)
+            return CodeEditFailed.ParseFailed(filePath);
+
+        var semanticModel = await document.GetSemanticModelAsync();
+        if (semanticModel == null)
+            return CodeEditFailed.SemanticModelFailed(filePath);
+
+        var sourceText = await document.GetTextAsync();
+        var position = sourceText.Lines.GetPosition(new LinePosition(line - 1, column - 1));
+
+        var root = await syntaxTree.GetRootAsync();
+        var node = root.FindToken(position).Parent;
+
+        // Find the statement node
+        var statement = node;
+        while (statement != null && !(statement is CS.StatementSyntax || statement is VB.StatementSyntax))
         {
-            var workspacesToSearch = GetWorkspacesToSearch(workspaceId);
-            if (!workspacesToSearch.Any())
-                throw new InvalidOperationException("No workspace loaded");
-            
-            var workspace = workspacesToSearch.First();
-            var solution = workspace.CurrentSolution;
-            var document = GetDocumentByPath(solution, filePath);
-            
-            if (document == null)
-                throw new InvalidOperationException($"File not found: {filePath}");
-                
-            var syntaxTree = await document.GetSyntaxTreeAsync();
-            if (syntaxTree == null)
-                throw new InvalidOperationException("Could not parse syntax tree");
-                
-            var semanticModel = await document.GetSemanticModelAsync();
-            if (semanticModel == null)
-                throw new InvalidOperationException("Could not get semantic model");
-                
-            var sourceText = await document.GetTextAsync();
-            var position = sourceText.Lines.GetPosition(new LinePosition(line - 1, column - 1));
-            
-            var root = await syntaxTree.GetRootAsync();
-            var node = root.FindToken(position).Parent;
-            
-            // Find the statement node
-            var statement = node;
-            while (statement != null && !(statement is CS.StatementSyntax || statement is VB.StatementSyntax))
-            {
-                statement = statement.Parent;
-            }
-            if (statement == null)
-                throw new InvalidOperationException($"No statement at position {line}:{column}");
-                
-            // Fill in statement info
-            var lineSpan = syntaxTree.GetLineSpan(statement.Span);
-            result.Statement = new StatementContextInfo
+            statement = statement.Parent;
+        }
+        if (statement == null)
+            return CodeEditFailed.NoStatement(filePath, line, column);
+
+        // Fill in statement info
+        var lineSpan = syntaxTree.GetLineSpan(statement.Span);
+        var result = new StatementContextResult
+        {
+            Statement = new StatementContextInfo
             {
                 Id = $"stmt-{Guid.NewGuid():N}",
                 Code = statement.ToString(),
@@ -3858,32 +3419,17 @@ public class DotnetWorkspaceManager : IDisposable
                     EndLine = lineSpan.EndLinePosition.Line + 1,
                     EndColumn = lineSpan.EndLinePosition.Character + 1
                 }
-            };
-            
+            },
             // Gather semantic information
-            result.SemanticInfo = GatherSemanticInfo(statement, semanticModel);
-            
+            SemanticInfo = GatherSemanticInfo(statement, semanticModel),
             // Gather context information
-            result.Context = GatherContextInfo(statement, semanticModel, position);
-            
+            Context = GatherContextInfo(statement, semanticModel, position),
             // Get diagnostics for this statement
-            result.Diagnostics = GatherDiagnostics(statement, semanticModel);
-            
+            Diagnostics = GatherDiagnostics(statement, semanticModel),
             // Generate suggestions
-            result.Suggestions = GenerateSuggestions(statement, semanticModel);
-        }
-        catch (Exception ex)
-        {
-            // Return partial result with error info
-            result.Diagnostics.Add(new DotnetWorkspaceManager.DiagnosticInfo
-            {
-                Id = "CONTEXT_ERROR",
-                Severity = "Error",
-                Message = ex.Message,
-                Location = null
-            });
-        }
-        
+            Suggestions = GenerateSuggestions(statement, semanticModel)
+        };
+
         return result;
     }
     
@@ -4146,30 +3692,31 @@ public class DotnetWorkspaceManager : IDisposable
         };
     }
     
-    public async Task<DataFlowResult> GetDataFlowAnalysisAsync(string filePath, int startLine, int startColumn, int endLine, int endColumn, bool includeControlFlow, string? workspaceId)
+    public async Task<Either<SpelunkError, DataFlowResult>> GetDataFlowAnalysisAsync(string filePath, int startLine, int startColumn, int endLine, int endColumn, bool includeControlFlow, string? workspaceId)
     {
         var result = new DataFlowResult();
-        
+
+        var workspacesToSearch = GetWorkspacesToSearch(workspaceId);
+        if (!workspacesToSearch.Any())
+            return WorkspaceNotFound.NoWorkspace(workspaceId);
+
+        var workspace = workspacesToSearch.First();
+        var solution = workspace.CurrentSolution;
+        var document = GetDocumentByPath(solution, filePath);
+
+        if (document == null)
+            return CodeEditFailed.FileNotFound(filePath);
+
+        var syntaxTree = await document.GetSyntaxTreeAsync();
+        if (syntaxTree == null)
+            return CodeEditFailed.ParseFailed(filePath);
+
+        var semanticModel = await document.GetSemanticModelAsync();
+        if (semanticModel == null)
+            return CodeEditFailed.SemanticModelFailed(filePath);
+
         try
         {
-            var workspacesToSearch = GetWorkspacesToSearch(workspaceId);
-            if (!workspacesToSearch.Any())
-                throw new InvalidOperationException("No workspace loaded");
-            
-            var workspace = workspacesToSearch.First();
-            var solution = workspace.CurrentSolution;
-            var document = GetDocumentByPath(solution, filePath);
-            
-            if (document == null)
-                throw new InvalidOperationException($"File not found: {filePath}");
-                
-            var syntaxTree = await document.GetSyntaxTreeAsync();
-            if (syntaxTree == null)
-                throw new InvalidOperationException("Could not parse syntax tree");
-                
-            var semanticModel = await document.GetSemanticModelAsync();
-            if (semanticModel == null)
-                throw new InvalidOperationException("Could not get semantic model");
                 
             var sourceText = await document.GetTextAsync();
             
@@ -4213,7 +3760,7 @@ public class DotnetWorkspaceManager : IDisposable
             }
             
             if (!statements.Any())
-                throw new InvalidOperationException("No statements found in the specified region");
+                return CodeEditFailed.NoStatements(filePath, startLine, startColumn);
                 
             // Perform data flow analysis
             var firstStatement = statements.First();
@@ -4281,7 +3828,7 @@ public class DotnetWorkspaceManager : IDisposable
         }
         catch (Exception ex)
         {
-            // Return partial result with error
+            // Return partial result with error as warning
             result.Warnings.Add(new DataFlowWarning
             {
                 Type = "AnalysisError",
@@ -4290,7 +3837,7 @@ public class DotnetWorkspaceManager : IDisposable
                 Location = $"{startLine}:{startColumn}"
             });
         }
-        
+
         return result;
     }
     
@@ -4850,7 +4397,7 @@ public class DotnetWorkspaceManager : IDisposable
             $"//*[@name='{symbolName}']"       // Fallback for any named node
         };
         
-        var allNodes = new HashSet<SyntaxNode>();
+        var allNodes = new SCG.HashSet<SyntaxNode>();
         foreach (var query in queries)
         {
             var nodes = SpelunkPath.SpelunkPath.Find(syntaxTree, query, semanticModel);
@@ -5428,29 +4975,12 @@ public class TextEdit
     public string NewText { get; set; } = "";
 }
 
-public class PatternFixResult
-{
-    public bool Success { get; set; }
-    public string? Error { get; set; }
-    public List<PatternFix> Fixes { get; set; } = new();
-}
-
 public class CodeEditResult
 {
     public bool Success { get; set; }
     public string? Error { get; set; }
     public string? Description { get; set; }
     public string? ModifiedCode { get; set; }
-}
-
-public class PatternFix
-{
-    public string FilePath { get; set; } = "";
-    public int Line { get; set; }
-    public int Column { get; set; }
-    public string OriginalCode { get; set; } = "";
-    public string ReplacementCode { get; set; } = "";
-    public string? Description { get; set; }
 }
 
 // Statement-level operation classes
@@ -5567,7 +5097,12 @@ public class MarkerManager
     private readonly System.Collections.Concurrent.ConcurrentDictionary<string, Document> _markedDocuments = new();
     private int _markerCounter = 0;
     private const string MarkerKind = "MCP.Marker";
-    private const int MaxMarkers = 100;
+    private readonly int _maxMarkers;
+
+    public MarkerManager(int maxMarkers = 100)
+    {
+        _maxMarkers = maxMarkers;
+    }
 
     public string CreateMarkerId(string? label = null)
     {
@@ -5715,7 +5250,7 @@ public class MarkerManager
     }
     
     public int MarkerCount => _markers.Count;
-    public bool HasCapacity => _markers.Count < MaxMarkers;
+    public bool HasCapacity => _markers.Count < _maxMarkers;
 }
 
 public class MarkedStatement

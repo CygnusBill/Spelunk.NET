@@ -155,7 +155,7 @@ public class SemanticInfoExtractor
         // Parameters
         if (methodSymbol.Parameters.Any())
         {
-            info["parameters"] = methodSymbol.Parameters.Select(p => new Dictionary<string, object>
+            info["parameters"] = methodSymbol.Parameters.Select(p => new Dictionary<string, object?>
             {
                 ["name"] = p.Name,
                 ["type"] = p.Type.ToDisplayString(),

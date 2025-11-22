@@ -35,9 +35,7 @@ public static class ToolDescriptions
     public const string RenameSymbol = "Rename a symbol (type, method, property, field) and update all references";
     
     public const string EditCode = "Perform surgical code edits using Roslyn. Operations: add-method, add-property, make-async, add-parameter, wrap-try-catch";
-    
-    public const string FixPattern = "Transform code using semantic-aware patterns with SpelunkPath queries and statement-level operations. Supports transformations: add-null-check, convert-to-async, extract-variable, simplify-conditional, parameterize-query, convert-to-interpolation, add-await, custom";
-    
+
     public const string FindStatements = "Find statements in code matching a pattern. Returns statement IDs for use with other operations. Uses Roslyn's syntax tree to enumerate all statements.";
     
     public const string ReplaceStatement = "Replace a statement with new code. The statement is identified by its location from find-statements. Preserves indentation and formatting context.";
