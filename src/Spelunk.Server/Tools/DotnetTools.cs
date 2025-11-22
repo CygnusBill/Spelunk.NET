@@ -283,10 +283,7 @@ public static class DotnetTools
         {
             var result = await _workspaceManager.FindReferencesAsync(symbolName, symbolType, containerName, workspaceId);
             return result.Match(
-                Right: optRefs => optRefs.Match(
-                    Some: refs => JsonSerializer.Serialize(refs, new JsonSerializerOptions { WriteIndented = true }),
-                    None: () => JsonSerializer.Serialize(new { message = $"Symbol '{symbolName}' not found", references = Array.Empty<object>() })
-                ),
+                Right: refs => JsonSerializer.Serialize(refs, new JsonSerializerOptions { WriteIndented = true }),
                 Left: error => ToolError.Create(error.Code, error.Message)
             );
         }

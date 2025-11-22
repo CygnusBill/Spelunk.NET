@@ -1878,25 +1878,10 @@ public class McpJsonRpcServer
             var result = await _workspaceManager.FindReferencesAsync(symbolName, symbolType, containerName, workspacePath);
 
             return result.Match(
-                Right: optReferences => optReferences.Match(
-                    Some: references =>
+                Right: references =>
+                {
+                    if (!references.Any())
                     {
-                        // Format results
-                        var report = $"Found {references.Count} references to {symbolType} '{symbolName}':\n\n";
-
-                        // Group by file
-                        var byFile = references.GroupBy(r => r.FilePath).OrderBy(g => g.Key);
-
-                        foreach (var fileGroup in byFile)
-                        {
-                            report += $"📄 {fileGroup.Key}\n";
-                            foreach (var reference in fileGroup.OrderBy(r => r.Line))
-                            {
-                                report += $"  Line {reference.Line}:{reference.Column} - {reference.Context}\n";
-                            }
-                            report += "\n";
-                        }
-
                         return (object)new
                         {
                             content = new[]
@@ -1904,23 +1889,40 @@ public class McpJsonRpcServer
                                 new
                                 {
                                     type = "text",
-                                    text = report
+                                    text = $"No references found for {symbolType} '{symbolName}'"
                                 }
                             }
                         };
-                    },
-                    None: () => (object)new
+                    }
+
+                    // Format results
+                    var report = $"Found {references.Count} references to {symbolType} '{symbolName}':\n\n";
+
+                    // Group by file
+                    var byFile = references.GroupBy(r => r.FilePath).OrderBy(g => g.Key);
+
+                    foreach (var fileGroup in byFile)
+                    {
+                        report += $"📄 {fileGroup.Key}\n";
+                        foreach (var reference in fileGroup.OrderBy(r => r.Line))
+                        {
+                            report += $"  Line {reference.Line}:{reference.Column} - {reference.Context}\n";
+                        }
+                        report += "\n";
+                    }
+
+                    return (object)new
                     {
                         content = new[]
                         {
                             new
                             {
                                 type = "text",
-                                text = $"Symbol '{symbolName}' of type '{symbolType}' not found"
+                                text = report
                             }
                         }
-                    }
-                ),
+                    };
+                },
                 Left: error =>
                 {
                     _logger.LogWarning("Find references error: {Code} - {Message}", error.Code, error.Message);
