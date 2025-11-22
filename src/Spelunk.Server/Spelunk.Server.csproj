@@ -24,7 +24,7 @@
 
   <ItemGroup>
     <!-- MCP Protocol - AspNetCore includes Core and base packages -->
-    <PackageReference Include="LanguageExt.Core" Version="4.4.9" />
+    <PackageReference Include="LanguageExt.Core" Version="5.0.0-beta-57" />
     <PackageReference Include="ModelContextProtocol.AspNetCore" Version="0.4.0-preview.3" />
 
     <!-- Roslyn Code Analysis -->
