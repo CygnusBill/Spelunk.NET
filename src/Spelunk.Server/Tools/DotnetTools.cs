@@ -283,15 +283,18 @@ public static class DotnetTools
         {
             var result = await _workspaceManager.FindReferencesAsync(symbolName, symbolType, containerName, workspaceId);
             return result.Match(
-                Right: refs => JsonSerializer.Serialize(refs, new JsonSerializerOptions { WriteIndented = true }),
-                Left: error => throw new InvalidOperationException($"Failed to find references: {error.Message}")
+                Right: optRefs => optRefs.Match(
+                    Some: refs => JsonSerializer.Serialize(refs, new JsonSerializerOptions { WriteIndented = true }),
+                    None: () => JsonSerializer.Serialize(new { message = $"Symbol '{symbolName}' not found", references = Array.Empty<object>() })
+                ),
+                Left: error => ToolError.Create(error.Code, error.Message)
             );
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Failed to find references for symbol: {SymbolName}, type: {SymbolType}, container: {ContainerName}",
                 symbolName, symbolType, containerName);
-            throw new InvalidOperationException($"Failed to find references: {ex.Message}", ex);
+            return ToolError.Create("UNEXPECTED_ERROR", $"Failed to find references: {ex.Message}");
         }
     }
 

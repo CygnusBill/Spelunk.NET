@@ -1163,7 +1163,7 @@ public class DotnetWorkspaceManager : IDisposable
         return $"{method.ContainingType.ToDisplayString()}.{method.Name}({parameters})";
     }
     
-    public async Task<Either<SpelunkError, List<ReferenceInfo>>> FindReferencesAsync(string symbolName, string? symbolType = null, string? containerName = null, string? workspacePath = null)
+    public async Task<Either<SpelunkError, Option<List<ReferenceInfo>>>> FindReferencesAsync(string symbolName, string? symbolType = null, string? containerName = null, string? workspacePath = null)
     {
         var results = new List<ReferenceInfo>();
         var workspacesToSearch = GetWorkspacesToSearch(workspacePath);
@@ -1238,13 +1238,13 @@ public class DotnetWorkspaceManager : IDisposable
             }
         }
         
-        // If no symbol was found, return an error
+        // If no symbol was found, return None (not an error, just not found)
         if (!symbolFound && results.Count == 0)
         {
-            return SymbolNotFound.Create(symbolName, symbolType, containerName);
+            return Option<List<ReferenceInfo>>.None;
         }
 
-        return results;
+        return Option<List<ReferenceInfo>>.Some(results);
     }
     
     public async Task<CodeEditResult> EditCodeAsync(string filePath, string operation, string? className = null, string? methodName = null, string? code = null, JsonElement? parameters = null, bool preview = false)
